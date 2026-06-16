@@ -87,6 +87,7 @@
 - [x] Сохранять ошибки в `audit_logs`.
 - [x] Конвертировать Telegram OGG/Opus voice в MP3 перед STT.
 - [x] Отправлять STT файл с filename `voice.mp3` и MIME `audio/mpeg`.
+- [x] На Vercel fallback-ить на исходный `voice.ogg`, если `ffmpeg-static` недоступен или конвертация упала.
 - [x] Логировать file id, размер файла, STT filename, STT MIME и error response.
 - [x] Вынести общий `processTelegramUpdate(update)`.
 - [x] Оставить polling только для локального `npm run bot:dev`.

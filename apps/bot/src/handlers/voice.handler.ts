@@ -1,7 +1,7 @@
 import type { Context, Telegraf } from "telegraf";
 import { message } from "telegraf/filters";
 import type { AppEnv } from "../config/env";
-import { convertTelegramVoiceToMp3 } from "../services/audio-conversion.service";
+import { prepareTelegramVoiceForStt } from "../services/audio-conversion.service";
 import { cleanupTranscript, parseSaleTranscript } from "../services/cleanup-text.service";
 import { saveFailedVoiceRecord, saveProcessedSale } from "../services/records.service";
 import { uploadVoiceAudio } from "../services/storage.service";
@@ -41,17 +41,23 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
       audioPath = uploaded.path;
       audioUrl = uploaded.publicUrl;
 
-      const sttAudio = await convertTelegramVoiceToMp3({
+      const preparedAudio = await prepareTelegramVoiceForStt({
         buffer: audio.buffer,
         sourceFileName: audio.fileName
       });
+      const sttAudio = preparedAudio.audio;
 
       logger.info("Voice audio prepared for STT", {
         telegramFileId,
         downloadedFileSize: audio.fileSize,
         sttFileSize: sttAudio.buffer.byteLength,
         sttMimeType: sttAudio.contentType,
-        sttFilename: sttAudio.filename
+        sttFilename: sttAudio.filename,
+        ffmpegStaticPath: preparedAudio.diagnostics.ffmpegStaticPath,
+        ffmpegExists: preparedAudio.diagnostics.ffmpegExists,
+        usingConversion: preparedAudio.diagnostics.usingConversion,
+        fallbackToOriginalOgg: preparedAudio.diagnostics.fallbackToOriginalOgg,
+        conversionError: preparedAudio.diagnostics.conversionError
       });
 
       const rawText = await transcribeAudio(env, sttAudio);

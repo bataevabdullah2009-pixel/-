@@ -1,29 +1,62 @@
 import { spawn } from "node:child_process";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import ffmpegPath from "ffmpeg-static";
+import ffmpegStatic from "ffmpeg-static";
+import { logger } from "../utils/logger";
 import type { TranscriptionAudioFile } from "./transcription.service";
 
-function runFfmpeg(args: string[]) {
-  return new Promise<void>((resolve, reject) => {
-    if (!ffmpegPath) {
-      reject(new Error("ffmpeg-static did not provide a binary path."));
-      return;
-    }
+export type AudioPreparationDiagnostics = {
+  ffmpegStaticPath: string | null;
+  ffmpegExists: boolean;
+  usingConversion: boolean;
+  fallbackToOriginalOgg: boolean;
+  conversionError?: string;
+};
 
-    const process = spawn(ffmpegPath, args, {
+export type PreparedAudioForStt = {
+  audio: TranscriptionAudioFile;
+  diagnostics: AudioPreparationDiagnostics;
+};
+
+function originalOggAudio(buffer: Buffer): TranscriptionAudioFile {
+  return {
+    buffer,
+    filename: "voice.ogg",
+    contentType: "audio/ogg"
+  };
+}
+
+async function fileExists(path: string | null) {
+  if (!path) {
+    return false;
+  }
+
+  try {
+    return (await stat(path)).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function runFfmpeg(ffmpegPath: string, args: string[]) {
+  return new Promise<void>((resolve, reject) => {
+    const ffmpegProcess = spawn(ffmpegPath, args, {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true
     });
     const stderr: Buffer[] = [];
 
-    process.stderr.on("data", (chunk: Buffer) => {
+    ffmpegProcess.stderr.on("data", (chunk: Buffer) => {
       stderr.push(chunk);
     });
 
-    process.on("error", reject);
-    process.on("close", (code) => {
+    ffmpegProcess.on("error", reject);
+    ffmpegProcess.on("close", (code) => {
       if (code === 0) {
         resolve();
         return;
@@ -34,19 +67,38 @@ function runFfmpeg(args: string[]) {
   });
 }
 
-export async function convertTelegramVoiceToMp3(input: {
+export async function prepareTelegramVoiceForStt(input: {
   buffer: Buffer;
   sourceFileName: string;
-}): Promise<TranscriptionAudioFile> {
+}): Promise<PreparedAudioForStt> {
+  const ffmpegStaticPath = ffmpegStatic ?? null;
+  const ffmpegExists = await fileExists(ffmpegStaticPath);
+
+  if (!ffmpegStaticPath || !ffmpegExists) {
+    const diagnostics = {
+      ffmpegStaticPath,
+      ffmpegExists,
+      usingConversion: false,
+      fallbackToOriginalOgg: true
+    };
+
+    logger.warn("FFmpeg unavailable for Telegram voice conversion; falling back to original OGG", diagnostics);
+
+    return {
+      audio: originalOggAudio(input.buffer),
+      diagnostics
+    };
+  }
+
   const workDir = join(tmpdir(), `voice-sales-log-${crypto.randomUUID()}`);
-  const inputPath = join(workDir, input.sourceFileName.endsWith(".ogg") ? input.sourceFileName : "voice.ogg");
+  const inputPath = join(workDir, input.sourceFileName.endsWith(".ogg") ? "voice.ogg" : "voice-input.ogg");
   const outputPath = join(workDir, "voice.mp3");
 
   await mkdir(workDir, { recursive: true });
 
   try {
     await writeFile(inputPath, input.buffer);
-    await runFfmpeg([
+    await runFfmpeg(ffmpegStaticPath, [
       "-y",
       "-hide_banner",
       "-loglevel",
@@ -65,10 +117,37 @@ export async function convertTelegramVoiceToMp3(input: {
       outputPath
     ]);
 
+    const diagnostics = {
+      ffmpegStaticPath,
+      ffmpegExists,
+      usingConversion: true,
+      fallbackToOriginalOgg: false
+    };
+
+    logger.info("Telegram voice converted for STT", diagnostics);
+
     return {
-      buffer: await readFile(outputPath),
-      filename: "voice.mp3",
-      contentType: "audio/mpeg"
+      audio: {
+        buffer: await readFile(outputPath),
+        filename: "voice.mp3",
+        contentType: "audio/mpeg"
+      },
+      diagnostics
+    };
+  } catch (error) {
+    const diagnostics = {
+      ffmpegStaticPath,
+      ffmpegExists,
+      usingConversion: false,
+      fallbackToOriginalOgg: true,
+      conversionError: getErrorMessage(error)
+    };
+
+    logger.warn("Telegram voice conversion failed; falling back to original OGG", diagnostics);
+
+    return {
+      audio: originalOggAudio(input.buffer),
+      diagnostics
     };
   } finally {
     await rm(workDir, { recursive: true, force: true });

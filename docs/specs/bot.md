@@ -51,6 +51,13 @@ Production-вход работает через Telegram webhook на Vercel rou
 11. Сохранить данные в Supabase.
 12. Ответить продавцу результатом.
 
+Если `ffmpeg-static` недоступен на Vercel или конвертация завершилась ошибкой, бот должен продолжить pipeline с исходным Telegram OGG:
+
+- STT файл: `voice.ogg`;
+- MIME type: `audio/ogg`;
+- fallback логируется вместе с `ffmpegStaticPath`, `ffmpegExists`, `usingConversion` и `fallbackToOriginalOgg`;
+- запись становится `failed` только если fallback STT или более поздний шаг тоже завершился ошибкой.
+
 ## Успешный ответ
 
 ```text
