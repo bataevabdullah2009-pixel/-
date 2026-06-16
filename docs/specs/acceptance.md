@@ -10,6 +10,9 @@
 - `npm run build` проходит.
 - `.env.example` содержит все переменные.
 - `.env.local` существует локально и не коммитится.
+- Webhook route проверяет `x-telegram-bot-api-secret-token`.
+- `npm run telegram:set-webhook` устанавливает Telegram webhook с `secret_token`.
+- `npm run telegram:webhook-info` показывает текущий webhook без секретов.
 - Supabase migration описывает все таблицы.
 - Telegram-бот принимает voice message.
 - STT возвращает raw text.
@@ -29,7 +32,7 @@
 
 ## Демо-проверка
 
-1. Запустить проект.
+1. Для локальной проверки запустить `npm run bot:dev` и `npm run web:dev`, либо для production задеплоить `apps/web` на Vercel и выполнить `npm run telegram:set-webhook`.
 2. Отправить голосовое: `хлеб 3 по 40 молоко 2 по 90`.
 3. Открыть `/records`.
 4. Проверить, что запись видна.

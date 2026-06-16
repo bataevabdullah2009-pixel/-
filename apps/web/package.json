@@ -4,12 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "dotenv -e ../../.env.local -- next dev -p 3000",
-    "build": "dotenv -e ../../.env.local -- next build",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "lint": "eslint ."
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.87.1",
+    "@voice-sales-log/bot": "0.1.0",
     "@voice-sales-log/shared": "0.1.0",
     "next": "^16.2.9",
     "react": "^19.2.7",

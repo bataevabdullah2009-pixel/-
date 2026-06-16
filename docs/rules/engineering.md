@@ -15,6 +15,8 @@ Read:
 - Keep changes scoped.
 - Prefer shared schemas and utilities.
 - Do not duplicate business logic between bot and web.
+- Keep Telegram update handling in `processTelegramUpdate(update)` so polling and webhook use the same logic.
+- Keep polling local-only through `npm run bot:dev`.
 - Do not change folder structure without docs update.
 
 ## After code changes

@@ -28,11 +28,13 @@
 
 ## 4. Решение
 
-Проект даёт один понятный поток:
+Проект даёт один понятный production-поток:
 
 ```text
-Telegram voice -> STT -> cleaned text -> sale items -> database -> report
+Telegram voice -> Vercel webhook -> STT -> cleaned text -> sale items -> database -> report
 ```
+
+Для локальной разработки тот же обработчик update запускается через polling командой `npm run bot:dev`.
 
 Владелец видит:
 
@@ -54,6 +56,8 @@ Telegram voice -> STT -> cleaned text -> sale items -> database -> report
 В MVP входят:
 
 - Telegram-бот.
+- Vercel webhook route для Telegram updates.
+- Локальный polling только для разработки.
 - Приём голосовых сообщений.
 - STT-распознавание.
 - LLM cleanup.
@@ -203,4 +207,6 @@ Telegram voice -> STT -> cleaned text -> sale items -> database -> report
 - отчёт группирует одинаковые товары;
 - позиции без цены попадают в “Нужно проверить”;
 - документация организована и заполнена;
+- production webhook использует Telegram `secret_token`;
+- polling не запускается на Vercel;
 - секретов в коде нет.

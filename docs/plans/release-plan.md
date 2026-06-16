@@ -37,6 +37,7 @@
 ## Version 1.0
 
 - Stable MVP.
+- Vercel webhook deployment path for Telegram.
 - Daily, weekly, monthly, yearly reports.
 - Manual correction.
 - Tests.

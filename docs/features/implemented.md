@@ -5,6 +5,10 @@
 - `/start` command.
 - Text message fallback.
 - Voice message handler.
+- Shared `processTelegramUpdate(update)`.
+- Local polling through `npm run bot:dev`.
+- Vercel webhook route `/api/telegram/webhook`.
+- Telegram webhook secret header validation.
 - Telegram audio download.
 - Seller registration by Telegram ID.
 - Confirmation message after save.
@@ -63,3 +67,4 @@
 - Shared types.
 - Shared Zod schemas.
 - Shared date/report utilities.
+- Telegram webhook setup and info scripts.

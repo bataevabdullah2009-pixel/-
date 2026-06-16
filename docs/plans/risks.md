@@ -9,6 +9,8 @@
 | Price is missing | Revenue can be wrong | Use `needs_price`, exclude from revenue. |
 | Supabase keys missing | App cannot save data | `.env.example`, README, startup validation. |
 | Service role leaks to browser | Security issue | Use lazy server-only admin client. |
+| Webhook secret is missing or wrong | Telegram updates are rejected | Configure `TELEGRAM_WEBHOOK_SECRET` in Vercel and set Telegram `secret_token`. |
+| Polling runs in production | Duplicate update processing | Keep polling local-only and use Vercel webhook. |
 
 ## Product risks
 

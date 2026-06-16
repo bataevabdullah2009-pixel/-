@@ -24,6 +24,7 @@
 | Architecture | `docs/architecture/README.md` |
 | Roadmap | `docs/roadmap/README.md` |
 | Codex skill | `codex-skills/voice-sales-log/SKILL.md` |
+| Scripts | `scripts/set-telegram-webhook.ts`, `scripts/get-telegram-webhook-info.ts` |
 
 ## Документные правила
 
@@ -33,3 +34,4 @@
 - Если меняется план, обновляется `docs/plans/README.md` и файлы в `docs/plans/`.
 - Если меняются правила, обновляется `docs/rules/README.md` и соответствующий файл в `docs/rules/`.
 - Если меняется workflow для ИИ-агента, обновляется `codex-skills/voice-sales-log/SKILL.md`.
+- Если меняется Telegram production runtime, обновляются README, architecture, bot spec и plans.

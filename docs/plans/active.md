@@ -7,8 +7,10 @@
 | Priority | Task | Status | Notes |
 | --- | --- | --- | --- |
 | P1 | Заполнить реальные `.env.local` ключи | Active | Нужны Telegram, Supabase, STT, LLM. |
+| P1 | Добавить env в Vercel | Active | Нужны Telegram webhook, Supabase, STT, LLM и `NEXT_PUBLIC_APP_URL`. |
+| P1 | Выполнить `npm run telegram:set-webhook` после deploy | Active | Требует production URL Vercel. |
 | P1 | Применить Supabase migration в реальном проекте | Active | Supabase CLI локально не установлен. |
-| P1 | Проверить live Telegram voice flow | Active | Требует реальные API keys; MP3 conversion is implemented. |
+| P1 | Проверить live Telegram voice flow | Active | Локально через polling или production через Vercel webhook. |
 | P2 | Проверить signed audio URL в реальном Storage | Active | Сейчас код готов, нужна Supabase проверка. |
 | P2 | Добавить интеграционный тест `records.service` | Planned | После настройки test database или mocks. |
 

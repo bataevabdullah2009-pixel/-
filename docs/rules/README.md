@@ -6,12 +6,12 @@
 
 | Документ | Что регулирует |
 | --- | --- |
-| [Scope Rules](./rules/scope.md) | Границы проекта: что можно и что нельзя добавлять. |
-| [AI Rules](./rules/ai.md) | Правила STT, LLM cleanup и JSON-парсера. |
-| [Data Rules](./rules/data.md) | Правила хранения данных, статусов и связей. |
-| [Report Rules](./rules/reports.md) | Правила отчётов, группировки и выручки. |
-| [Security Rules](./rules/security.md) | Env, ключи, Supabase service role, RLS. |
-| [Engineering Rules](./rules/engineering.md) | Код, тесты, документация и изменения. |
+| [Scope Rules](./scope.md) | Границы проекта: что можно и что нельзя добавлять. |
+| [AI Rules](./ai.md) | Правила STT, LLM cleanup и JSON-парсера. |
+| [Data Rules](./data.md) | Правила хранения данных, статусов и связей. |
+| [Report Rules](./reports.md) | Правила отчётов, группировки и выручки. |
+| [Security Rules](./security.md) | Env, ключи, Supabase service role, RLS, webhook secret. |
+| [Engineering Rules](./engineering.md) | Код, тесты, документация и изменения. |
 
 ## Непереговорные правила
 
@@ -23,6 +23,8 @@
 - Основной отчёт показывает только товар, количество и выручку.
 - Все ошибки логируются.
 - Секреты не хранятся в коде.
+- Telegram webhook проверяет `x-telegram-bot-api-secret-token`.
+- Polling не запускается на Vercel.
 - После изменений обновляются `CHANGELOG.md`, планы и нужные specs.
 
 ## Правило изменения проекта

@@ -12,7 +12,7 @@ Roadmap показывает развитие проекта по версиям
 | 0.4 | Web dashboard, records list, filters, search | Done |
 | 0.5 | Products, sale items, daily report, revenue | Done |
 | 0.6 | Strict documentation system and project governance | Done |
-| 1.0 | Stable MVP ready for teacher review | In progress |
+| 1.0 | Stable MVP with Vercel webhook ready for teacher review | In progress |
 
 ## Version 0.1
 
@@ -72,8 +72,10 @@ Roadmap показывает развитие проекта по версиям
 Required before final teacher demo:
 
 - Fill real env values locally.
+- Add production env values in Vercel.
 - Apply Supabase migration.
-- Run live Telegram voice flow.
+- Register Telegram webhook with `npm run telegram:set-webhook`.
+- Run live Telegram voice flow through webhook.
 - Verify record in Supabase.
 - Verify `/daily-report` with real data.
 - Run `npm run lint`.

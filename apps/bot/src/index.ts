@@ -1,23 +1,14 @@
-import { getEnv } from "./config/env";
-import { registerStartHandler } from "./handlers/start.handler";
-import { registerTextHandler } from "./handlers/text.handler";
-import { registerVoiceHandler } from "./handlers/voice.handler";
-import { createTelegramBot } from "./services/telegram.service";
+import { getTelegramUpdateBot } from "./core/process-update";
 import { logger } from "./utils/logger";
 
-const env = getEnv();
-const bot = createTelegramBot(env);
+if (process.env.VERCEL === "1") {
+  logger.warn("Telegram polling is disabled on Vercel. Use the webhook route instead.");
+  process.exit(0);
+}
 
-registerStartHandler(bot, env);
-registerVoiceHandler(bot, env);
-registerTextHandler(bot);
-
-bot.catch((error) => {
-  logger.error("Unhandled bot error", { error });
-});
-
+const bot = getTelegramUpdateBot();
 await bot.launch();
-logger.info("Telegram bot started");
+logger.info("Telegram bot polling started");
 
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));

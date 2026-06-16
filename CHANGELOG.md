@@ -2,8 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added shared `processTelegramUpdate(update)` for Telegram updates.
+- Added Vercel webhook route at `/api/telegram/webhook` with Telegram `secret_token` header validation.
+- Added Telegram webhook management scripts: `npm run telegram:set-webhook` and `npm run telegram:webhook-info`.
+- Added `TELEGRAM_WEBHOOK_SECRET` and `NEXT_PUBLIC_APP_URL` to `.env.example`.
+
 ### Changed
 
+- Production Telegram processing now uses webhook delivery on Vercel, while `npm run bot:dev` keeps local polling.
+- Next.js transitive `postcss` is pinned through npm overrides to avoid the current moderate audit finding.
 - Daily report now groups processed sale items by `product_id` first and by normalized product name when `product_id` is missing.
 - Product names are normalized for reporting and lookup, including `хлеб` / `Хлеб` / `хлеба` and `молоко` / `молока`.
 - Piece units are normalized to `шт`, including `штука`, `штуки`, `штук` and `шт.`.
@@ -11,6 +20,7 @@
 
 ### Fixed
 
+- Fixed Vercel web build by removing `dotenv-cli` from the `apps/web` build script.
 - Prevented duplicate report rows caused by different product casing or piece unit spelling.
 - Low confidence, missing quantity and empty product names now consistently stay in manual review instead of being treated as clean processed data.
 

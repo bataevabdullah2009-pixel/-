@@ -5,7 +5,7 @@ const repoRoot = resolve(fileURLToPath(new URL("../..", import.meta.url)));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@voice-sales-log/shared"],
+  transpilePackages: ["@voice-sales-log/shared", "@voice-sales-log/bot"],
   turbopack: {
     root: repoRoot
   }

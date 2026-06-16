@@ -3,6 +3,7 @@
 | Feature | User value | Acceptance check | Status |
 | --- | --- | --- | --- |
 | Telegram voice input | Seller speaks instead of typing | Bot accepts voice message | Done |
+| Vercel webhook | Telegram can deliver production updates | Webhook checks secret token and calls update processor | Done |
 | STT transcript | Voice becomes text | Raw text saved | Done |
 | Cleanup text | Text is readable | Cleaned text saved | Done |
 | JSON parser | Text becomes sale items | Items validate by Zod | Done |

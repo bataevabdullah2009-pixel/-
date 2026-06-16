@@ -15,6 +15,8 @@ Telegram voice -> STT -> cleaned text -> sale items -> database -> report
 
 Do not turn it into CRM, warehouse, cash register, fiscal system, payment system, or full product catalog.
 
+Production Telegram updates enter through the Vercel webhook route. Local development may use polling through `npm run bot:dev`, but polling must not run on Vercel.
+
 ## Required Reading
 
 Before changing project logic, read:
@@ -36,6 +38,8 @@ When touching Telegram voice, STT, audio storage, or transcription:
 3. Convert Telegram OGG/Opus voice to MP3 before STT unless the task explicitly changes this rule.
 4. Send STT multipart `file` with `filename=voice.mp3` and `Content-Type: audio/mpeg`.
 5. Log Telegram file id, downloaded size, STT filename, STT MIME type, and STT error response.
+
+Keep update dispatch in `apps/bot/src/core/process-update.ts` so webhook and polling share the same handlers.
 
 ## Documentation Rules
 

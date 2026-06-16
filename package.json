@@ -7,10 +7,16 @@
     "apps/*",
     "packages/*"
   ],
+  "overrides": {
+    "postcss": "8.5.15"
+  },
   "scripts": {
     "dev": "concurrently \"npm run bot:dev\" \"npm run web:dev\"",
     "bot:dev": "npm --workspace apps/bot run dev",
-    "web:dev": "npm --workspace apps/web run dev",
+    "web:dev": "dotenv -e .env.local -- npm --workspace apps/web run dev",
+    "web:build": "dotenv -e .env.local -- npm --workspace apps/web run build",
+    "telegram:set-webhook": "dotenv -e .env.local -- tsx scripts/set-telegram-webhook.ts",
+    "telegram:webhook-info": "dotenv -e .env.local -- tsx scripts/get-telegram-webhook-info.ts",
     "lint": "eslint .",
     "test": "vitest run",
     "build": "npm run build --workspaces --if-present"

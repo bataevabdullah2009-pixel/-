@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./core/process-update": "./src/core/process-update.ts"
+  },
   "scripts": {
     "dev": "dotenv -e ../../.env.local -- tsx src/index.ts",
     "build": "tsc --noEmit",
@@ -11,7 +14,6 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.87.1",
     "@voice-sales-log/shared": "0.1.0",
-    "dotenv": "^17.2.3",
     "ffmpeg-static": "^5.3.0",
     "telegraf": "^4.16.3",
     "zod": "^4.2.1"

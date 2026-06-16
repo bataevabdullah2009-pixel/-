@@ -6,14 +6,16 @@
 
 | Документ | Назначение |
 | --- | --- |
-| [Implemented Features](./features/implemented.md) | Что уже есть в MVP. |
-| [Planned Features](./features/planned.md) | Что можно добавить после MVP. |
-| [Out Of Scope](./features/out-of-scope.md) | Что нельзя добавлять без отдельного решения. |
-| [Acceptance Matrix](./features/acceptance-matrix.md) | Как фичи связаны с критериями готовности. |
+| [Implemented Features](./implemented.md) | Что уже есть в MVP. |
+| [Planned Features](./planned.md) | Что можно добавить после MVP. |
+| [Out Of Scope](./out-of-scope.md) | Что нельзя добавлять без отдельного решения. |
+| [Acceptance Matrix](./acceptance-matrix.md) | Как фичи связаны с критериями готовности. |
 
 ## MVP-фичи
 
 - Telegram-бот для голосовых продаж.
+- Vercel webhook для production updates от Telegram.
+- Локальный polling для разработки.
 - STT-распознавание голоса.
 - LLM cleanup.
 - LLM JSON parser.

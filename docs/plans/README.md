@@ -2,11 +2,11 @@
 
 Этот файл является главным рабочим планом проекта. Детальные планы вынесены отдельно:
 
-- [Active Plan](./plans/active.md) - что делать дальше.
-- [Completed Plan](./plans/completed.md) - что уже сделано.
-- [Backlog](./plans/backlog.md) - идеи после MVP.
-- [Release Plan](./plans/release-plan.md) - путь к версии 1.0.
-- [Risks](./plans/risks.md) - риски и контроль качества.
+- [Active Plan](./active.md) - что делать дальше.
+- [Completed Plan](./completed.md) - что уже сделано.
+- [Backlog](./backlog.md) - идеи после MVP.
+- [Release Plan](./release-plan.md) - путь к версии 1.0.
+- [Risks](./risks.md) - риски и контроль качества.
 
 ## Статус проекта
 
@@ -15,6 +15,7 @@
 | Документация | Готово | Добавлены specs, rules, stories, roadmap, architecture, features. |
 | База данных | Готово | Есть Supabase migration и seed. |
 | Telegram-бот | MVP готов | Нужны реальные ключи для live-проверки. |
+| Vercel webhook | Код готов | Нужен deploy, env в Vercel и `npm run telegram:set-webhook`. |
 | AI pipeline | MVP готов | Есть STT, cleanup, parser и fallback-статусы. |
 | Веб-панель | MVP готов | Есть записи, продавцы и отчёт. |
 | Отчёты | MVP стабилизирован | Есть группировка по `product_id`/normalized name, нормализация unit и блок проверки. |
@@ -87,6 +88,11 @@
 - [x] Конвертировать Telegram OGG/Opus voice в MP3 перед STT.
 - [x] Отправлять STT файл с filename `voice.mp3` и MIME `audio/mpeg`.
 - [x] Логировать file id, размер файла, STT filename, STT MIME и error response.
+- [x] Вынести общий `processTelegramUpdate(update)`.
+- [x] Оставить polling только для локального `npm run bot:dev`.
+- [x] Добавить Vercel webhook route `/api/telegram/webhook`.
+- [x] Проверять Telegram webhook `secret_token`.
+- [x] Добавить scripts для `setWebhook` и `getWebhookInfo`.
 
 ## Этап 5 - Веб-панель
 
@@ -136,8 +142,8 @@
 
 ## Активные задачи
 
-См. [Active Plan](./plans/active.md).
+См. [Active Plan](./active.md).
 
 ## Завершённые задачи
 
-См. [Completed Plan](./plans/completed.md).
+См. [Completed Plan](./completed.md).

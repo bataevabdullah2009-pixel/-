@@ -11,8 +11,10 @@
 | Shared package | Types, Zod schemas, date range, report aggregation. |
 | Supabase | Migration, seed, RLS, Storage bucket policy. |
 | Bot | `/start`, text handler, voice handler, Telegram download, STT, LLM, records service. |
+| Bot runtime | Shared `processTelegramUpdate(update)`, local polling and Vercel webhook entrypoint. |
 | Voice STT fix | Telegram OGG/Opus is converted to MP3 and sent to STT as `audio/mpeg` with `voice.mp3`. |
 | Web | `/daily-report`, `/records`, `/sellers`, filters, cards, forms. |
+| Webhook scripts | `telegram:set-webhook` and `telegram:webhook-info`. |
 | Reports | Grouping by product id or normalized name, total revenue, review block, manual correction. |
 | Stabilization | Product normalization, unit normalization, confidence/status rules. |
 | Tests | Date ranges, validation, transcript status, processed record, grouping, revenue, manual correction. |

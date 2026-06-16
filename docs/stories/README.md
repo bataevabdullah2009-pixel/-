@@ -6,10 +6,10 @@ User stories разделены по ролям и проверочным сце
 
 | Документ | Назначение |
 | --- | --- |
-| [Seller Stories](./stories/seller.md) | Истории продавца. |
-| [Owner Stories](./stories/owner.md) | Истории владельца магазина. |
-| [Teacher Stories](./stories/teacher.md) | Истории преподавателя. |
-| [Acceptance Scenarios](./stories/acceptance-scenarios.md) | Проверочные пользовательские сценарии. |
+| [Seller Stories](./seller.md) | Истории продавца. |
+| [Owner Stories](./owner.md) | Истории владельца магазина. |
+| [Teacher Stories](./teacher.md) | Истории преподавателя. |
+| [Acceptance Scenarios](./acceptance-scenarios.md) | Проверочные пользовательские сценарии. |
 
 ## Ключевые истории
 

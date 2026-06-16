@@ -11,14 +11,16 @@
 ## Как работает система
 
 1. Продавец отправляет голосовое сообщение в Telegram-бот.
-2. Бот скачивает аудио и сохраняет его в Supabase Storage.
-3. Whisper-compatible STT API переводит голос в сырой текст.
-4. LLM очищает текст и возвращает строгий JSON с позициями продажи.
-5. Если цена названа в голосе, система использует её.
-6. Если цена не названа, система ищет цену в таблице `products`.
-7. Если цена не найдена, позиция получает статус `needs_price`.
-8. Запись, продажа и позиции сохраняются в Supabase Postgres.
-9. Веб-панель показывает записи и отчёты за день, неделю, месяц или год.
+2. В production Telegram отправляет update на Vercel route `/api/telegram/webhook`; локально `npm run bot:dev` использует polling.
+3. Общий обработчик `processTelegramUpdate(update)` запускает существующую bot-логику.
+4. Бот скачивает аудио и сохраняет его в Supabase Storage.
+5. Whisper-compatible STT API переводит голос в сырой текст.
+6. LLM очищает текст и возвращает строгий JSON с позициями продажи.
+7. Если цена названа в голосе, система использует её.
+8. Если цена не названа, система ищет цену в таблице `products`.
+9. Если цена не найдена, позиция получает статус `needs_price`.
+10. Запись, продажа и позиции сохраняются в Supabase Postgres.
+11. Веб-панель показывает записи и отчёты за день, неделю, месяц или год.
 
 ## Стек
 
@@ -47,6 +49,7 @@ voice-sales-log/
 │   └── web/
 ├── packages/
 │   └── shared/
+├── scripts/
 ├── supabase/
 │   ├── migrations/
 │   └── seed.sql
@@ -99,19 +102,24 @@ npm install
 
 ```env
 TELEGRAM_BOT_TOKEN=
+TELEGRAM_WEBHOOK_SECRET=
+NEXT_PUBLIC_APP_URL=
 SUPABASE_URL=
 SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 SUPABASE_STORAGE_BUCKET=voice-records
 STT_API_KEY=
 STT_API_URL=
+STT_MODEL=whisper-large-v3-turbo
 LLM_API_KEY=
 LLM_API_URL=
 LLM_MODEL=
 DEFAULT_SHOP_NAME=Демо-магазин
 ```
 
-`SUPABASE_SERVICE_ROLE_KEY` используется только серверным кодом бота и серверными действиями веб-панели. Его нельзя передавать в браузер.
+`SUPABASE_SERVICE_ROLE_KEY` используется только серверным кодом бота, webhook route и серверными действиями веб-панели. Его нельзя передавать в браузер.
+
+`TELEGRAM_WEBHOOK_SECRET` передаётся в Telegram `setWebhook` как `secret_token` и проверяется в route по header `x-telegram-bot-api-secret-token`.
 
 ## Запуск
 
@@ -119,6 +127,8 @@ DEFAULT_SHOP_NAME=Демо-магазин
 npm run dev
 npm run bot:dev
 npm run web:dev
+npm run telegram:set-webhook
+npm run telegram:webhook-info
 npm run lint
 npm run test
 npm run build
@@ -127,11 +137,41 @@ npm run build
 Отдельные команды:
 
 - `npm run dev` — запускает бота и веб-панель одновременно.
-- `npm run bot:dev` — запускает Telegram-бота.
+- `npm run bot:dev` — запускает Telegram-бота локально через polling.
 - `npm run web:dev` — запускает веб-панель на `http://localhost:3000`.
+- `npm run telegram:set-webhook` — регистрирует Telegram webhook для Vercel route.
+- `npm run telegram:webhook-info` — показывает текущий Telegram webhook.
 - `npm run lint` — проверяет код ESLint.
 - `npm run test` — запускает Vitest.
 - `npm run build` — проверяет сборку workspaces.
+
+## Deploy webhook bot on Vercel
+
+1. Задеплойте `apps/web` на Vercel.
+2. Добавьте env в Vercel:
+   `TELEGRAM_BOT_TOKEN`,
+   `TELEGRAM_WEBHOOK_SECRET`,
+   `NEXT_PUBLIC_APP_URL`,
+   `SUPABASE_URL`,
+   `SUPABASE_ANON_KEY`,
+   `SUPABASE_SERVICE_ROLE_KEY`,
+   `SUPABASE_STORAGE_BUCKET`,
+   `STT_API_KEY`,
+   `STT_API_URL`,
+   `STT_MODEL`,
+   `LLM_API_KEY`,
+   `LLM_API_URL`,
+   `LLM_MODEL`,
+   `DEFAULT_SHOP_NAME`.
+3. Сделайте Redeploy после добавления env.
+4. Локально заполните `.env.local`, включая `NEXT_PUBLIC_APP_URL=https://your-vercel-domain`.
+5. Выполните `npm run telegram:set-webhook`.
+6. Проверьте `npm run telegram:webhook-info`: `url` должен быть `${NEXT_PUBLIC_APP_URL}/api/telegram/webhook`, `last_error_message` должен быть пустым.
+7. Напишите боту `/start`.
+8. Отправьте голосовое.
+9. Проверьте Supabase и веб-панель.
+
+На Vercel polling не запускается. Production-путь: Telegram voice message -> Vercel API route -> `processTelegramUpdate(update)` -> существующая обработка голосового -> Supabase -> веб-панель.
 
 ## Supabase
 
