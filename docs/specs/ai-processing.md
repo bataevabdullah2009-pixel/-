@@ -21,6 +21,15 @@ STT API должен быть Whisper-compatible.
 
 - строка raw transcript.
 
+Telegram voice перед STT должен быть подготовлен так:
+
+- исходный Telegram файл считается `audio/ogg`;
+- исходное имя файла имеет расширение `.ogg`;
+- перед STT файл конвертируется в MP3 через ffmpeg;
+- в multipart/form-data отправляется `file` с filename `voice.mp3`;
+- MIME type для STT: `audio/mpeg`;
+- model: `STT_MODEL` или `whisper-large-v3-turbo`.
+
 Если transcript пустой:
 
 - запись получает `needs_review`;

@@ -59,30 +59,31 @@ voice-sales-log/
 
 | Раздел | Файл |
 | --- | --- |
-| Карта документации | `docs/README.md` |
-| Главная спецификация | `docs/global-spec.md` |
-| Индекс спецификаций | `docs/specs.md` |
+| Карта документации | `docs/overview/README.md` |
+| Главная спецификация | `docs/specs/global.md` |
+| Индекс спецификаций | `docs/specs/README.md` |
 | Детальные specs | `docs/specs/*` |
-| Рабочий план | `docs/workplan.md` |
+| Рабочий план | `docs/plans/README.md` |
 | Активные планы | `docs/plans/active.md` |
 | Завершённые планы | `docs/plans/completed.md` |
 | Backlog | `docs/plans/backlog.md` |
-| Правила | `docs/rules.md`, `docs/rules/*` |
-| Фичи | `docs/features.md`, `docs/features/*` |
-| User stories | `docs/user-stories.md`, `docs/stories/*` |
-| Архитектура | `docs/architecture.md` |
-| Roadmap | `docs/roadmap.md` |
+| Правила | `docs/rules/README.md`, `docs/rules/*` |
+| Фичи | `docs/features/README.md`, `docs/features/*` |
+| User stories | `docs/stories/README.md`, `docs/stories/*` |
+| Архитектура | `docs/architecture/README.md` |
+| Roadmap | `docs/roadmap/README.md` |
+| Codex skill | `codex-skills/voice-sales-log/SKILL.md` |
 
 Рекомендуемый порядок чтения:
 
 1. `README.md`
-2. `docs/global-spec.md`
-3. `docs/architecture.md`
-4. `docs/specs.md`
-5. `docs/workplan.md`
-6. `docs/rules.md`
-7. `docs/features.md`
-8. `docs/user-stories.md`
+2. `docs/specs/global.md`
+3. `docs/architecture/README.md`
+4. `docs/specs/README.md`
+5. `docs/plans/README.md`
+6. `docs/rules/README.md`
+7. `docs/features/README.md`
+8. `docs/stories/README.md`
 
 ## Установка
 

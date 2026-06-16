@@ -1,0 +1,4 @@
+interface:
+  display_name: "Voice Sales Log"
+  short_description: "Project rules and workflow for voice-sales-log."
+  default_prompt: "Use this skill when changing the voice-sales-log project."

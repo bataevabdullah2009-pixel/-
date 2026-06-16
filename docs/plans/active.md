@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | P1 | Заполнить реальные `.env.local` ключи | Active | Нужны Telegram, Supabase, STT, LLM. |
 | P1 | Применить Supabase migration в реальном проекте | Active | Supabase CLI локально не установлен. |
-| P1 | Проверить live Telegram voice flow | Active | Требует реальные API keys. |
+| P1 | Проверить live Telegram voice flow | Active | Требует реальные API keys; MP3 conversion is implemented. |
 | P2 | Проверить signed audio URL в реальном Storage | Active | Сейчас код готов, нужна Supabase проверка. |
 | P2 | Добавить интеграционный тест `records.service` | Planned | После настройки test database или mocks. |
 

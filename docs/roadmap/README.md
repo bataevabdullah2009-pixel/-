@@ -1,6 +1,6 @@
 # Roadmap
 
-Roadmap показывает развитие проекта по версиям. Детальный план выполнения лежит в [Workplan](./workplan.md), активные задачи - в [Active Plan](./plans/active.md).
+Roadmap показывает развитие проекта по версиям. Детальный план выполнения лежит в [Workplan](../plans/README.md), активные задачи - в [Active Plan](../plans/active.md).
 
 ## Version table
 
@@ -60,7 +60,7 @@ Roadmap показывает развитие проекта по версиям
 
 ## Version 0.6
 
-- Add `docs/global-spec.md`.
+- Add `docs/specs/global.md`.
 - Split specs into detailed documents.
 - Add active/completed/backlog plans.
 - Split rules by category.

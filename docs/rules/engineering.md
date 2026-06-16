@@ -5,10 +5,10 @@
 Read:
 
 - `README.md`
-- `docs/global-spec.md`
-- `docs/specs.md`
-- `docs/rules.md`
-- `docs/workplan.md`
+- `docs/specs/global.md`
+- `docs/specs/README.md`
+- `docs/rules/README.md`
+- `docs/plans/README.md`
 
 ## During code changes
 
@@ -22,7 +22,7 @@ Read:
 Update:
 
 - `CHANGELOG.md`
-- `docs/workplan.md`
+- `docs/plans/README.md`
 - relevant spec file;
 - relevant feature file, if a feature changed.
 

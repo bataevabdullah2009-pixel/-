@@ -1,10 +1,11 @@
 import type { Context, Telegraf } from "telegraf";
 import { message } from "telegraf/filters";
 import type { AppEnv } from "../config/env";
+import { convertTelegramVoiceToMp3 } from "../services/audio-conversion.service";
 import { cleanupTranscript, parseSaleTranscript } from "../services/cleanup-text.service";
 import { saveFailedVoiceRecord, saveProcessedSale } from "../services/records.service";
 import { uploadVoiceAudio } from "../services/storage.service";
-import { downloadTelegramFile } from "../services/telegram.service";
+import { downloadTelegramVoice } from "../services/telegram.service";
 import { transcribeAudio } from "../services/transcription.service";
 import { logger } from "../utils/logger";
 
@@ -24,13 +25,36 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
     await ctx.reply("Голосовое получено, обрабатываю.");
 
     try {
-      const fileUrl = await ctx.telegram.getFileLink(ctx.message.voice.file_id);
-      const audio = await downloadTelegramFile(fileUrl);
+      const telegramFileId = ctx.message.voice.file_id;
+      const fileUrl = await ctx.telegram.getFileLink(telegramFileId);
+      const audio = await downloadTelegramVoice(fileUrl, telegramFileId);
+
+      logger.info("Telegram voice downloaded", {
+        telegramFileId,
+        downloadedFileSize: audio.fileSize,
+        telegramContentType: audio.telegramContentType,
+        storedContentType: audio.contentType,
+        storedFileName: audio.fileName
+      });
+
       const uploaded = await uploadVoiceAudio(env, audio.buffer, audio.contentType, telegramId);
       audioPath = uploaded.path;
       audioUrl = uploaded.publicUrl;
 
-      const rawText = await transcribeAudio(env, audio.buffer, `voice-${telegramMessageId}.ogg`);
+      const sttAudio = await convertTelegramVoiceToMp3({
+        buffer: audio.buffer,
+        sourceFileName: audio.fileName
+      });
+
+      logger.info("Voice audio prepared for STT", {
+        telegramFileId,
+        downloadedFileSize: audio.fileSize,
+        sttFileSize: sttAudio.buffer.byteLength,
+        sttMimeType: sttAudio.contentType,
+        sttFilename: sttAudio.filename
+      });
+
+      const rawText = await transcribeAudio(env, sttAudio);
       const cleanedText = await cleanupTranscript(env, rawText);
       const parsedSale = await parseSaleTranscript(env, rawText, cleanedText);
       const result = await saveProcessedSale({

@@ -14,7 +14,7 @@ As a teacher, I want to open architecture docs and understand data flow.
 
 Acceptance:
 
-- `docs/architecture.md` describes flow and entities.
+- `docs/architecture/README.md` describes flow and entities.
 - Supabase tables are documented.
 
 ## T-03 Check scope
@@ -42,4 +42,4 @@ Acceptance:
 
 - `docs/plans/active.md` exists.
 - `docs/plans/completed.md` exists.
-- `docs/workplan.md` links to them.
+- `docs/plans/README.md` links to them.

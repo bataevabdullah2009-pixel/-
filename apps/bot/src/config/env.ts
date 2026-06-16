@@ -11,6 +11,7 @@ const envSchema = z.object({
   SUPABASE_STORAGE_BUCKET: z.string().trim().min(1).default("voice-records"),
   STT_API_KEY: z.string().trim().min(1),
   STT_API_URL: z.string().trim().url(),
+  STT_MODEL: z.string().trim().min(1).default("whisper-large-v3-turbo"),
   LLM_API_KEY: z.string().trim().min(1),
   LLM_API_URL: z.string().trim().url(),
   LLM_MODEL: z.string().trim().min(1),
