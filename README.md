@@ -53,6 +53,37 @@ voice-sales-log/
 └── tests/
 ```
 
+## Документация
+
+Документация организована как профессиональная карта проекта:
+
+| Раздел | Файл |
+| --- | --- |
+| Карта документации | `docs/README.md` |
+| Главная спецификация | `docs/global-spec.md` |
+| Индекс спецификаций | `docs/specs.md` |
+| Детальные specs | `docs/specs/*` |
+| Рабочий план | `docs/workplan.md` |
+| Активные планы | `docs/plans/active.md` |
+| Завершённые планы | `docs/plans/completed.md` |
+| Backlog | `docs/plans/backlog.md` |
+| Правила | `docs/rules.md`, `docs/rules/*` |
+| Фичи | `docs/features.md`, `docs/features/*` |
+| User stories | `docs/user-stories.md`, `docs/stories/*` |
+| Архитектура | `docs/architecture.md` |
+| Roadmap | `docs/roadmap.md` |
+
+Рекомендуемый порядок чтения:
+
+1. `README.md`
+2. `docs/global-spec.md`
+3. `docs/architecture.md`
+4. `docs/specs.md`
+5. `docs/workplan.md`
+6. `docs/rules.md`
+7. `docs/features.md`
+8. `docs/user-stories.md`
+
 ## Установка
 
 ```bash

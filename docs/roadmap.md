@@ -1,50 +1,89 @@
 # Roadmap
 
-## Версия 0.1
+Roadmap показывает развитие проекта по версиям. Детальный план выполнения лежит в [Workplan](./workplan.md), активные задачи - в [Active Plan](./plans/active.md).
 
-- Структура проекта.
-- Документация.
-- Supabase schema.
+## Version table
 
-## Версия 0.2
+| Version | Focus | Status |
+| --- | --- | --- |
+| 0.1 | Project structure, documentation, Supabase schema | Done |
+| 0.2 | Telegram bot, voice messages, audio storage | Done |
+| 0.3 | STT, cleanup text, sale parser, records saving | Done |
+| 0.4 | Web dashboard, records list, filters, search | Done |
+| 0.5 | Products, sale items, daily report, revenue | Done |
+| 0.6 | Strict documentation system and project governance | Done |
+| 1.0 | Stable MVP ready for teacher review | In progress |
 
-- Telegram-бот.
-- Приём голосовых.
-- Сохранение аудио.
+## Version 0.1
 
-## Версия 0.3
+- Structure project.
+- Add README.
+- Add AGENTS.
+- Add documentation base.
+- Add Supabase migration.
 
-- Распознавание речи.
-- Очистка текста.
-- Сохранение записей.
+## Version 0.2
 
-## Версия 0.4
+- Add Telegram bot.
+- Add `/start`.
+- Receive voice messages.
+- Download audio.
+- Upload audio to Supabase Storage.
 
-- Веб-панель.
-- Фильтры.
-- Поиск.
+## Version 0.3
 
-## Версия 0.5
+- Add STT service.
+- Add cleanup text service.
+- Add sale parser.
+- Save voice records.
+- Save sales.
+- Save sale items.
 
-- Простая таблица товаров.
-- Извлечение товаров из текста.
-- Таблица итогов за день.
-- Расчёт количества и выручки.
+## Version 0.4
 
-## Версия 1.0
+- Add Next.js web dashboard.
+- Add records page.
+- Add sellers page.
+- Add date filters.
+- Add seller filter.
+- Add text search.
 
-- Полноценный голосовой журнал продаж.
-- Дневные, недельные, месячные и годовые отчёты.
-- Ручное исправление спорных записей.
-- Тесты.
-- README.
-- Готовность к сдаче преподавателю.
+## Version 0.5
 
-## После MVP
+- Add products table.
+- Add item extraction.
+- Add daily report.
+- Add weekly, monthly and yearly period filters.
+- Add grouping.
+- Add revenue calculation.
+- Add review block.
 
-- Экспорт в Excel.
-- Редактирование записей.
-- Роли `owner` и `seller`.
-- PWA-режим для телефона.
-- Статистика по количеству записей.
-- Аккуратный справочник товаров без складского учёта.
+## Version 0.6
+
+- Add `docs/global-spec.md`.
+- Split specs into detailed documents.
+- Add active/completed/backlog plans.
+- Split rules by category.
+- Split features by status.
+- Split user stories by role.
+
+## Version 1.0
+
+Required before final teacher demo:
+
+- Fill real env values locally.
+- Apply Supabase migration.
+- Run live Telegram voice flow.
+- Verify record in Supabase.
+- Verify `/daily-report` with real data.
+- Run `npm run lint`.
+- Run `npm run test`.
+- Run `npm run build`.
+
+## After MVP
+
+- Export to Excel.
+- Better manual correction.
+- Roles owner/seller.
+- PWA mode.
+- More integration tests.
