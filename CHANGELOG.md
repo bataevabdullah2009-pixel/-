@@ -1,5 +1,23 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- Daily report now groups processed sale items by `product_id` first and by normalized product name when `product_id` is missing.
+- Product names are normalized for reporting and lookup, including `хлеб` / `Хлеб` / `хлеба` and `молоко` / `молока`.
+- Piece units are normalized to `шт`, including `штука`, `штуки`, `штук` and `шт.`.
+- Manual correction for review items now edits product name, quantity and price, recalculates total, and moves corrected items to `processed`.
+
+### Fixed
+
+- Prevented duplicate report rows caused by different product casing or piece unit spelling.
+- Low confidence, missing quantity and empty product names now consistently stay in manual review instead of being treated as clean processed data.
+
+### Tests
+
+- Added tests for bread and milk normalization, unit normalization, report grouping, missing price status and manual correction status.
+
 ## [0.1.0] - 2026-06-16
 
 ### Added

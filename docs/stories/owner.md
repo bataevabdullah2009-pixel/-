@@ -30,12 +30,14 @@ Acceptance:
 
 ## O-04 Review missing prices
 
-As an owner, I want to see items without price so that I can fix them manually.
+As an owner, I want to see items without price or with low confidence so that I can fix them manually.
 
 Acceptance:
 
 - `needs_price` items appear in “Нужно проверить”.
-- Owner can enter price and save.
+- `needs_review` items appear in “Нужно проверить”.
+- Owner can edit product name, quantity and price.
+- Corrected item becomes `processed` and appears in the report.
 
 ## O-05 Search records
 

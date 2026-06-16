@@ -71,9 +71,21 @@ Parser service возвращает только JSON:
 | Цена названа | Использовать названную цену. |
 | Цена не названа | Искать в `products.default_price`. |
 | Цена не найдена | `status = needs_price`. |
-| Количество не названо | `quantity = 1`, confidence ниже. |
+| `quantity = null` или количество не распознано | `quantity = 1`, `status = needs_review`. |
+| `product_name` пустой | `status = needs_review`. |
 | Текст неясный | `needs_review = true`. |
 | Confidence ниже 0.75 | `sale_items.status = needs_review`. |
+
+## Normalization
+
+После LLM-ответа система нормализует данные детерминированно:
+
+- `product_name` обрезается по краям;
+- поиск товара использует lower-case normalized key;
+- `хлеб`, `Хлеб`, `хлеба` сопоставляются с `Хлеб`;
+- `молоко`, `молока` сопоставляются с `Молоко`;
+- `штука`, `штуки`, `штук`, `шт.` приводятся к `шт`;
+- если unit не указан, используется `шт`.
 
 ## Запреты
 

@@ -13,8 +13,9 @@
 | Bot | `/start`, text handler, voice handler, Telegram download, STT, LLM, records service. |
 | Voice STT fix | Telegram OGG/Opus is converted to MP3 and sent to STT as `audio/mpeg` with `voice.mp3`. |
 | Web | `/daily-report`, `/records`, `/sellers`, filters, cards, forms. |
-| Reports | Grouping, total revenue, review block, manual correction. |
-| Tests | Date ranges, validation, transcript status, processed record, grouping, revenue. |
+| Reports | Grouping by product id or normalized name, total revenue, review block, manual correction. |
+| Stabilization | Product normalization, unit normalization, confidence/status rules. |
+| Tests | Date ranges, validation, transcript status, processed record, grouping, revenue, manual correction. |
 | Checks | `npm run lint`, `npm run test`, `npm run build`. |
 
 ## Verified commands
@@ -28,6 +29,6 @@ npm run build
 ## Last verified result
 
 - Lint: passed.
-- Tests: 9 passed.
+- Tests: 13 passed.
 - Build: passed for bot, web and shared workspaces.
-- Bot dev: starts as a long-running bot process and was stopped after startup check.
+- Bot dev: not re-run for this stabilization to avoid duplicate Telegram polling; bot build passed.

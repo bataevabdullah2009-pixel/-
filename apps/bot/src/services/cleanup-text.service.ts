@@ -96,7 +96,7 @@ export async function parseSaleTranscript(env: AppEnv, rawText: string, cleanedT
         {
           role: "system",
           content:
-            "Ты извлекаешь позиции продажи из русского текста. Верни только строгий JSON без markdown. Не выдумывай товар или цену. Если цена не названа, price и total должны быть null. Если количество не названо, quantity=1 и confidence ниже. Поля: items[{product_name,quantity,unit,price,total,confidence}], raw_text, cleaned_text, needs_review."
+            "Ты извлекаешь позиции продажи из русского текста. Верни только строгий JSON без markdown. Не выдумывай товар или цену. Названия приводи к базовой форме: хлеба -> Хлеб, молока -> Молоко. Единицы штука/штуки/штук/шт. приводи к шт, если unit не указан — шт. Если цена не названа, price и total должны быть null. Если количество не названо, quantity=1 и confidence ниже. Поля: items[{product_name,quantity,unit,price,total,confidence}], raw_text, cleaned_text, needs_review."
         },
         {
           role: "user",

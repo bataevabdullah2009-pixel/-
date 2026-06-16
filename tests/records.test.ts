@@ -1,16 +1,39 @@
 import { describe, expect, it } from "vitest";
 import type { SaleItem } from "../packages/shared/types";
-import { buildSalesReport, calculateItemTotal } from "../packages/shared/utils/date-range";
+import {
+  buildManualSaleItemPatch,
+  buildSalesReport,
+  calculateItemTotal,
+  normalizeSaleItemFields
+} from "../packages/shared/utils/date-range";
 
 describe("sales report", () => {
+  it("normalizes bread quantity and unit from parsed text", () => {
+    const item = normalizeSaleItemFields({
+      product_name: "Хлеб",
+      quantity: 4,
+      unit: "штуки",
+      price: 40,
+      confidence: 0.95
+    });
+
+    expect(item).toMatchObject({
+      product_name: "Хлеб",
+      quantity: 4,
+      unit: "шт",
+      status: "processed"
+    });
+  });
+
   it("groups same products and sums revenue", () => {
     const items: SaleItem[] = [
       {
         id: "1",
         sale_id: "sale-1",
-        product_name: "Хлеб",
+        product_id: "product-bread",
+        product_name: "хлеб",
         quantity: 3,
-        unit: "шт",
+        unit: "штуки",
         price: 40,
         total: 120,
         confidence: 0.95,
@@ -20,7 +43,7 @@ describe("sales report", () => {
       {
         id: "2",
         sale_id: "sale-2",
-        product_name: "хлеб",
+        product_name: "Хлеб",
         quantity: 2,
         unit: "шт",
         price: 40,
@@ -37,12 +60,40 @@ describe("sales report", () => {
     expect(report.rows[0]).toMatchObject({
       product_name: "Хлеб",
       quantity: 5,
+      unit: "шт",
       revenue: 200
     });
     expect(report.totalRevenue).toBe(200);
   });
 
+  it("normalizes milk quantity and unit from parsed text", () => {
+    const item = normalizeSaleItemFields({
+      product_name: "Молоко",
+      quantity: 2,
+      unit: "штуки",
+      price: 90,
+      confidence: 0.95
+    });
+
+    expect(item).toMatchObject({
+      product_name: "Молоко",
+      quantity: 2,
+      unit: "шт",
+      status: "processed"
+    });
+  });
+
   it("keeps unknown price out of revenue and review block", () => {
+    const normalized = normalizeSaleItemFields({
+      product_name: "Чай",
+      quantity: 3,
+      unit: "шт",
+      price: null,
+      confidence: 0.9
+    });
+
+    expect(normalized.status).toBe("needs_price");
+
     const items: SaleItem[] = [
       {
         id: "1",
@@ -63,6 +114,58 @@ describe("sales report", () => {
     expect(report.rows).toHaveLength(0);
     expect(report.reviewItems).toHaveLength(1);
     expect(report.totalRevenue).toBe(0);
+  });
+
+  it("marks low confidence and missing required fields for review", () => {
+    expect(
+      normalizeSaleItemFields({
+        product_name: "Хлеб",
+        quantity: 1,
+        unit: "шт",
+        price: 40,
+        confidence: 0.7
+      }).status
+    ).toBe("needs_review");
+
+    expect(
+      normalizeSaleItemFields({
+        product_name: "Хлеб",
+        quantity: null,
+        unit: "шт",
+        price: 40,
+        confidence: 0.95
+      })
+    ).toMatchObject({
+      quantity: 1,
+      status: "needs_review"
+    });
+
+    expect(
+      normalizeSaleItemFields({
+        product_name: "",
+        quantity: 1,
+        unit: "шт",
+        price: 40,
+        confidence: 0.95
+      }).status
+    ).toBe("needs_review");
+  });
+
+  it("marks manual correction as processed", () => {
+    const patch = buildManualSaleItemPatch({
+      productName: "хлеба",
+      quantity: 3,
+      price: 40
+    });
+
+    expect(patch).toMatchObject({
+      product_name: "Хлеб",
+      quantity: 3,
+      unit: "шт",
+      price: 40,
+      total: 120,
+      status: "processed"
+    });
   });
 
   it("calculates item total from quantity and price", () => {

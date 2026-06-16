@@ -47,7 +47,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
             </thead>
             <tbody>
               {summary.rows.map((row) => (
-                <tr key={`${row.product_name}-${row.unit}`}>
+                <tr key={row.key}>
                   <td>{row.product_name}</td>
                   <td className="numberCell">
                     {formatQuantity(row.quantity)} {row.unit}
@@ -79,18 +79,22 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
               <form key={item.id} action={updateSaleItemAction} className="reviewItem">
                 <input type="hidden" name="itemId" value={item.id} />
                 <div>
-                  <strong>{item.product_name}</strong>
+                  <strong>{item.product_name || "Без названия"}</strong>
                   <p>
                     {getStatusLabel(item.status)} · уверенность {Math.round(item.confidence * 100)}%
                   </p>
                 </div>
                 <label>
+                  Товар
+                  <input name="productName" type="text" defaultValue={item.product_name} required />
+                </label>
+                <label>
                   Кол-во
-                  <input name="quantity" type="number" min="0.001" step="0.001" defaultValue={item.quantity} />
+                  <input name="quantity" type="number" min="0.001" step="0.001" defaultValue={item.quantity} required />
                 </label>
                 <label>
                   Цена
-                  <input name="price" type="number" min="0" step="0.01" defaultValue={item.price ?? ""} />
+                  <input name="price" type="number" min="0" step="0.01" defaultValue={item.price ?? ""} required />
                 </label>
                 <button type="submit">Сохранить</button>
               </form>

@@ -1,4 +1,12 @@
-import { buildSalesReport, filterByDateRange, getDateRange, calculateItemTotal } from "@voice-sales-log/shared/utils/date-range";
+import {
+  buildManualSaleItemPatch,
+  buildSalesReport,
+  displayProductName,
+  filterByDateRange,
+  getDateRange,
+  normalizeProductName,
+  normalizeUnit
+} from "@voice-sales-log/shared/utils/date-range";
 import type { DateRangePreset, SaleItem } from "@voice-sales-log/shared/types";
 import { getStorageBucket, getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase";
 import type { RecordFilters, RecordListItem, ReportFilters, SellerOption } from "./records.types";
@@ -261,8 +269,9 @@ export async function getDailyReport(filters: ReportFilters) {
 
 export async function updateSaleItem(params: {
   itemId: string;
+  productName: string;
   quantity: number;
-  price: number | null;
+  price: number;
 }) {
   const admin = getSupabaseAdminClient();
 
@@ -273,17 +282,89 @@ export async function updateSaleItem(params: {
     };
   }
 
-  const total = calculateItemTotal(params.quantity, params.price);
-  const status = params.price === null ? "needs_price" : "processed";
+  if (!params.productName.trim() || !Number.isFinite(params.quantity) || params.quantity <= 0) {
+    return {
+      ok: false,
+      message: "Укажите товар и корректное количество."
+    };
+  }
+
+  if (!Number.isFinite(params.price) || params.price < 0) {
+    return {
+      ok: false,
+      message: "Укажите корректную цену."
+    };
+  }
+
+  const patch = buildManualSaleItemPatch({
+    productName: params.productName,
+    quantity: params.quantity,
+    price: params.price
+  });
+
+  if (!patch.normalized_product_name) {
+    return {
+      ok: false,
+      message: "Укажите товар."
+    };
+  }
+
+  const { data: existingItem, error: existingItemError } = await admin
+    .from("sale_items")
+    .select("sale_id, unit")
+    .eq("id", params.itemId)
+    .single();
+
+  if (existingItemError) {
+    return {
+      ok: false,
+      message: existingItemError.message
+    };
+  }
+
+  const { data: sale, error: saleError } = await admin
+    .from("sales")
+    .select("shop_id, voice_record_id")
+    .eq("id", existingItem.sale_id)
+    .single();
+
+  if (saleError) {
+    return {
+      ok: false,
+      message: saleError.message
+    };
+  }
+
+  const { data: products, error: productsError } = await admin
+    .from("products")
+    .select("id, name, unit")
+    .eq("shop_id", sale.shop_id)
+    .eq("is_active", true);
+
+  if (productsError) {
+    return {
+      ok: false,
+      message: productsError.message
+    };
+  }
+
+  const product = (products ?? []).find(
+    (row: any) => normalizeProductName(String(row.name)) === patch.normalized_product_name
+  );
+  const productName = product?.name ? displayProductName(String(product.name)) : patch.product_name;
+  const unit = normalizeUnit(product?.unit ? String(product.unit) : patch.unit);
 
   const { data: item, error } = await admin
     .from("sale_items")
     .update({
-      quantity: params.quantity,
-      price: params.price,
-      total,
-      status,
-      confidence: status === "processed" ? 1 : 0.5
+      product_id: product?.id ?? null,
+      product_name: productName,
+      quantity: patch.quantity,
+      unit,
+      price: patch.price,
+      total: patch.total,
+      status: patch.status,
+      confidence: patch.confidence
     })
     .eq("id", params.itemId)
     .select("sale_id")
@@ -296,10 +377,17 @@ export async function updateSaleItem(params: {
     };
   }
 
-  const { data: saleItems } = await admin
+  const { data: saleItems, error: saleItemsError } = await admin
     .from("sale_items")
     .select("status, total")
     .eq("sale_id", item.sale_id);
+
+  if (saleItemsError) {
+    return {
+      ok: false,
+      message: saleItemsError.message
+    };
+  }
 
   const totalAmount = Number(
     (saleItems ?? [])
@@ -311,13 +399,36 @@ export async function updateSaleItem(params: {
     ? "processed"
     : "needs_review";
 
-  await admin
+  const { error: saleUpdateError } = await admin
     .from("sales")
     .update({
       total_amount: totalAmount,
       status: saleStatus
     })
     .eq("id", item.sale_id);
+
+  if (saleUpdateError) {
+    return {
+      ok: false,
+      message: saleUpdateError.message
+    };
+  }
+
+  if (sale.voice_record_id) {
+    const { error: voiceRecordUpdateError } = await admin
+      .from("voice_records")
+      .update({
+        status: saleStatus
+      })
+      .eq("id", sale.voice_record_id);
+
+    if (voiceRecordUpdateError) {
+      return {
+        ok: false,
+        message: voiceRecordUpdateError.message
+      };
+    }
+  }
 
   return {
     ok: true,

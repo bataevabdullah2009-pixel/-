@@ -42,11 +42,13 @@
 - Record cards.
 - Empty state.
 - Review block.
-- Manual item correction form.
+- Manual item correction form for product name, quantity and price.
 
 ## Reports
 
-- Grouping by product and unit.
+- Grouping by `product_id` or normalized product name.
+- Product name normalization for common spoken forms.
+- Unit normalization to `шт`.
 - Quantity total.
 - Revenue total.
 - Excluding unknown prices from revenue.

@@ -5,16 +5,18 @@ import { updateSaleItem } from "@/features/records/records.api";
 
 export async function updateSaleItemAction(formData: FormData) {
   const itemId = String(formData.get("itemId") ?? "");
+  const productName = String(formData.get("productName") ?? "").trim();
   const quantity = Number(formData.get("quantity") ?? 1);
   const priceValue = String(formData.get("price") ?? "").trim();
-  const price = priceValue ? Number(priceValue) : null;
+  const price = Number(priceValue);
 
-  if (!itemId || !Number.isFinite(quantity) || quantity <= 0 || (price !== null && (!Number.isFinite(price) || price < 0))) {
+  if (!itemId || !productName || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(price) || price < 0) {
     return;
   }
 
   await updateSaleItem({
     itemId,
+    productName,
     quantity,
     price
   });

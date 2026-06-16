@@ -43,7 +43,7 @@ export const saleItemSchema = z.object({
   id: z.string().uuid(),
   sale_id: z.string().uuid(),
   product_id: z.string().uuid().nullable().optional(),
-  product_name: z.string().trim().min(1),
+  product_name: z.string().trim(),
   quantity: z.number().positive(),
   unit: z.string().trim().min(1).default("шт"),
   price: z.number().nonnegative().nullable(),
@@ -54,12 +54,12 @@ export const saleItemSchema = z.object({
 });
 
 export const parsedSaleItemSchema = z.object({
-  product_name: z.string().trim().min(1),
-  quantity: z.number().positive().default(1),
-  unit: z.string().trim().min(1).default("шт"),
-  price: z.number().nonnegative().nullable(),
-  total: z.number().nonnegative().nullable(),
-  confidence: z.number().min(0).max(1)
+  product_name: z.string().trim().default(""),
+  quantity: z.number().positive().nullable().optional(),
+  unit: z.string().trim().nullable().optional().default("шт"),
+  price: z.number().nonnegative().nullable().optional().default(null),
+  total: z.number().nonnegative().nullable().optional().default(null),
+  confidence: z.number().min(0).max(1).optional().default(0.5)
 });
 
 export const parsedSaleSchema = z.object({

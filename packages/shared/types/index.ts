@@ -53,8 +53,8 @@ export type SaleItem = {
 
 export type ParsedSaleItem = {
   product_name: string;
-  quantity: number;
-  unit: string;
+  quantity?: number | null;
+  unit?: string | null;
   price: number | null;
   total: number | null;
   confidence: number;
@@ -68,6 +68,7 @@ export type ParsedSale = {
 };
 
 export type ReportRow = {
+  key: string;
   product_name: string;
   quantity: number;
   unit: string;

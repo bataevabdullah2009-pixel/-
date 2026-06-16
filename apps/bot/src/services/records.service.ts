@@ -1,5 +1,12 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { calculateItemTotal } from "@voice-sales-log/shared/utils/date-range";
+import {
+  calculateItemTotal,
+  displayProductName,
+  normalizeProductName,
+  normalizeSaleItemFields,
+  normalizeUnit,
+  resolveSaleItemStatus
+} from "@voice-sales-log/shared/utils/date-range";
 import type { ParsedSale, ParsedSaleItem, SaleItemStatus, VoiceRecordStatus } from "@voice-sales-log/shared/types";
 import type { AppEnv } from "../config/env";
 
@@ -86,21 +93,44 @@ export async function findOrCreateSeller(env: AppEnv, telegramId: number, name: 
   };
 }
 
+type ProductLookup = {
+  id: string;
+  name: string;
+  default_price: number | string | null;
+  unit: string | null;
+};
+
 async function findDefaultProductPrice(env: AppEnv, shopId: string, productName: string) {
   const supabase = getSupabase(env);
+  const productKey = normalizeProductName(productName);
+
+  if (!productKey) {
+    return null;
+  }
+
   const { data, error } = await supabase
     .from("products")
-    .select("id, default_price, unit")
+    .select("id, name, default_price, unit")
     .eq("shop_id", shopId)
-    .ilike("name", productName)
     .eq("is_active", true)
-    .maybeSingle();
+    .returns<ProductLookup[]>();
 
   if (error) {
     throw error;
   }
 
-  return data as { id: string; default_price: number | null; unit: string | null } | null;
+  const product = (data ?? []).find((row) => normalizeProductName(row.name) === productKey);
+
+  if (!product) {
+    return null;
+  }
+
+  return {
+    id: product.id,
+    name: product.name,
+    default_price: product.default_price === null ? null : Number(product.default_price),
+    unit: product.unit
+  };
 }
 
 function resolveSaleStatus(items: Array<{ status: SaleItemStatus }>, parserNeedsReview: boolean): VoiceRecordStatus {
@@ -116,20 +146,27 @@ function resolveSaleStatus(items: Array<{ status: SaleItemStatus }>, parserNeeds
 }
 
 async function resolveSaleItem(env: AppEnv, shopId: string, item: ParsedSaleItem) {
-  const product = item.price === null ? await findDefaultProductPrice(env, shopId, item.product_name) : null;
-  const price = item.price ?? product?.default_price ?? null;
-  const total = item.total ?? calculateItemTotal(item.quantity, price);
-  const status: SaleItemStatus =
-    item.confidence < 0.75 ? "needs_review" : price === null || total === null ? "needs_price" : "processed";
+  const normalized = normalizeSaleItemFields(item);
+  const product = await findDefaultProductPrice(env, shopId, normalized.product_name);
+  const price = normalized.price ?? product?.default_price ?? null;
+  const total = calculateItemTotal(normalized.quantity, price);
+  const productName = product?.name ? displayProductName(product.name) : normalized.product_name;
+  const status: SaleItemStatus = resolveSaleItemStatus({
+    productName,
+    quantityWasMissing: normalized.quantityWasMissing,
+    price,
+    total,
+    confidence: normalized.confidence
+  });
 
   return {
     product_id: product?.id ?? null,
-    product_name: item.product_name,
-    quantity: item.quantity,
-    unit: item.unit || product?.unit || "шт",
+    product_name: productName,
+    quantity: normalized.quantity,
+    unit: normalizeUnit(product?.unit ?? normalized.unit),
     price,
     total,
-    confidence: item.confidence,
+    confidence: normalized.confidence,
     status
   };
 }
