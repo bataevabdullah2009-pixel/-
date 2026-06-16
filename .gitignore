@@ -1,0 +1,17 @@
+node_modules/
+.next/
+.next-dev-logs/
+dist/
+coverage/
+.turbo/
+
+.env
+.env.*
+!.env.example
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+*.tsbuildinfo

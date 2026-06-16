@@ -1,0 +1,19 @@
+{
+  "name": "@voice-sales-log/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./types/index.ts",
+    "./types": "./types/index.ts",
+    "./schemas/record.schema": "./schemas/record.schema.ts",
+    "./utils/date-range": "./utils/date-range.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "zod": "^4.2.1"
+  }
+}

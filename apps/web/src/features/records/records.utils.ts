@@ -1,0 +1,64 @@
+import type { DateRangePreset } from "@voice-sales-log/shared/types";
+import type { SearchParams } from "./records.types";
+
+export function getStringParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export function getPreset(value: string | string[] | undefined): DateRangePreset {
+  const preset = getStringParam(value);
+
+  if (preset === "yesterday" || preset === "week" || preset === "month" || preset === "year" || preset === "custom") {
+    return preset;
+  }
+
+  return "today";
+}
+
+export function formatCurrency(value: number) {
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency: "RUB",
+    maximumFractionDigits: 0
+  }).format(value);
+}
+
+export function formatQuantity(value: number) {
+  return new Intl.NumberFormat("ru-RU", {
+    maximumFractionDigits: 3
+  }).format(value);
+}
+
+export function getStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    pending: "В обработке",
+    processed: "Готово",
+    needs_review: "Проверить",
+    failed: "Ошибка",
+    needs_price: "Нужна цена"
+  };
+
+  return labels[status] ?? status;
+}
+
+export function buildHref(basePath: string, params: SearchParams, updates: Record<string, string | undefined>) {
+  const query = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    const current = getStringParam(value);
+    if (current) {
+      query.set(key, current);
+    }
+  }
+
+  for (const [key, value] of Object.entries(updates)) {
+    if (value) {
+      query.set(key, value);
+    } else {
+      query.delete(key);
+    }
+  }
+
+  const queryString = query.toString();
+  return queryString ? `${basePath}?${queryString}` : basePath;
+}

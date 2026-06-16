@@ -1,0 +1,23 @@
+{
+  "name": "@voice-sales-log/bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "dotenv -e ../../.env.local -- tsx src/index.ts",
+    "build": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.87.1",
+    "@voice-sales-log/shared": "0.1.0",
+    "dotenv": "^17.2.3",
+    "telegraf": "^4.16.3",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
