@@ -37,7 +37,7 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
         </div>
       </div>
 
-      <DateFilter basePath="/records" currentPreset={period} currentDate={date} params={params} />
+      <DateFilter basePath="/records" currentPreset={period} currentDate={date} params={params} includeYesterday />
 
       <div className="filtersRow">
         <SellerFilter sellers={sellers} currentSellerId={sellerId} params={params} />

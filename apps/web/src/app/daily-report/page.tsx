@@ -1,5 +1,6 @@
 import { DateFilter } from "@/components/DateFilter";
 import { EmptyState } from "@/components/EmptyState";
+import { RefreshButton } from "@/components/RefreshButton";
 import { getDailyReport } from "@/features/records/records.api";
 import type { SearchParams } from "@/features/records/records.types";
 import { formatCurrency, formatQuantity, getPreset, getStatusLabel } from "@/features/records/records.utils";
@@ -21,11 +22,28 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
     <section className="pageStack">
       <div className="pageTitle">
         <div>
-          <p className="eyebrow">{range.label}</p>
-          <h2>Отчёт за день</h2>
+          <p className="eyebrow">Продажи</p>
+          <h2>Отчёт по продажам</h2>
         </div>
-        <div className="totalBadge">{formatCurrency(summary.totalRevenue)}</div>
       </div>
+
+      <aside className="summaryBar" aria-label="Итоги за выбранный период">
+        <div className="summaryPeriod">
+          <span>Период</span>
+          <strong>{range.label}</strong>
+        </div>
+        <div className="summaryMetrics">
+          <div>
+            <span>Выручка</span>
+            <strong>{formatCurrency(summary.totalRevenue)}</strong>
+          </div>
+          <div>
+            <span>Количество</span>
+            <strong>{formatQuantity(summary.totalQuantity)}</strong>
+          </div>
+        </div>
+        <RefreshButton />
+      </aside>
 
       <DateFilter
         basePath="/daily-report"
@@ -36,47 +54,63 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
       />
 
       {summary.rows.length ? (
-        <div className="tableShell">
-          <table>
-            <thead>
-              <tr>
-                <th>Товар</th>
-                <th className="numberCell">Количество</th>
-                <th className="numberCell">Выручка</th>
-              </tr>
-            </thead>
-            <tbody>
-              {summary.rows.map((row) => (
-                <tr key={row.key}>
-                  <td>{row.product_name}</td>
-                  <td className="numberCell">
-                    {formatQuantity(row.quantity)} {row.unit}
-                  </td>
-                  <td className="numberCell">{formatCurrency(row.revenue)}</td>
+        <>
+          <div className="tableShell reportTable">
+            <table>
+              <thead>
+                <tr>
+                  <th>Товар</th>
+                  <th className="numberCell">Количество</th>
+                  <th className="numberCell">Выручка</th>
                 </tr>
-              ))}
-              <tr className="totalRow">
-                <td>Итого</td>
-                <td className="numberCell">{formatQuantity(summary.totalQuantity)}</td>
-                <td className="numberCell">{formatCurrency(summary.totalRevenue)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {summary.rows.map((row) => (
+                  <tr key={row.key}>
+                    <td>{row.product_name}</td>
+                    <td className="numberCell">
+                      {formatQuantity(row.quantity)} {row.unit}
+                    </td>
+                    <td className="numberCell">{formatCurrency(row.revenue)}</td>
+                  </tr>
+                ))}
+                <tr className="totalRow">
+                  <td>Итого</td>
+                  <td className="numberCell">{formatQuantity(summary.totalQuantity)}</td>
+                  <td className="numberCell">{formatCurrency(summary.totalRevenue)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="reportCards">
+            {summary.rows.map((row) => (
+              <article className="reportCard" key={row.key}>
+                <h3>{row.product_name}</h3>
+                <div className="reportCardValues">
+                  <span>
+                    {formatQuantity(row.quantity)} {row.unit}
+                  </span>
+                  <strong>{formatCurrency(row.revenue)}</strong>
+                </div>
+              </article>
+            ))}
+          </div>
+        </>
       ) : (
         <EmptyState title="Продаж за период нет" description="Когда продавец отправит голосовое, итог появится здесь." />
       )}
 
-      <section className="reviewBlock">
-        <div className="sectionHeading">
-          <h3>Нужно проверить</h3>
-          <span>{summary.reviewItems.length}</span>
+      <section className={`reviewBlock ${summary.reviewItems.length ? "reviewBlockAttention" : "reviewBlockClear"}`} id="review">
+        <div className="reviewStatus">
+          {summary.reviewItems.length
+            ? `⚠️ Нужно проверить: ${summary.reviewItems.length}`
+            : "✅ Нет позиций для проверки"}
         </div>
 
         {summary.reviewItems.length ? (
           <div className="reviewList">
             {summary.reviewItems.map((item) => (
-              <form key={item.id} action={updateSaleItemAction} className="reviewItem">
+              <form key={item.id} action={updateSaleItemAction} className="reviewItem" id={`review-${item.id}`}>
                 <input type="hidden" name="itemId" value={item.id} />
                 <div>
                   <strong>{item.product_name || "Без названия"}</strong>
@@ -101,7 +135,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
             ))}
           </div>
         ) : (
-          <p className="mutedText">Нет позиций без цены или с низкой уверенностью.</p>
+          <p className="mutedText">Все товары, количество и цены распознаны.</p>
         )}
       </section>
     </section>

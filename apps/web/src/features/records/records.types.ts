@@ -26,7 +26,7 @@ export type RecordListItem = {
   sellerName: string;
   cleaned_text: string | null;
   raw_text: string | null;
-  status: VoiceRecordStatus;
+  status: VoiceRecordStatus | "needs_price";
   total_amount: number;
   audioUrl: string | null;
 };

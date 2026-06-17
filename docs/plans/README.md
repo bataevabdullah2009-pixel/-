@@ -17,9 +17,9 @@
 | Telegram-бот | MVP готов | Нужны реальные ключи для live-проверки. |
 | Vercel webhook | Код готов | Нужен deploy, env в Vercel и `npm run telegram:set-webhook`. |
 | AI pipeline | MVP готов | Есть STT, cleanup, parser и fallback-статусы. |
-| Веб-панель | MVP готов | Есть записи, продавцы и отчёт. |
+| Веб-панель | Mobile-ready | Есть адаптивные отчётные карточки, sticky summary, loading/empty states и нижняя навигация. |
 | Отчёты | MVP стабилизирован | Есть группировка по `product_id`/normalized name, нормализация unit и блок проверки. |
-| Тесты | Готово | 13 базовых тестов проходят, включая нормализацию, confidence rules и ручное исправление. |
+| Тесты | Готово | 25 тестов проходят, включая нормализацию, confidence rules и ручное исправление. |
 | Codex skills | Готово | Добавлен `codex-skills/voice-sales-log`. |
 | Production auth | Не входит в MVP | После сдачи можно добавить роли owner/seller. |
 
@@ -112,6 +112,10 @@
 - [x] Добавить фильтр по продавцу.
 - [x] Добавить карточку записи.
 - [x] Добавить пустое состояние.
+- [x] Адаптировать отчёт и записи под Telegram Mini App.
+- [x] Добавить sticky summary и ручное обновление отчёта.
+- [x] Добавить нижнюю навигацию на mobile.
+- [x] Добавить loading states и мобильные карточки продаж.
 
 ## Этап 6 - Отчёты
 

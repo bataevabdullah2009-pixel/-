@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { MobileNavigation } from "@/components/MobileNavigation";
 import "../styles/globals.css";
 
 export const metadata: Metadata = {
@@ -16,13 +17,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <p className="eyebrow">voice-sales-log</p>
             <h1>Голосовой журнал продаж</h1>
           </div>
-          <nav>
+          <nav className="desktopNav" aria-label="Основная навигация">
             <Link href="/daily-report">Отчёт</Link>
             <Link href="/records">Записи</Link>
             <Link href="/sellers">Продавцы</Link>
           </nav>
         </header>
         <main>{children}</main>
+        <MobileNavigation />
       </body>
     </html>
   );

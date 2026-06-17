@@ -8,16 +8,17 @@
 2. [Global Spec](../specs/global.md) - полная цель и границы проекта.
 3. [Architecture](../architecture/README.md) - поток данных и сущности.
 4. [Workplan](../plans/README.md) - общий статус.
-5. [Active Plan](../plans/active.md) - что осталось делать.
-6. [Rules](../rules/README.md) - правила изменений.
-7. [Acceptance Spec](../specs/acceptance.md) - как понять, что проект готов.
+5. [Mobile Workplan](../workplan.md) - итог адаптации Telegram Mini App.
+6. [Active Plan](../plans/active.md) - что осталось делать.
+7. [Rules](../rules/README.md) - правила изменений.
+8. [Acceptance Spec](../specs/acceptance.md) - как понять, что проект готов.
 
 ## Разделы
 
 | Раздел | Файлы |
 | --- | --- |
 | Specs | `docs/specs/README.md`, `docs/specs/*` |
-| Plans | `docs/plans/README.md`, `docs/plans/*` |
+| Plans | `docs/workplan.md`, `docs/plans/README.md`, `docs/plans/*` |
 | Rules | `docs/rules/README.md`, `docs/rules/*` |
 | Features | `docs/features/README.md`, `docs/features/*` |
 | Stories | `docs/stories/README.md`, `docs/stories/*` |

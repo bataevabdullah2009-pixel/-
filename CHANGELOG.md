@@ -4,6 +4,9 @@
 
 ### Added
 
+- Added a sticky report summary with the selected period, total revenue, total quantity and manual refresh action.
+- Added mobile report cards, bottom navigation and loading skeletons for Telegram Mini App use.
+- Added a correction action to records that need review and clearer review/empty states.
 - Added `voice_records.parser_json` migration for the complete original LLM parser response.
 - Added audit stages `stt_raw_text_received`, `llm_parser_json_received` and `sale_items_created`.
 - Added recursive application-log redaction for API keys, bearer tokens and secrets.
@@ -14,6 +17,8 @@
 
 ### Changed
 
+- Web dashboard spacing, typography, filters, record cards and review forms are now compact and responsive on phone screens.
+- Desktop reports keep the table layout, while mobile reports use product cards without horizontal scrolling.
 - Parser output is now strict JSON and is deterministically checked against raw STT text before persistence.
 - Quantity is accepted only with explicit piece/kilogram units; price is accepted only with ruble markers or a `по <price>` construction.
 - Sale item totals are always recalculated from validated quantity and price, and kilogram units normalize to `кг`.

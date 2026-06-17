@@ -47,6 +47,10 @@
 - Empty state.
 - Review block.
 - Manual item correction form for product name, quantity and price.
+- Responsive mobile report cards without horizontal scrolling.
+- Sticky report summary and manual Supabase refresh action.
+- Mobile bottom navigation for reports, records and sellers.
+- Route loading skeletons and mobile-friendly empty states.
 
 ## Reports
 

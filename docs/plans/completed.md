@@ -15,6 +15,7 @@
 | Voice STT fix | Telegram OGG/Opus is converted to MP3 and sent to STT as `audio/mpeg` with `voice.mp3`. |
 | Vercel voice fallback | If `ffmpeg-static` is unavailable or conversion fails, original Telegram OGG is sent to STT as `audio/ogg` with `voice.ogg`. |
 | Web | `/daily-report`, `/records`, `/sellers`, filters, cards, forms. |
+| Mobile web | Telegram Mini App layout, report cards, sticky summary, compact filters, bottom navigation and loading states. |
 | Webhook scripts | `telegram:set-webhook` and `telegram:webhook-info`. |
 | Reports | Grouping by product id or normalized name, total revenue, review block, manual correction. |
 | Stabilization | Product normalization, unit normalization, confidence/status rules. |
@@ -34,6 +35,6 @@ npm run build
 ## Last verified result
 
 - Lint: passed.
-- Tests: 13 passed.
+- Tests: 25 passed.
 - Build: passed for bot, web and shared workspaces.
 - Bot dev: not re-run for this stabilization to avoid duplicate Telegram polling; bot build passed.
