@@ -180,8 +180,21 @@ export async function saveProcessedSale(params: {
   audioUrl: string | null;
   rawText: string;
   parsedSale: ParsedSale;
+  parserJson: unknown | null;
+  errorMessage?: string | null;
 }) {
-  const { env, sellerTelegramId, sellerName, telegramMessageId, audioPath, audioUrl, rawText, parsedSale } = params;
+  const {
+    env,
+    sellerTelegramId,
+    sellerName,
+    telegramMessageId,
+    audioPath,
+    audioUrl,
+    rawText,
+    parsedSale,
+    parserJson,
+    errorMessage
+  } = params;
   const supabase = getSupabase(env);
   const seller = await findOrCreateSeller(env, sellerTelegramId, sellerName);
   const resolvedItems = await Promise.all(parsedSale.items.map((item) => resolveSaleItem(env, seller.shopId, item)));
@@ -203,7 +216,9 @@ export async function saveProcessedSale(params: {
       audio_url: audioUrl,
       raw_text: rawText,
       cleaned_text: parsedSale.cleaned_text,
-      status: saleStatus
+      parser_json: parserJson,
+      status: saleStatus,
+      error_message: errorMessage ?? null
     })
     .select("id")
     .single();
@@ -246,6 +261,18 @@ export async function saveProcessedSale(params: {
   await writeAuditLog(env, {
     shopId: seller.shopId,
     sellerId: seller.id,
+    action: "sale_items_created",
+    details: {
+      sale_id: sale.id,
+      voice_record_id: voiceRecord.id,
+      items_count: resolvedItems.length,
+      item_statuses: resolvedItems.map((item) => item.status)
+    }
+  });
+
+  await writeAuditLog(env, {
+    shopId: seller.shopId,
+    sellerId: seller.id,
     action: "sale.processed",
     details: {
       sale_id: sale.id,
@@ -270,9 +297,23 @@ export async function saveFailedVoiceRecord(params: {
   telegramMessageId: string;
   audioPath?: string | null;
   audioUrl?: string | null;
+  rawText?: string | null;
+  cleanedText?: string | null;
+  parserJson?: unknown | null;
   errorMessage: string;
 }) {
-  const { env, sellerTelegramId, sellerName, telegramMessageId, audioPath, audioUrl, errorMessage } = params;
+  const {
+    env,
+    sellerTelegramId,
+    sellerName,
+    telegramMessageId,
+    audioPath,
+    audioUrl,
+    rawText,
+    cleanedText,
+    parserJson,
+    errorMessage
+  } = params;
   const supabase = getSupabase(env);
   const seller = await findOrCreateSeller(env, sellerTelegramId, sellerName);
 
@@ -284,6 +325,9 @@ export async function saveFailedVoiceRecord(params: {
       telegram_message_id: telegramMessageId,
       audio_path: audioPath ?? null,
       audio_url: audioUrl ?? null,
+      raw_text: rawText ?? null,
+      cleaned_text: cleanedText ?? null,
+      parser_json: parserJson ?? null,
       status: "failed",
       error_message: errorMessage
     })
@@ -302,6 +346,24 @@ export async function saveFailedVoiceRecord(params: {
       voice_record_id: data.id,
       error: errorMessage
     }
+  });
+}
+
+export async function writeProcessingAuditLog(params: {
+  env: AppEnv;
+  sellerTelegramId: number;
+  sellerName: string | null;
+  action: "stt_raw_text_received" | "llm_parser_json_received";
+  details: Record<string, unknown>;
+}) {
+  const { env, sellerTelegramId, sellerName, action, details } = params;
+  const seller = await findOrCreateSeller(env, sellerTelegramId, sellerName);
+
+  await writeAuditLog(env, {
+    shopId: seller.shopId,
+    sellerId: seller.id,
+    action,
+    details
   });
 }
 

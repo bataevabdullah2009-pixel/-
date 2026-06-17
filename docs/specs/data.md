@@ -47,7 +47,10 @@
 ## Правила хранения
 
 - Все таблицы имеют `created_at`.
+- `voice_records` хранит `raw_text`, `cleaned_text`, полный исходный `parser_json`, итоговый `status` и `error_message`.
+- `audit_logs.action` фиксирует этапы `stt_raw_text_received`, `llm_parser_json_received` и `sale_items_created`.
 - Ошибки пишутся в `audit_logs`.
+- API keys, bearer tokens и secrets редактируются перед выводом в application logs.
 - Записи не удаляются физически.
 - Service role используется только на сервере.
 - RLS включён на таблицах `public`.

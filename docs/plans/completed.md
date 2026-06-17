@@ -18,6 +18,8 @@
 | Webhook scripts | `telegram:set-webhook` and `telegram:webhook-info`. |
 | Reports | Grouping by product id or normalized name, total revenue, review block, manual correction. |
 | Stabilization | Product normalization, unit normalization, confidence/status rules. |
+| Voice parsing diagnostics | Raw/cleaned text, full parser JSON, status/error storage and stage audit logs. |
+| Deterministic parser validation | Explicit quantity/price markers, kg support, total recalculation and multi-item preservation. |
 | Tests | Date ranges, validation, transcript status, processed record, grouping, revenue, manual correction. |
 | Checks | `npm run lint`, `npm run test`, `npm run build`. |
 

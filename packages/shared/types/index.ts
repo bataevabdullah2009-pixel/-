@@ -20,6 +20,7 @@ export type VoiceRecord = {
   audio_url: string | null;
   raw_text: string | null;
   cleaned_text: string | null;
+  parser_json?: unknown | null;
   status: VoiceRecordStatus;
   error_message: string | null;
   created_at: string;

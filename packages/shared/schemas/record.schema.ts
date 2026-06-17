@@ -22,6 +22,7 @@ export const voiceRecordSchema = z.object({
   audio_url: z.string().url().nullable(),
   raw_text: z.string().nullable(),
   cleaned_text: z.string().nullable(),
+  parser_json: z.unknown().nullable().optional(),
   status: voiceRecordStatusSchema,
   error_message: z.string().nullable(),
   created_at: z.string().datetime()
@@ -60,14 +61,14 @@ export const parsedSaleItemSchema = z.object({
   price: z.number().nonnegative().nullable().optional().default(null),
   total: z.number().nonnegative().nullable().optional().default(null),
   confidence: z.number().min(0).max(1).optional().default(0.5)
-});
+}).strict();
 
 export const parsedSaleSchema = z.object({
   items: z.array(parsedSaleItemSchema),
   raw_text: z.string(),
   cleaned_text: z.string(),
   needs_review: z.boolean()
-});
+}).strict();
 
 export function deriveVoiceRecordStatus(rawText: string | null | undefined, cleanedText: string | null | undefined) {
   if (!rawText?.trim()) {

@@ -5,6 +5,7 @@ node_modules/
 dist/
 coverage/
 .turbo/
+supabase/.temp/
 
 .env
 .env.*

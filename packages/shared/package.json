@@ -7,7 +7,8 @@
     ".": "./types/index.ts",
     "./types": "./types/index.ts",
     "./schemas/record.schema": "./schemas/record.schema.ts",
-    "./utils/date-range": "./utils/date-range.ts"
+    "./utils/date-range": "./utils/date-range.ts",
+    "./utils/sale-parser": "./utils/sale-parser.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",

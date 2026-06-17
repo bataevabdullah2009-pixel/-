@@ -168,11 +168,19 @@ Telegram voice -> Vercel webhook -> STT -> cleaned text -> sale items -> databas
 
 Правила качества:
 
+- parser принимает только JSON-объект без markdown или пояснений;
+- количество считается распознанным только рядом с `шт`, `штук`, `штуки`, `штука`, `кг` или формой слова `килограмм`;
+- цена считается распознанной только рядом с `рублей`, `руб`, `₽` или в конструкции `по 100`;
+- все позиции из одного голосового сохраняются в исходном порядке;
 - `confidence < 0.75` отправляет позицию в `needs_review`;
 - пустой `product_name` отправляет позицию в `needs_review`;
 - `quantity = null` сохраняется как `1` и отправляет позицию в `needs_review`;
 - если цена не найдена, позиция получает `needs_price`;
+- `total` всегда пересчитывается как `quantity * price`;
+- позиция с `price = null` не может получить `processed`;
 - исправленная вручную валидная позиция получает `processed`.
+
+Для диагностики `voice_records` хранит `raw_text`, `cleaned_text`, полный исходный `parser_json`, `status` и `error_message`. Этапы `stt_raw_text_received`, `llm_parser_json_received` и `sale_items_created` пишутся в `audit_logs`.
 
 ## 11. Report Contract
 

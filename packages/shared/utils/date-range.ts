@@ -115,7 +115,12 @@ const UNIT_ALIASES = new Map([
   ["шт.", "шт"],
   ["штука", "шт"],
   ["штуки", "шт"],
-  ["штук", "шт"]
+  ["штук", "шт"],
+  ["кг", "кг"],
+  ["кг.", "кг"],
+  ["килограмм", "кг"],
+  ["килограмма", "кг"],
+  ["килограммов", "кг"]
 ]);
 
 function normalizeText(value: string | null | undefined) {
@@ -128,13 +133,15 @@ export function normalizeProductName(name: string | null | undefined) {
 }
 
 export function displayProductName(name: string | null | undefined) {
-  const normalized = normalizeProductName(name);
+  const source = normalizeText(name);
+  const normalized = normalizeProductName(source);
 
   if (!normalized) {
     return "";
   }
 
-  return normalized.charAt(0).toLocaleUpperCase("ru-RU") + normalized.slice(1);
+  const displayValue = PRODUCT_ALIASES.has(source.toLocaleLowerCase("ru-RU")) ? normalized : source;
+  return displayValue.charAt(0).toLocaleUpperCase("ru-RU") + displayValue.slice(1);
 }
 
 export function normalizeUnit(unit: string | null | undefined) {

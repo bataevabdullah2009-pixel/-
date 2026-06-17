@@ -4,6 +4,9 @@
 
 ### Added
 
+- Added `voice_records.parser_json` migration for the complete original LLM parser response.
+- Added audit stages `stt_raw_text_received`, `llm_parser_json_received` and `sale_items_created`.
+- Added recursive application-log redaction for API keys, bearer tokens and secrets.
 - Added shared `processTelegramUpdate(update)` for Telegram updates.
 - Added Vercel webhook route at `/api/telegram/webhook` with Telegram `secret_token` header validation.
 - Added Telegram webhook management scripts: `npm run telegram:set-webhook` and `npm run telegram:webhook-info`.
@@ -11,6 +14,10 @@
 
 ### Changed
 
+- Parser output is now strict JSON and is deterministically checked against raw STT text before persistence.
+- Quantity is accepted only with explicit piece/kilogram units; price is accepted only with ruble markers or a `по <price>` construction.
+- Sale item totals are always recalculated from validated quantity and price, and kilogram units normalize to `кг`.
+- Failed voice records retain any raw text, cleaned text and parser JSON available before the failure.
 - Production Telegram processing now uses webhook delivery on Vercel, while `npm run bot:dev` keeps local polling.
 - Next.js transitive `postcss` is pinned through npm overrides to avoid the current moderate audit finding.
 - Vercel webhook builds now declare `ffmpeg-static` from `apps/web` and externalize it through Next.js server packages.
@@ -21,6 +28,9 @@
 
 ### Fixed
 
+- Prevented quantity/price swaps and removed unsupported numeric guesses from LLM output.
+- Prevented `processed` sale items when price is unknown and kept low-confidence or missing-quantity items in review.
+- Preserved every returned item from multi-product voice messages and bound numbers to each product segment.
 - Fixed Vercel web build by removing `dotenv-cli` from the `apps/web` build script.
 - Fixed Vercel voice message processing so missing or failing `ffmpeg-static` falls back to the original Telegram OGG instead of failing the whole webhook flow.
 - Prevented duplicate report rows caused by different product casing or piece unit spelling.
@@ -28,6 +38,8 @@
 
 ### Tests
 
+- Added parser regression tests for cream, chocolate with/without price, kilogram chocolate, bread and multiple items.
+- Added a log-redaction regression test.
 - Added tests for bread and milk normalization, unit normalization, report grouping, missing price status and manual correction status.
 - Added tests for audio preparation fallback when `ffmpeg-static` has no binary path or ffmpeg conversion fails.
 

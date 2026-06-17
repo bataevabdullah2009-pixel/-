@@ -1,5 +1,6 @@
 import { parsedSaleSchema } from "@voice-sales-log/shared/schemas/record.schema";
 import type { ParsedSale } from "@voice-sales-log/shared/types";
+import { enforceTranscriptEvidence } from "@voice-sales-log/shared/utils/sale-parser";
 import type { AppEnv } from "../config/env";
 
 type ChatCompletionResponse = {
@@ -19,23 +20,6 @@ function simpleCleanup(text: string) {
 
   const capitalized = normalized.charAt(0).toLocaleUpperCase("ru-RU") + normalized.slice(1);
   return /[.!?]$/.test(capitalized) ? capitalized : `${capitalized}.`;
-}
-
-function extractJson(content: string) {
-  const trimmed = content.trim();
-
-  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-    return trimmed;
-  }
-
-  const start = trimmed.indexOf("{");
-  const end = trimmed.lastIndexOf("}");
-
-  if (start === -1 || end === -1 || end <= start) {
-    throw new Error("LLM response does not contain JSON object.");
-  }
-
-  return trimmed.slice(start, end + 1);
 }
 
 export async function cleanupTranscript(env: AppEnv, rawText: string) {
@@ -74,13 +58,21 @@ export async function cleanupTranscript(env: AppEnv, rawText: string) {
   return data.choices?.[0]?.message?.content?.trim() || simpleCleanup(rawText);
 }
 
-export async function parseSaleTranscript(env: AppEnv, rawText: string, cleanedText: string): Promise<ParsedSale> {
+export async function parseSaleTranscript(
+  env: AppEnv,
+  rawText: string,
+  cleanedText: string
+): Promise<{ parsedSale: ParsedSale; parserJson: unknown | null; errorMessage: string | null }> {
   if (!rawText.trim()) {
     return {
-      items: [],
-      raw_text: rawText,
-      cleaned_text: cleanedText,
-      needs_review: true
+      parsedSale: {
+        items: [],
+        raw_text: rawText,
+        cleaned_text: cleanedText,
+        needs_review: true
+      },
+      parserJson: null,
+      errorMessage: "STT returned an empty transcript."
     };
   }
 
@@ -95,8 +87,17 @@ export async function parseSaleTranscript(env: AppEnv, rawText: string, cleanedT
       messages: [
         {
           role: "system",
-          content:
-            "Ты извлекаешь позиции продажи из русского текста. Верни только строгий JSON без markdown. Не выдумывай товар или цену. Названия приводи к базовой форме: хлеба -> Хлеб, молока -> Молоко. Единицы штука/штуки/штук/шт. приводи к шт, если unit не указан — шт. Если цена не названа, price и total должны быть null. Если количество не названо, quantity=1 и confidence ниже. Поля: items[{product_name,quantity,unit,price,total,confidence}], raw_text, cleaned_text, needs_review."
+          content: `Ты извлекаешь все позиции продажи из русского текста и возвращаешь только один строгий JSON-объект без markdown и пояснений.
+Схема: {"items":[{"product_name":string,"quantity":number|null,"unit":"шт"|"кг"|null,"price":number|null,"total":number|null,"confidence":number}],"raw_text":string,"cleaned_text":string,"needs_review":boolean}.
+Правила:
+- сохрани каждую названную товарную позицию и порядок позиций;
+- product_name бери только из текста, не включай в него количество, единицу, цену или слово «по»;
+- quantity распознавай только рядом с «шт», «штук», «штуки», «штука», «кг», «килограмм», «килограмма» или «килограммов»; иначе quantity=null;
+- price распознавай только рядом с «рублей», «руб», «₽» либо в конструкции «по 100»; иначе price=null;
+- не выдумывай цену или количество и не путай их местами;
+- total равен quantity * price только когда оба значения известны, иначе null;
+- confidence ниже 0.75 при любой неоднозначности, needs_review=true при неоднозначности.
+Примеры: «Сливки 33%, пять штук по 100 рублей» => Сливки 33%, 5, шт, 100, 500. «Шоколад Шаковик 5 штук» => Шоколад Шаковик, 5, шт, null, null. «Шоколад 2 килограмма по 2000 рублей» => Шоколад, 2, кг, 2000, 4000.`
         },
         {
           role: "user",
@@ -110,10 +111,14 @@ export async function parseSaleTranscript(env: AppEnv, rawText: string, cleanedT
 
   if (!response.ok) {
     return {
-      items: [],
-      raw_text: rawText,
-      cleaned_text: cleanedText,
-      needs_review: true
+      parsedSale: {
+        items: [],
+        raw_text: rawText,
+        cleaned_text: cleanedText,
+        needs_review: true
+      },
+      parserJson: null,
+      errorMessage: `LLM parser request failed with status ${response.status}.`
     };
   }
 
@@ -124,6 +129,12 @@ export async function parseSaleTranscript(env: AppEnv, rawText: string, cleanedT
     throw new Error("LLM parser returned empty response.");
   }
 
-  const parsed = JSON.parse(extractJson(content));
-  return parsedSaleSchema.parse(parsed);
+  const parserJson: unknown = JSON.parse(content.trim());
+  const parsed = parsedSaleSchema.parse(parserJson);
+
+  return {
+    parsedSale: enforceTranscriptEvidence(parsed, rawText, cleanedText),
+    parserJson,
+    errorMessage: null
+  };
 }
