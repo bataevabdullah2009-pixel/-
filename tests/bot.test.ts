@@ -6,12 +6,8 @@ describe("date ranges", () => {
     const range = getDateRange("today", {
       now: new Date("2026-06-16T12:00:00.000Z")
     });
-    const start = new Date(range.start);
-    const end = new Date(range.end);
-
-    expect(start.getHours()).toBe(0);
-    expect(start.getMinutes()).toBe(0);
-    expect(end.getTime() - start.getTime()).toBe(24 * 60 * 60 * 1000);
+    expect(range.start).toBe("2026-06-15T21:00:00.000Z");
+    expect(range.end).toBe("2026-06-16T21:00:00.000Z");
   });
 
   it("filters records by selected date", () => {

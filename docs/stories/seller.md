@@ -1,44 +1,31 @@
-# Seller Stories
+# Истории продавца
 
-## S-01 Send voice sale
+## S-01 Отправка продажи голосом
 
-As a seller, I want to send a voice message so that I do not write sales in a notebook.
+Как продавец, я хочу отправить голосовое сообщение, чтобы не записывать продажи в тетрадь.
 
-Acceptance:
+Критерии:
 
-- Seller sends Telegram voice.
-- Bot confirms processing.
-- Sale is saved if processing succeeds.
+- бот принимает Telegram voice;
+- подтверждает начало обработки;
+- при успехе продажа сохраняется.
 
-## S-02 Simple natural speech
+## S-02 Естественная речь
 
-As a seller, I want to speak naturally so that I do not learn a strict form.
+Как продавец, я хочу говорить естественно, чтобы не запоминать строгую форму.
 
-Example:
+Пример: `хлеб 3 штуки по 40 рублей, молоко 2 штуки по 90 рублей`.
 
-```text
-хлеб 3 по 40 молоко 2 по 90
-```
+Критерии: система извлекает обе позиции, количество и цену без перестановки значений.
 
-Acceptance:
+## S-03 Подтверждение
 
-- System extracts bread and milk.
-- Quantity and price are saved.
+Как продавец, я хочу получить подтверждение, чтобы знать, что запись сохранена.
 
-## S-03 Bot confirmation
+Критерии: бот отправляет очищенный текст и статус, не раскрывая технические ID или ошибки.
 
-As a seller, I want to receive confirmation so that I know the record was saved.
+## S-04 Ошибка голоса
 
-Acceptance:
+Как продавец, я хочу понятное сообщение, если голос невозможно обработать.
 
-- Bot sends saved cleaned text.
-- Bot does not expose technical IDs.
-
-## S-04 Bad voice handling
-
-As a seller, I want a clear error message if the voice cannot be processed.
-
-Acceptance:
-
-- Bot says to try again.
-- Error is saved for owner/developer review.
+Критерии: бот предлагает повторить, а безопасная диагностическая ошибка сохраняется для разбора.

@@ -1,73 +1,52 @@
-# Acceptance Scenarios
+# Приёмочные сценарии
 
-## Scenario 1: Voice with prices
+## Сценарий 1: голос с ценами
 
-Input:
+Вход: `хлеб 3 штуки по 40 рублей, молоко 2 штуки по 90 рублей`.
 
-```text
-хлеб 3 по 40 молоко 2 по 90
-```
+Ожидается:
 
-Expected:
+- `voice_records.status = processed`;
+- `sales.total_amount = 300`;
+- хлеб: 3, 40, 120, `processed`;
+- молоко: 2, 90, 180, `processed`;
+- итог отчёта: 300 ₽.
 
-- `voice_records.status = processed`
-- `sales.total_amount = 300`
-- sale items:
-  - Хлеб, 3, 40, 120, processed
-  - Молоко, 2, 90, 180, processed
-- Report total: 300 ₽.
+## Сценарий 2: голос без цены
 
-## Scenario 2: Voice without price
+Вход: `чай 2 штуки`.
 
-Input:
+Если цена товара существует, используется `products.default_price`, позиция может стать `processed`. Если цены нет, статус равен `needs_price`, цена и итог равны `null`, позиция находится в блоке проверки и не входит в выручку.
 
-```text
-чай 2 штуки
-```
+## Сценарий 3: плохая расшифровка
 
-Expected if product price exists:
+При пустом или непонятном тексте статус требует проверки, система не придумывает товар, владелец видит диагностическую запись.
 
-- price is loaded from `products.default_price`;
-- item can become `processed`.
+## Сценарий 4: одинаковый товар в двух продажах
 
-Expected if product price does not exist:
+Вход A: `хлеб 3 штуки по 40 рублей`.
 
-- `sale_items.status = needs_price`;
-- `price = null`;
-- `total = null`;
-- item appears in “Нужно проверить”;
-- item is excluded from revenue.
+Вход B: `хлеб 2 штуки по 40 рублей`.
 
-## Scenario 3: Poor transcript
-
-Input:
-
-```text
-...
-```
-
-Expected:
-
-- status is `needs_review`;
-- system does not invent product;
-- owner can review manually.
-
-## Scenario 4: Same product twice
-
-Input A:
-
-```text
-хлеб 3 по 40
-```
-
-Input B:
-
-```text
-хлеб 2 по 40
-```
-
-Expected report:
+Ожидаемый отчёт:
 
 | Товар | Количество | Выручка |
 | --- | ---: | ---: |
 | Хлеб | 5 шт | 200 ₽ |
+
+## Сценарий 5: правка, исключение, восстановление и сброс
+
+1. Открыть отчёт одного дня с обработанной позицией.
+2. Изменить цену и проверить итог позиции, продажи и аудит.
+3. Исключить позицию и проверить нулевое влияние на отчёт при сохранённой строке.
+4. Восстановить позицию и проверить предыдущий статус и итог.
+5. Сбросить день и убедиться, что соседняя дата не изменилась.
+
+## Сценарий 6: Pull Request документации
+
+1. Создать ветку `docs/russian-documentation`.
+2. Проверить `git diff`, выполнить lint, тесты и сборку.
+3. Добавить только файлы задачи, проверить `git diff --cached`.
+4. Создать коммит и отправить ветку в `origin`.
+5. В Pull Request указать проверки, риски и непроверенные внешние шаги.
+6. Убедиться, что `.env.local`, секреты и сгенерированные каталоги не попали в изменения.

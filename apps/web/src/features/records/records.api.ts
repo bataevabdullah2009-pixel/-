@@ -11,6 +11,13 @@ import type { DateRangePreset, SaleItem } from "@voice-sales-log/shared/types";
 import { getStorageBucket, getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase";
 import type { RecordFilters, RecordListItem, ReportFilters, SellerOption } from "./records.types";
 
+type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdminClient>>;
+
+type MutationResult = {
+  ok: boolean;
+  message: string;
+};
+
 const demoSellers: SellerOption[] = [
   {
     id: "demo-seller",
@@ -208,9 +215,13 @@ export async function getDailyReport(filters: ReportFilters) {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
+    const items = filterByDateRange(demoSaleItems, range);
+
     return {
       range,
-      summary: buildSalesReport(filterByDateRange(demoSaleItems, range))
+      summary: buildSalesReport(items),
+      items: items.filter((item) => !item.deleted_at),
+      deletedItems: items.filter((item) => Boolean(item.deleted_at))
     };
   }
 
@@ -241,11 +252,35 @@ export async function getDailyReport(filters: ReportFilters) {
   if (error) {
     return {
       range,
-      summary: buildSalesReport([])
+      summary: buildSalesReport([]),
+      items: [],
+      deletedItems: []
     };
   }
 
-  const items = (data ?? []).flatMap((sale: any) =>
+  const saleIds = (data ?? []).map((sale: any) => String(sale.id));
+  const deletionMetadata = new Map<string, {
+    deleted_at: string | null;
+    deleted_reason: SaleItem["deleted_reason"];
+    deleted_previous_status: SaleItem["deleted_previous_status"];
+  }>();
+
+  if (saleIds.length) {
+    const { data: metadataRows } = await supabase
+      .from("sale_items")
+      .select("id, deleted_at, deleted_reason, deleted_previous_status")
+      .in("sale_id", saleIds);
+
+    for (const row of metadataRows ?? []) {
+      deletionMetadata.set(String(row.id), {
+        deleted_at: row.deleted_at ? String(row.deleted_at) : null,
+        deleted_reason: row.deleted_reason,
+        deleted_previous_status: row.deleted_previous_status
+      });
+    }
+  }
+
+  const items: SaleItem[] = (data ?? []).flatMap((sale: any) =>
     (sale.sale_items ?? []).map((item: any) => ({
       id: String(item.id),
       sale_id: String(item.sale_id),
@@ -257,14 +292,104 @@ export async function getDailyReport(filters: ReportFilters) {
       total: item.total === null ? null : Number(item.total),
       confidence: Number(item.confidence),
       status: item.status,
-      created_at: String(sale.created_at)
+      created_at: String(sale.created_at),
+      deleted_at: deletionMetadata.get(String(item.id))?.deleted_at ?? null,
+      deleted_reason: deletionMetadata.get(String(item.id))?.deleted_reason ?? null,
+      deleted_previous_status: deletionMetadata.get(String(item.id))?.deleted_previous_status ?? null
     }))
+  );
+
+  const sortedItems = items.sort((left, right) =>
+    left.product_name.localeCompare(right.product_name, "ru-RU")
   );
 
   return {
     range,
-    summary: buildSalesReport(items)
+    summary: buildSalesReport(sortedItems),
+    items: sortedItems.filter((item) => !item.deleted_at),
+    deletedItems: sortedItems.filter((item) => Boolean(item.deleted_at))
   };
+}
+
+async function getSaleContext(admin: AdminClient, saleId: string) {
+  const { data, error } = await admin
+    .from("sales")
+    .select("id, shop_id, seller_id, voice_record_id")
+    .eq("id", saleId)
+    .single();
+
+  if (error) {
+    return { data: null, error: error.message };
+  }
+
+  return { data, error: null };
+}
+
+async function writeAuditLog(
+  admin: AdminClient,
+  context: { shop_id: string; seller_id: string | null },
+  action: string,
+  details: Record<string, unknown>
+) {
+  const { error } = await admin.from("audit_logs").insert({
+    shop_id: context.shop_id,
+    seller_id: context.seller_id,
+    action,
+    details
+  });
+
+  return error?.message ?? null;
+}
+
+async function recalculateSale(admin: AdminClient, saleId: string): Promise<MutationResult> {
+  const context = await getSaleContext(admin, saleId);
+
+  if (!context.data) {
+    return { ok: false, message: context.error ?? "Продажа не найдена." };
+  }
+
+  const { data: saleItems, error: saleItemsError } = await admin
+    .from("sale_items")
+    .select("status, total")
+    .eq("sale_id", saleId)
+    .is("deleted_at", null);
+
+  if (saleItemsError) {
+    return { ok: false, message: saleItemsError.message };
+  }
+
+  const activeItems = saleItems ?? [];
+  const totalAmount = Number(
+    activeItems
+      .filter((item: any) => item.status === "processed" && item.total !== null)
+      .reduce((sum: number, item: any) => sum + Number(item.total), 0)
+      .toFixed(2)
+  );
+  const saleStatus = activeItems.every((item: any) => item.status === "processed")
+    ? "processed"
+    : "needs_review";
+
+  const { error: saleUpdateError } = await admin
+    .from("sales")
+    .update({ total_amount: totalAmount, status: saleStatus })
+    .eq("id", saleId);
+
+  if (saleUpdateError) {
+    return { ok: false, message: saleUpdateError.message };
+  }
+
+  if (context.data.voice_record_id) {
+    const { error: voiceRecordUpdateError } = await admin
+      .from("voice_records")
+      .update({ status: saleStatus })
+      .eq("id", context.data.voice_record_id);
+
+    if (voiceRecordUpdateError) {
+      return { ok: false, message: voiceRecordUpdateError.message };
+    }
+  }
+
+  return { ok: true, message: "Итоги продажи пересчитаны." };
 }
 
 export async function updateSaleItem(params: {
@@ -311,7 +436,7 @@ export async function updateSaleItem(params: {
 
   const { data: existingItem, error: existingItemError } = await admin
     .from("sale_items")
-    .select("sale_id, unit")
+    .select("sale_id, product_name, quantity, unit, price, total, status, deleted_at")
     .eq("id", params.itemId)
     .single();
 
@@ -322,23 +447,23 @@ export async function updateSaleItem(params: {
     };
   }
 
-  const { data: sale, error: saleError } = await admin
-    .from("sales")
-    .select("shop_id, voice_record_id")
-    .eq("id", existingItem.sale_id)
-    .single();
+  if (existingItem.deleted_at) {
+    return { ok: false, message: "Сначала восстановите исключённую позицию." };
+  }
 
-  if (saleError) {
+  const saleContext = await getSaleContext(admin, existingItem.sale_id);
+
+  if (!saleContext.data) {
     return {
       ok: false,
-      message: saleError.message
+      message: saleContext.error ?? "Продажа не найдена."
     };
   }
 
   const { data: products, error: productsError } = await admin
     .from("products")
     .select("id, name, unit")
-    .eq("shop_id", sale.shop_id)
+    .eq("shop_id", saleContext.data.shop_id)
     .eq("is_active", true);
 
   if (productsError) {
@@ -377,61 +502,257 @@ export async function updateSaleItem(params: {
     };
   }
 
-  const { data: saleItems, error: saleItemsError } = await admin
-    .from("sale_items")
-    .select("status, total")
-    .eq("sale_id", item.sale_id);
+  const recalculation = await recalculateSale(admin, item.sale_id);
 
-  if (saleItemsError) {
-    return {
-      ok: false,
-      message: saleItemsError.message
-    };
+  if (!recalculation.ok) {
+    return recalculation;
   }
 
-  const totalAmount = Number(
-    (saleItems ?? [])
-      .filter((saleItem: any) => saleItem.status === "processed" && saleItem.total !== null)
-      .reduce((sum: number, saleItem: any) => sum + Number(saleItem.total), 0)
-      .toFixed(2)
-  );
-  const saleStatus = (saleItems ?? []).every((saleItem: any) => saleItem.status === "processed")
-    ? "processed"
-    : "needs_review";
-
-  const { error: saleUpdateError } = await admin
-    .from("sales")
-    .update({
-      total_amount: totalAmount,
-      status: saleStatus
-    })
-    .eq("id", item.sale_id);
-
-  if (saleUpdateError) {
-    return {
-      ok: false,
-      message: saleUpdateError.message
-    };
-  }
-
-  if (sale.voice_record_id) {
-    const { error: voiceRecordUpdateError } = await admin
-      .from("voice_records")
-      .update({
-        status: saleStatus
-      })
-      .eq("id", sale.voice_record_id);
-
-    if (voiceRecordUpdateError) {
-      return {
-        ok: false,
-        message: voiceRecordUpdateError.message
-      };
+  const auditError = await writeAuditLog(admin, saleContext.data, "sale_item_updated", {
+    item_id: params.itemId,
+    before: {
+      product_name: existingItem.product_name,
+      quantity: Number(existingItem.quantity),
+      unit: existingItem.unit,
+      price: existingItem.price === null ? null : Number(existingItem.price),
+      total: existingItem.total === null ? null : Number(existingItem.total),
+      status: existingItem.status
+    },
+    after: {
+      product_name: productName,
+      quantity: patch.quantity,
+      unit,
+      price: patch.price,
+      total: patch.total,
+      status: patch.status
     }
+  });
+
+  if (auditError) {
+    return { ok: false, message: `Позиция изменена, но audit log не записан: ${auditError}` };
   }
 
   return {
     ok: true,
     message: "Позиция обновлена."
+  };
+}
+
+export async function softDeleteSaleItem(itemId: string): Promise<MutationResult> {
+  const admin = getSupabaseAdminClient();
+
+  if (!admin) {
+    return { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY не настроен." };
+  }
+
+  const { data: item, error: itemError } = await admin
+    .from("sale_items")
+    .select("id, sale_id, product_name, status, deleted_at")
+    .eq("id", itemId)
+    .single();
+
+  if (itemError) {
+    return { ok: false, message: itemError.message };
+  }
+
+  if (item.deleted_at) {
+    return { ok: true, message: "Позиция уже исключена из отчёта." };
+  }
+
+  const context = await getSaleContext(admin, item.sale_id);
+  if (!context.data) {
+    return { ok: false, message: context.error ?? "Продажа не найдена." };
+  }
+
+  const deletedAt = new Date().toISOString();
+  const { error } = await admin
+    .from("sale_items")
+    .update({
+      deleted_at: deletedAt,
+      deleted_reason: "manual",
+      deleted_previous_status: item.status
+    })
+    .eq("id", itemId)
+    .is("deleted_at", null);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  const recalculation = await recalculateSale(admin, item.sale_id);
+  if (!recalculation.ok) {
+    return recalculation;
+  }
+
+  const auditError = await writeAuditLog(admin, context.data, "sale_item_deleted", {
+    item_id: item.id,
+    product_name: item.product_name,
+    deleted_at: deletedAt,
+    reason: "manual"
+  });
+
+  return auditError
+    ? { ok: false, message: `Позиция исключена, но audit log не записан: ${auditError}` }
+    : { ok: true, message: "Позиция исключена из выручки. Её можно восстановить." };
+}
+
+export async function restoreSaleItem(itemId: string): Promise<MutationResult> {
+  const admin = getSupabaseAdminClient();
+
+  if (!admin) {
+    return { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY не настроен." };
+  }
+
+  const { data: item, error: itemError } = await admin
+    .from("sale_items")
+    .select("id, sale_id, product_name, deleted_at, deleted_reason, deleted_previous_status")
+    .eq("id", itemId)
+    .single();
+
+  if (itemError) {
+    return { ok: false, message: itemError.message };
+  }
+
+  if (!item.deleted_at) {
+    return { ok: true, message: "Позиция уже активна." };
+  }
+
+  const context = await getSaleContext(admin, item.sale_id);
+  if (!context.data) {
+    return { ok: false, message: context.error ?? "Продажа не найдена." };
+  }
+
+  const { error } = await admin
+    .from("sale_items")
+    .update({
+      status: item.deleted_previous_status ?? "needs_review",
+      deleted_at: null,
+      deleted_reason: null,
+      deleted_previous_status: null
+    })
+    .eq("id", itemId)
+    .not("deleted_at", "is", null);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  const recalculation = await recalculateSale(admin, item.sale_id);
+  if (!recalculation.ok) {
+    return recalculation;
+  }
+
+  const auditError = await writeAuditLog(admin, context.data, "sale_item_restored", {
+    item_id: item.id,
+    product_name: item.product_name,
+    previous_deleted_at: item.deleted_at,
+    previous_reason: item.deleted_reason
+  });
+
+  return auditError
+    ? { ok: false, message: `Позиция восстановлена, но audit log не записан: ${auditError}` }
+    : { ok: true, message: "Позиция восстановлена и снова учитывается в отчёте." };
+}
+
+export async function resetDayRevenue(range: { start: string; end: string }): Promise<MutationResult> {
+  const admin = getSupabaseAdminClient();
+
+  if (!admin) {
+    return { ok: false, message: "SUPABASE_SERVICE_ROLE_KEY не настроен." };
+  }
+
+  const start = new Date(range.start);
+  const end = new Date(range.end);
+  const duration = end.getTime() - start.getTime();
+
+  if (!Number.isFinite(duration) || duration <= 0 || duration > 25 * 60 * 60 * 1000) {
+    return { ok: false, message: "Сброс разрешён только для одного дня." };
+  }
+
+  const { data: sales, error: salesError } = await admin
+    .from("sales")
+    .select("id, shop_id, seller_id")
+    .gte("created_at", range.start)
+    .lt("created_at", range.end);
+
+  if (salesError) {
+    return { ok: false, message: salesError.message };
+  }
+
+  const saleIds = (sales ?? []).map((sale: any) => String(sale.id));
+  if (!saleIds.length) {
+    return { ok: true, message: "За выбранный день нет продаж для сброса." };
+  }
+
+  const { data: activeItems, error: itemsError } = await admin
+    .from("sale_items")
+    .select("id, sale_id, status")
+    .in("sale_id", saleIds)
+    .is("deleted_at", null);
+
+  if (itemsError) {
+    return { ok: false, message: itemsError.message };
+  }
+
+  if (!activeItems?.length) {
+    return { ok: true, message: "Выручка за выбранный день уже сброшена." };
+  }
+
+  const deletedAt = new Date().toISOString();
+  for (const status of ["processed", "needs_price", "needs_review", "failed"] as const) {
+    const ids = activeItems.filter((item: any) => item.status === status).map((item: any) => item.id);
+    if (!ids.length) continue;
+
+    const { error } = await admin
+      .from("sale_items")
+      .update({
+        deleted_at: deletedAt,
+        deleted_reason: "day_reset",
+        deleted_previous_status: status
+      })
+      .in("id", ids)
+      .is("deleted_at", null);
+
+    if (error) {
+      return { ok: false, message: error.message };
+    }
+  }
+
+  for (const saleId of saleIds) {
+    const recalculation = await recalculateSale(admin, saleId);
+    if (!recalculation.ok) {
+      return recalculation;
+    }
+  }
+
+  const salesByShop = new Map<string, string[]>();
+  for (const sale of sales ?? []) {
+    const shopId = String(sale.shop_id);
+    salesByShop.set(shopId, [...(salesByShop.get(shopId) ?? []), String(sale.id)]);
+  }
+
+  for (const [shopId, shopSaleIds] of salesByShop) {
+    const shopSaleIdSet = new Set(shopSaleIds);
+    const shopItemCount = activeItems.filter((item: any) => shopSaleIdSet.has(String(item.sale_id))).length;
+    const auditError = await writeAuditLog(
+      admin,
+      { shop_id: shopId, seller_id: null },
+      "daily_revenue_reset",
+      {
+        range,
+        deleted_at: deletedAt,
+        item_count: shopItemCount,
+        sale_ids: shopSaleIds
+      }
+    );
+
+    if (auditError) {
+      return { ok: false, message: `День сброшен, но audit log не записан: ${auditError}` };
+    }
+  }
+
+  return {
+    ok: true,
+    message: `Выручка за день сброшена. Исключено позиций: ${activeItems.length}.`
   };
 }

@@ -1,23 +1,25 @@
-# Security Rules
+# Правила безопасности
 
-## Env
+## Переменные окружения
 
-- All env names must exist in `.env.example`.
-- Real secrets live only in `.env.local`.
-- `.env.local` is never committed.
-- `TELEGRAM_WEBHOOK_SECRET` must be configured in Vercel and passed to Telegram as `secret_token`.
+- имена всех переменных находятся в `.env.example`;
+- реальные секреты хранятся только в `.env.local` и настройках платформы;
+- `.env.local` никогда не коммитится;
+- `TELEGRAM_WEBHOOK_SECRET` передаётся Telegram как `secret_token` и задаётся в Vercel.
 
 ## Supabase
 
-- `SUPABASE_SERVICE_ROLE_KEY` is server-only.
-- Browser code must use anon key only.
-- RLS must be enabled on public tables.
-- Storage access must not expose private audio by default.
+- `SUPABASE_SERVICE_ROLE_KEY` используется только сервером;
+- браузерный код не получает административный ключ;
+- RLS включён для публичных таблиц;
+- приватное аудио выдаётся только по подписанной ссылке;
+- демонстрационные анонимные политики нельзя использовать с реальными данными.
 
-## Code
+## Код и журналы
 
-- No hardcoded tokens.
-- No API keys in tests.
-- No secrets in README examples.
-- Webhook route must compare `x-telegram-bot-api-secret-token` with `TELEGRAM_WEBHOOK_SECRET`.
-- Logs must not include bot token, webhook secret, Supabase keys, STT key or LLM key.
+- запрещены встроенные токены и ключи в тестах;
+- примеры документации не содержат секретов;
+- webhook сравнивает `x-telegram-bot-api-secret-token` с `TELEGRAM_WEBHOOK_SECRET`;
+- журналы не содержат токен бота, секрет webhook, ключи Supabase, STT или LLM.
+
+До реальной эксплуатации обязательны проверка Telegram init data, авторизация владельца и изоляция магазина во всех чтениях и мутациях.

@@ -1,18 +1,19 @@
-# Feature Acceptance Matrix
+# Матрица приёмки функций
 
-| Feature | User value | Acceptance check | Status |
+| Функция | Пользовательская ценность | Проверка | Состояние |
 | --- | --- | --- | --- |
-| Telegram voice input | Seller speaks instead of typing | Bot accepts voice message | Done |
-| Vercel webhook | Telegram can deliver production updates | Webhook checks secret token and calls update processor | Done |
-| STT transcript | Voice becomes text | Raw text saved | Done |
-| Cleanup text | Text is readable | Cleaned text saved | Done |
-| JSON parser | Text becomes sale items | Items validate by Zod | Done |
-| Products default price | Missing voice price can be resolved | `products.default_price` used | Done |
-| `needs_price` | Unknown price is visible | Item appears in review block | Done |
-| Records page | Owner sees original records | `/records` renders list | Done |
-| Daily report | Owner sees day totals | `/daily-report` renders table | Done |
-| Grouping | Same products are summed | Test checks bread 3 + bread 2 | Done |
-| Revenue | Owner sees money total | Tests check revenue calculation | Done |
-| Manual correction | Owner can fix disputed item | Form updates item | Done |
-| Documentation | Teacher understands project | Docs map and specs exist | Done |
-| Tests | Core logic is protected | `npm run test` passes | Done |
+| Голосовой ввод Telegram | Продавец говорит вместо ручного ввода | Бот принимает голосовое сообщение | Готово в коде; нужна сквозная проверка |
+| Vercel webhook | Telegram доставляет рабочие update | Секрет проверяется, update передаётся обработчику | Готово в коде; рабочее окружение не проверено |
+| STT-расшифровка | Голос становится текстом | `raw_text` сохранён | Готово в коде; внешний сервис не проверен в этой ревизии |
+| Очистка текста | Запись читаема | `cleaned_text` сохранён | Готово в коде |
+| JSON-парсер | Текст превращается в позиции | Ответ проходит Zod и проверку по исходному тексту | Готово и покрыто тестами |
+| Цена товара по умолчанию | Можно заполнить неназванную цену | Используется `products.default_price` | Готово в коде |
+| `needs_price` | Неизвестная цена видна владельцу | Позиция появляется в блоке проверки | Готово в коде |
+| Страница записей | Владелец видит исходные продажи | `/records` показывает список | Готово в коде |
+| Отчёт | Владелец видит итоги периода | `/daily-report` показывает строки и итог | Готово в коде |
+| Группировка | Одинаковые товары суммируются | Регрессионный тест группировки | Готово и покрыто тестами |
+| Выручка | Владелец видит денежный итог | Тесты проверяют расчёт и исключения | Готово и покрыто тестами |
+| Ручная корректировка | Владелец исправляет позицию | Форма обновляет позицию и пересчитывает продажу | Готово в коде; нет интеграционного теста БД |
+| Мягкое удаление и восстановление | Ошибку можно отменить | Позиция исключается и возвращается | Готово в коде; миграция и сквозной сценарий не подтверждены |
+| Документация | Куратор понимает проект | Карта, спецификации, архитектура и планы согласованы | Обновлено; проверяются ссылки и язык |
+| Автоматические проверки | Основная логика защищена | `npm run lint`, `npm run test`, `npm run build` | Пройдено 18 июня 2026 года: 26 тестов |

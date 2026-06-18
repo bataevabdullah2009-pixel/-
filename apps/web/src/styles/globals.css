@@ -1,18 +1,19 @@
 :root {
-  --bg: #f3f5f2;
+  --bg: #f4f7fa;
   --surface: #ffffff;
-  --surface-raised: #fbfcfa;
-  --ink: #17211f;
-  --muted: #68736f;
-  --line: #d9dfdb;
-  --accent: #087d70;
-  --accent-strong: #055e56;
-  --warning: #946100;
-  --warning-soft: #fff6d9;
-  --danger: #b42318;
-  --soft: #e6f3ef;
-  --shadow: 0 12px 30px rgba(30, 51, 46, 0.08);
-  --radius: 12px;
+  --surface-raised: #fbfdff;
+  --ink: #13233a;
+  --muted: #68768a;
+  --line: #dce5ed;
+  --accent: #168acd;
+  --accent-strong: #0872b2;
+  --warning: #8a5a00;
+  --warning-soft: #fff7df;
+  --danger: #c2382a;
+  --danger-soft: #fff2f0;
+  --soft: #eaf6fd;
+  --shadow: 0 18px 50px rgba(36, 67, 94, 0.1);
+  --radius: 18px;
 }
 
 * {
@@ -30,10 +31,10 @@ body {
   margin: 0;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at 15% -20%, rgba(8, 125, 112, 0.1), transparent 34rem),
+    radial-gradient(circle at 12% -15%, rgba(22, 138, 205, 0.12), transparent 34rem),
     var(--bg);
   color: var(--ink);
-  font-family: "Aptos", "Segoe UI", sans-serif;
+  font-family: "Segoe UI Variable", "Manrope", "Segoe UI", sans-serif;
   letter-spacing: -0.01em;
 }
 
@@ -84,7 +85,7 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible {
-  outline: 3px solid rgba(8, 125, 112, 0.23);
+  outline: 3px solid rgba(22, 138, 205, 0.24);
   outline-offset: 2px;
 }
 
@@ -123,7 +124,7 @@ main {
 .appHeader h1,
 .pageTitle h2 {
   margin: 0;
-  font-family: "Aptos Display", "Segoe UI", sans-serif;
+  font-family: "Segoe UI Variable Display", "Manrope", "Segoe UI", sans-serif;
   font-size: clamp(28px, 4vw, 42px);
   line-height: 1.04;
   letter-spacing: -0.035em;
@@ -180,6 +181,33 @@ main {
   gap: 16px;
 }
 
+.pageLead {
+  max-width: 680px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.actionNotice {
+  border: 1px solid;
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.actionNotice-success {
+  border-color: #b7dfcf;
+  background: #eefaf5;
+  color: #17674f;
+}
+
+.actionNotice-error {
+  border-color: #efc2bc;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 .summaryBar {
   position: sticky;
   top: 8px;
@@ -188,8 +216,8 @@ main {
   grid-template-columns: minmax(180px, 1fr) auto auto;
   align-items: center;
   gap: 24px;
-  border: 1px solid rgba(8, 125, 112, 0.2);
-  border-radius: 14px;
+  border: 1px solid rgba(22, 138, 205, 0.22);
+  border-radius: 20px;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: var(--shadow);
   padding: 13px 14px;
@@ -231,6 +259,44 @@ main {
   align-items: center;
   justify-content: center;
   gap: 7px;
+}
+
+.summaryActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.summaryActions form {
+  margin: 0;
+}
+
+.dangerGhostButton,
+.textDangerButton {
+  border-color: #efc2bc;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.dangerGhostButton:hover,
+.textDangerButton:hover {
+  border-color: #e4988f;
+  background: #ffe4e0;
+  color: #a72d21;
+}
+
+.textDangerButton {
+  min-height: 34px;
+  border: 0;
+  padding: 5px 0;
+  background: transparent;
+  font-size: 13px;
+}
+
+.textDangerButton:hover {
+  background: transparent;
+  text-decoration: underline;
 }
 
 .refreshButton span {
@@ -307,6 +373,173 @@ th {
 
 .reportCards {
   display: none;
+}
+
+.itemManager,
+.deletedItemsPanel {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 10px 36px rgba(36, 67, 94, 0.06);
+  padding: 18px;
+  scroll-margin-top: 112px;
+}
+
+.sectionHeading,
+.itemEditorHeader,
+.deletedItem {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.sectionHeading {
+  margin-bottom: 14px;
+}
+
+.sectionHeading h3 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.025em;
+}
+
+.attentionPill,
+.clearPill {
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.attentionPill {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+.clearPill {
+  background: #eaf8f2;
+  color: #17674f;
+}
+
+.itemEditorList,
+.deletedItemsList {
+  display: grid;
+  gap: 10px;
+}
+
+.itemEditorCard {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  padding: 14px;
+}
+
+.itemEditorCardAttention {
+  border-color: #efd58d;
+  box-shadow: inset 3px 0 0 #e1ad24;
+}
+
+.itemEditorHeader {
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.itemEditorHeader > div,
+.deletedItem > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.itemEditorHeader strong,
+.deletedItem strong {
+  overflow-wrap: anywhere;
+  font-size: 17px;
+}
+
+.itemEditorHeader div span,
+.deletedItem div span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.itemEditForm {
+  display: grid;
+  grid-template-columns: minmax(200px, 1.4fr) minmax(120px, 0.55fr) minmax(120px, 0.55fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.itemEditForm label {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.itemEditForm label > span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.saveButton {
+  min-width: 112px;
+}
+
+.deleteItemForm {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 5px;
+}
+
+.deletedItemsPanel summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  font-weight: 750;
+  list-style: none;
+}
+
+.deletedItemsPanel summary::-webkit-details-marker {
+  display: none;
+}
+
+.deletedItemsPanel summary span {
+  min-width: 26px;
+  border-radius: 999px;
+  background: #eef2f6;
+  padding: 4px 8px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+}
+
+.deletedItemsPanel > p {
+  margin: 9px 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.deletedItem {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.restoreButton {
+  min-height: 36px;
+  border-color: #b8dce9;
+  background: var(--soft);
+  color: var(--accent-strong);
+  padding: 7px 11px;
+}
+
+.restoreButton:hover {
+  background: #d8eef9;
 }
 
 .reviewBlock {
@@ -599,8 +832,13 @@ th {
   }
 
   .mobileNavIcon {
-    font-size: 15px;
-    line-height: 1;
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   .pageStack {
@@ -623,6 +861,16 @@ th {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: 10px 12px;
     padding: 10px;
+  }
+
+  .summaryActions {
+    align-self: start;
+  }
+
+  .summaryActions .dangerGhostButton {
+    min-height: 36px;
+    padding: 7px 10px;
+    font-size: 12px;
   }
 
   .summaryMetrics {
@@ -702,14 +950,40 @@ th {
   }
 
   .reportCard {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 11px;
     padding: 13px 14px;
   }
 
   .reportCard h3 {
-    margin: 0 0 11px;
+    margin: 0 0 3px;
     overflow-wrap: anywhere;
     font-size: 18px;
     line-height: 1.2;
+  }
+
+  .reportCard > div span {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .reportCard > strong {
+    color: var(--accent-strong);
+    font-size: 17px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .reportCardIcon {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: var(--soft);
+    color: var(--accent-strong);
+    font-weight: 800;
   }
 
   .reportCardValues {
@@ -753,6 +1027,47 @@ th {
   .reviewItem input,
   .reviewItem button {
     width: 100%;
+  }
+
+  .itemManager,
+  .deletedItemsPanel {
+    border-radius: 18px;
+    padding: 13px;
+  }
+
+  .sectionHeading {
+    align-items: flex-start;
+  }
+
+  .sectionHeading h3 {
+    font-size: 20px;
+  }
+
+  .itemEditorCard {
+    padding: 12px;
+  }
+
+  .itemEditForm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .itemEditForm .productField,
+  .itemEditForm .saveButton {
+    grid-column: 1 / -1;
+  }
+
+  .itemEditForm input,
+  .itemEditForm button {
+    width: 100%;
+  }
+
+  .deleteItemForm {
+    justify-content: flex-start;
+  }
+
+  .deletedItem {
+    align-items: flex-start;
   }
 
   .recordCard,

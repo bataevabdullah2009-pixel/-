@@ -1,37 +1,28 @@
-# Engineering Rules
+# Инженерные правила
 
-## Before code changes
+## Перед изменением кода
 
-Read:
+Прочитать `README.md`, глобальную и профильные спецификации, правила, все активные планы и проектный навык. Проверить состояние Git и не перезаписывать несвязанные изменения пользователя.
 
-- `README.md`
-- `docs/specs/global.md`
-- `docs/specs/README.md`
-- `docs/rules/README.md`
-- `docs/plans/README.md`
+## Во время изменений
 
-## During code changes
+- сохранять узкую область задачи;
+- использовать общие схемы и утилиты;
+- не дублировать бизнес-логику между ботом и веб-приложением;
+- сохранять общий `processTelegramUpdate(update)` для polling и webhook;
+- запускать polling только локально;
+- менять структуру каталогов только вместе с документацией и ссылками;
+- не создавать новые `README.md` или дублирующие документы;
+- писать всю проектную документацию на русском языке.
 
-- Keep changes scoped.
-- Prefer shared schemas and utilities.
-- Do not duplicate business logic between bot and web.
-- Keep Telegram update handling in `processTelegramUpdate(update)` so polling and webhook use the same logic.
-- Keep polling local-only through `npm run bot:dev`.
-- Do not change folder structure without docs update.
+## После изменений
 
-## After code changes
-
-Update:
-
-- `CHANGELOG.md`
-- `docs/plans/README.md`
-- relevant spec file;
-- relevant feature file, if a feature changed.
-
-Run:
+Обновить `CHANGELOG.md`, профильную спецификацию, активный план и каталог функций, если поведение изменилось. Затем выполнить:
 
 ```bash
 npm run lint
 npm run test
 npm run build
 ```
+
+Для интерфейса выполнить браузерную проверку, для внешней интеграции честно отметить непроверенный шаг.

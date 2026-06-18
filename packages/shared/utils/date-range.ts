@@ -10,87 +10,129 @@ export type DateRange = {
 type DateRangeOptions = {
   date?: string;
   now?: Date;
+  timeZone?: string;
 };
 
-function startOfDay(date: Date) {
-  const next = new Date(date);
-  next.setHours(0, 0, 0, 0);
-  return next;
+export const REPORT_TIME_ZONE = "Europe/Moscow";
+
+type CalendarDate = { year: number; month: number; day: number };
+
+function calendarDateFromInstant(date: Date, timeZone: string): CalendarDate {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value);
+
+  return { year: value("year"), month: value("month"), day: value("day") };
 }
 
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
+function parseCalendarDate(value: string | undefined, fallback: CalendarDate): CalendarDate {
+  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return fallback;
+
+  const parsed = { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) };
+  const verifier = new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day));
+
+  return verifier.getUTCFullYear() === parsed.year && verifier.getUTCMonth() + 1 === parsed.month && verifier.getUTCDate() === parsed.day
+    ? parsed
+    : fallback;
 }
 
-function startOfMonth(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
+function addCalendarDays(date: CalendarDate, days: number): CalendarDate {
+  const next = new Date(Date.UTC(date.year, date.month - 1, date.day + days));
+  return { year: next.getUTCFullYear(), month: next.getUTCMonth() + 1, day: next.getUTCDate() };
 }
 
-function startOfYear(date: Date) {
-  return new Date(date.getFullYear(), 0, 1);
-}
+function zonedStartOfDay(date: CalendarDate, timeZone: string) {
+  const target = Date.UTC(date.year, date.month - 1, date.day);
+  let utc = target;
 
-function parseManualDate(date: string | undefined, fallback: Date) {
-  if (!date) {
-    return fallback;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    }).formatToParts(new Date(utc));
+    const value = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value);
+    const representedLocalTime = Date.UTC(
+      value("year"),
+      value("month") - 1,
+      value("day"),
+      value("hour"),
+      value("minute"),
+      value("second")
+    );
+    utc = target - (representedLocalTime - utc);
   }
 
-  const parsed = new Date(`${date}T00:00:00`);
-  return Number.isNaN(parsed.getTime()) ? fallback : parsed;
+  return new Date(utc);
 }
 
 export function getDateRange(preset: DateRangePreset = "today", options: DateRangeOptions = {}): DateRange {
   const now = options.now ?? new Date();
-  const selected = parseManualDate(options.date, now);
-  const todayStart = startOfDay(now);
+  const timeZone = options.timeZone ?? REPORT_TIME_ZONE;
+  const today = calendarDateFromInstant(now, timeZone);
+  const selected = parseCalendarDate(options.date, today);
 
   if (preset === "yesterday") {
-    const start = addDays(todayStart, -1);
+    const startDate = addCalendarDays(today, -1);
     return {
       preset,
-      start: start.toISOString(),
-      end: todayStart.toISOString(),
+      start: zonedStartOfDay(startDate, timeZone).toISOString(),
+      end: zonedStartOfDay(today, timeZone).toISOString(),
       label: "Вчера"
     };
   }
 
   if (preset === "week") {
-    const start = addDays(todayStart, -6);
+    const startDate = addCalendarDays(today, -6);
+    const endDate = addCalendarDays(today, 1);
     return {
       preset,
-      start: start.toISOString(),
-      end: addDays(todayStart, 1).toISOString(),
+      start: zonedStartOfDay(startDate, timeZone).toISOString(),
+      end: zonedStartOfDay(endDate, timeZone).toISOString(),
       label: "Последние 7 дней"
     };
   }
 
   if (preset === "month") {
-    const start = startOfMonth(selected);
+    const startDate = { year: selected.year, month: selected.month, day: 1 };
+    const nextMonth = selected.month === 12
+      ? { year: selected.year + 1, month: 1, day: 1 }
+      : { year: selected.year, month: selected.month + 1, day: 1 };
     return {
       preset,
-      start: start.toISOString(),
-      end: startOfMonth(new Date(selected.getFullYear(), selected.getMonth() + 1, 1)).toISOString(),
+      start: zonedStartOfDay(startDate, timeZone).toISOString(),
+      end: zonedStartOfDay(nextMonth, timeZone).toISOString(),
       label: "Месяц"
     };
   }
 
   if (preset === "year") {
-    const start = startOfYear(selected);
+    const startDate = { year: selected.year, month: 1, day: 1 };
+    const nextYear = { year: selected.year + 1, month: 1, day: 1 };
     return {
       preset,
-      start: start.toISOString(),
-      end: startOfYear(new Date(selected.getFullYear() + 1, 0, 1)).toISOString(),
+      start: zonedStartOfDay(startDate, timeZone).toISOString(),
+      end: zonedStartOfDay(nextYear, timeZone).toISOString(),
       label: "Год"
     };
   }
 
-  const dayStart = startOfDay(preset === "custom" ? selected : now);
+  const day = preset === "custom" ? selected : today;
+  const nextDay = addCalendarDays(day, 1);
   return {
     preset,
-    start: dayStart.toISOString(),
-    end: addDays(dayStart, 1).toISOString(),
+    start: zonedStartOfDay(day, timeZone).toISOString(),
+    end: zonedStartOfDay(nextDay, timeZone).toISOString(),
     label: preset === "custom" ? "Выбранная дата" : "Сегодня"
   };
 }
@@ -249,6 +291,10 @@ export function buildSalesReport(items: SaleItem[]): ReportSummary {
   const productKeyByName = new Map<string, string>();
 
   for (const item of items) {
+    if (item.deleted_at) {
+      continue;
+    }
+
     if (
       item.status === "processed" &&
       item.product_id &&
@@ -261,6 +307,10 @@ export function buildSalesReport(items: SaleItem[]): ReportSummary {
   }
 
   for (const item of items) {
+    if (item.deleted_at) {
+      continue;
+    }
+
     if (item.status !== "processed" || item.price === null || item.total === null || item.confidence < 0.75) {
       reviewItems.push(item);
       continue;

@@ -1,38 +1,36 @@
-# Documentation Map
+# Обзор документации
 
-Документация проекта организована как набор входных файлов и детальных разделов. Главная цель структуры: преподаватель или разработчик должен быстро понять проект без чтения всего кода.
+## Порядок чтения для куратора
 
-## Быстрый маршрут чтения
+1. [Описание проекта](../../README.md).
+2. [Глобальная спецификация](../specs/global.md).
+3. [Критерии приёмки продукта](../specs/product/acceptance-criteria.md).
+4. [Архитектура](../architecture/architecture.md).
+5. [Завершённые планы](../plans/completed/README.md).
+6. [Стратегия тестирования](../specs/technical/testing-strategy.md).
 
-1. [README](../../README.md) - запуск и обзор.
-2. [Global Spec](../specs/global.md) - полная цель и границы проекта.
-3. [Architecture](../architecture/README.md) - поток данных и сущности.
-4. [Workplan](../plans/README.md) - общий статус.
-5. [Mobile Workplan](../workplan.md) - итог адаптации Telegram Mini App.
-6. [Active Plan](../plans/active.md) - что осталось делать.
-7. [Rules](../rules/README.md) - правила изменений.
-8. [Acceptance Spec](../specs/acceptance.md) - как понять, что проект готов.
+## Порядок чтения для разработчика или агента
 
-## Разделы
+1. Корневое описание и этот обзор.
+2. Глобальная спецификация.
+3. [Технические спецификации](../specs/technical/README.md).
+4. [Правила](../rules/README.md).
+5. [Git и GitHub](../rules/git-and-github.md).
+6. Каждый [активный план](../plans/active/README.md).
+7. [Проектный навык](../../codex/skills/voice-sales-log/SKILL.md).
 
-| Раздел | Файлы |
-| --- | --- |
-| Specs | `docs/specs/README.md`, `docs/specs/*` |
-| Plans | `docs/workplan.md`, `docs/plans/README.md`, `docs/plans/*` |
-| Rules | `docs/rules/README.md`, `docs/rules/*` |
-| Features | `docs/features/README.md`, `docs/features/*` |
-| Stories | `docs/stories/README.md`, `docs/stories/*` |
-| Architecture | `docs/architecture/README.md` |
-| Roadmap | `docs/roadmap/README.md` |
-| Codex skill | `codex-skills/voice-sales-log/SKILL.md` |
-| Scripts | `scripts/set-telegram-webhook.ts`, `scripts/get-telegram-webhook-info.ts` |
+## Порядок чтения для эксплуатации
 
-## Документные правила
+Прочитать [безопасность и окружение](../specs/technical/security-env.md), [схему БД](../specs/technical/database-schema.md), [развёртывание на Vercel](../specs/technical/deployment-vercel.md) и [Telegram webhook](../specs/technical/telegram-webhook.md).
 
-- Главные файлы в корне `docs/` являются индексами и кратким резюме.
-- Детальные документы лежат в подпапках.
-- Если меняется логика продукта, обновляется `docs/specs/global.md` и нужный файл из `docs/specs/`.
-- Если меняется план, обновляется `docs/plans/README.md` и файлы в `docs/plans/`.
-- Если меняются правила, обновляется `docs/rules/README.md` и соответствующий файл в `docs/rules/`.
-- Если меняется workflow для ИИ-агента, обновляется `codex-skills/voice-sales-log/SKILL.md`.
-- Если меняется Telegram production runtime, обновляются README, architecture, bot spec и plans.
+## Ответственность документов
+
+- Спецификации описывают текущее поведение.
+- Планы описывают работу и способ её проверки.
+- Правила ограничивают все изменения.
+- Функции и истории описывают видимую пользователю ценность.
+- Архитектура объясняет связи компонентов и данных.
+- Дорожная карта задаёт порядок этапов.
+- Журнал изменений фиксирует изменения репозитория.
+
+Каждый затронутый документ обновляется в том же изменении, что и код. Нельзя оставлять дублирующие спецификации, планы или ссылки на удалённые файлы.

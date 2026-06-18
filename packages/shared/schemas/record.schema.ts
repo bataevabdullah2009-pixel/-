@@ -51,7 +51,10 @@ export const saleItemSchema = z.object({
   total: z.number().nonnegative().nullable(),
   confidence: z.number().min(0).max(1),
   status: saleItemStatusSchema,
-  created_at: z.string().datetime()
+  created_at: z.string().datetime(),
+  deleted_at: z.string().datetime().nullable().optional(),
+  deleted_reason: z.enum(["manual", "day_reset"]).nullable().optional(),
+  deleted_previous_status: saleItemStatusSchema.nullable().optional()
 });
 
 export const parsedSaleItemSchema = z.object({

@@ -50,6 +50,9 @@ export type SaleItem = {
   confidence: number;
   status: SaleItemStatus;
   created_at: string;
+  deleted_at?: string | null;
+  deleted_reason?: "manual" | "day_reset" | null;
+  deleted_previous_status?: SaleItemStatus | null;
 };
 
 export type ParsedSaleItem = {

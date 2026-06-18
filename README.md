@@ -1,200 +1,101 @@
 # voice-sales-log
 
-`voice-sales-log` — учебный TypeScript-проект для магазина: продавец отправляет голосовое сообщение в Telegram-бот, система распознаёт текст, очищает его, извлекает позиции продажи и показывает владельцу простой отчёт.
+Голосовой журнал продаж: продавец отправляет голосовое сообщение Telegram-боту, система распознаёт товар, количество и цену, сохраняет результат в Supabase и показывает владельцу отчёт в Telegram Mini App.
 
-Это не CRM, не склад, не касса и не учёт остатков. Проект решает одну задачу: быстро превратить голос продавца в понятную запись и таблицу итогов.
+Это учебный MVP для небольшого магазина. Проект не является CRM, складом, кассой, системой фискализации или онлайн-оплатой.
 
-## Проблема
+## Основной сценарий
 
-В небольшом магазине продавцы часто записывают продажи в тетрадь или в чат. Это неудобно, записи сложно искать, а владелец тратит время на ручной подсчёт. Проект автоматизирует фиксацию продаж без сложной кассовой системы.
+1. В рабочем окружении Telegram доставляет update в webhook на Vercel; локально бот использует polling.
+2. Бот скачивает и сохраняет аудио, затем вызывает Whisper-совместимый STT.
+3. LLM возвращает строгий JSON, а детерминированная проверка запрещает угадывать значения.
+4. `voice_records`, `sales`, `sale_items` и `audit_logs` сохраняются в Supabase.
+5. Владелец открывает `/daily-report`, выбирает период и видит количество и выручку.
+6. Любую позицию можно исправить, обратимо исключить или восстановить; «Сбросить день» обратимо исключает все позиции выбранного дня.
 
-## Как работает система
+## Технологии
 
-1. Продавец отправляет голосовое сообщение в Telegram-бот.
-2. В production Telegram отправляет update на Vercel route `/api/telegram/webhook`; локально `npm run bot:dev` использует polling.
-3. Общий обработчик `processTelegramUpdate(update)` запускает существующую bot-логику.
-4. Бот скачивает аудио и сохраняет его в Supabase Storage.
-5. Whisper-compatible STT API переводит голос в сырой текст.
-6. LLM очищает текст и возвращает строгий JSON со всеми позициями продажи.
-7. Детерминированная проверка принимает количество и цену только рядом с явными единицами и ценовыми маркерами.
-8. Если цена названа в голосе, система использует её.
-9. Если цена не названа, система ищет цену в таблице `products`.
-10. Если цена не найдена, позиция получает статус `needs_price`.
-11. Запись, полный parser JSON, продажа, позиции и этапы диагностики сохраняются в Supabase Postgres.
-12. Веб-панель показывает записи и отчёты за день, неделю, месяц или год.
+TypeScript, Next.js, React, Telegraf, Telegram Bot API, Supabase Postgres/Storage, Whisper-совместимый STT, OpenAI-совместимый LLM, Vercel, Zod и Vitest.
 
-## Стек
-
-- TypeScript
-- Telegram Bot API через Telegraf
-- Supabase Postgres
-- Supabase Storage
-- React / Next.js App Router
-- Whisper-compatible STT API
-- OpenRouter / Polza AI / другой OpenAI-compatible LLM для очистки текста и JSON-парсинга
-- Zod
-- Vitest
-
-## Структура папок
+## Структура репозитория
 
 ```text
-voice-sales-log/
-├── AGENTS.md
-├── README.md
-├── CHANGELOG.md
-├── .env.example
-├── package.json
-├── docs/
-├── apps/
-│   ├── bot/
-│   └── web/
-├── packages/
-│   └── shared/
-├── scripts/
-├── supabase/
-│   ├── migrations/
-│   └── seed.sql
-└── tests/
+apps/web        Next.js Web App, отчёты, серверные действия и Telegram webhook
+apps/bot        Telegram-обработчики, локальный polling и обработка голоса
+packages/shared Типы, Zod-схемы, парсер, даты и расчёт отчёта
+supabase        Миграции и демонстрационные данные
+scripts         Эксплуатационные скрипты webhook
+tests           Модульные и регрессионные тесты
+docs            Спецификации, планы, правила, истории, архитектура и дорожная карта
+codex/skills    Основной проектный навык для Codex
 ```
 
-## Документация
+## Карта документации
 
-Документация организована как профессиональная карта проекта:
-
-| Раздел | Файл |
+| Раздел | Расположение |
 | --- | --- |
-| Карта документации | `docs/overview/README.md` |
-| Главная спецификация | `docs/specs/global.md` |
-| Индекс спецификаций | `docs/specs/README.md` |
-| Детальные specs | `docs/specs/*` |
-| Рабочий план | `docs/plans/README.md` |
-| Активные планы | `docs/plans/active.md` |
-| Завершённые планы | `docs/plans/completed.md` |
-| Backlog | `docs/plans/backlog.md` |
-| Правила | `docs/rules/README.md`, `docs/rules/*` |
-| Фичи | `docs/features/README.md`, `docs/features/*` |
-| User stories | `docs/stories/README.md`, `docs/stories/*` |
-| Архитектура | `docs/architecture/README.md` |
-| Roadmap | `docs/roadmap/README.md` |
-| Codex skill | `codex-skills/voice-sales-log/SKILL.md` |
+| Обзор | [docs/overview/README.md](docs/overview/README.md) |
+| Глобальная спецификация | [docs/specs/global.md](docs/specs/global.md) |
+| Технические спецификации | [docs/specs/technical/README.md](docs/specs/technical/README.md) |
+| Продуктовые спецификации | [docs/specs/product/README.md](docs/specs/product/README.md) |
+| Спецификации данных | [docs/specs/data/README.md](docs/specs/data/README.md) |
+| Функции | [docs/features/README.md](docs/features/README.md) |
+| Активные планы | [docs/plans/active/](docs/plans/active/) |
+| Завершённые планы | [docs/plans/completed/](docs/plans/completed/) |
+| Будущие задачи | [docs/plans/backlog/](docs/plans/backlog/) |
+| Правила | [docs/rules/README.md](docs/rules/README.md) |
+| Git и GitHub | [docs/rules/git-and-github.md](docs/rules/git-and-github.md) |
+| Архитектура | [docs/architecture/architecture.md](docs/architecture/architecture.md) |
+| Дорожная карта | [docs/roadmap/roadmap.md](docs/roadmap/roadmap.md) |
+| Пользовательские истории | [docs/stories/README.md](docs/stories/README.md) |
+| Проектный навык | [codex/skills/voice-sales-log/SKILL.md](codex/skills/voice-sales-log/SKILL.md) |
 
-Рекомендуемый порядок чтения:
+Рекомендуемый порядок чтения: обзор → глобальная спецификация → продуктовые, технические и информационные спецификации → правила → активные планы.
 
-1. `README.md`
-2. `docs/specs/global.md`
-3. `docs/architecture/README.md`
-4. `docs/specs/README.md`
-5. `docs/plans/README.md`
-6. `docs/rules/README.md`
-7. `docs/features/README.md`
-8. `docs/stories/README.md`
-
-## Установка
+## Установка и запуск
 
 ```bash
 npm install
+npm run web:dev
+npm run bot:dev
 ```
 
-На Windows в PowerShell может быть заблокирован `npm.ps1`. В этом случае используйте `npm.cmd install`.
+В PowerShell с запрещёнными сценариями используйте `npm.cmd` и `npx.cmd`.
 
-## Env-переменные
+Скопируйте `.env.example` в `.env.local` и заполните значения только локально. Не коммитьте `.env.local`. Переменная `SUPABASE_SERVICE_ROLE_KEY` предназначена только для серверного кода.
 
-Скопируйте `.env.example` в `.env.local` и заполните значения:
-
-```env
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_WEBHOOK_SECRET=
-NEXT_PUBLIC_APP_URL=
-SUPABASE_URL=
-SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-SUPABASE_STORAGE_BUCKET=voice-records
-STT_API_KEY=
-STT_API_URL=
-STT_MODEL=whisper-large-v3-turbo
-LLM_API_KEY=
-LLM_API_URL=
-LLM_MODEL=
-DEFAULT_SHOP_NAME=Демо-магазин
-```
-
-`SUPABASE_SERVICE_ROLE_KEY` используется только серверным кодом бота, webhook route и серверными действиями веб-панели. Его нельзя передавать в браузер.
-
-`TELEGRAM_WEBHOOK_SECRET` передаётся в Telegram `setWebhook` как `secret_token` и проверяется в route по header `x-telegram-bot-api-secret-token`.
-
-## Запуск
+## Команды качества
 
 ```bash
-npm run dev
-npm run bot:dev
-npm run web:dev
-npm run telegram:set-webhook
-npm run telegram:webhook-info
 npm run lint
 npm run test
 npm run build
 ```
 
-Отдельные команды:
-
-- `npm run dev` — запускает бота и веб-панель одновременно.
-- `npm run bot:dev` — запускает Telegram-бота локально через polling.
-- `npm run web:dev` — запускает веб-панель на `http://localhost:3000`.
-- `npm run telegram:set-webhook` — регистрирует Telegram webhook для Vercel route.
-- `npm run telegram:webhook-info` — показывает текущий Telegram webhook.
-- `npm run lint` — проверяет код ESLint.
-- `npm run test` — запускает Vitest.
-- `npm run build` — проверяет сборку workspaces.
-
-## Deploy webhook bot on Vercel
-
-1. Задеплойте `apps/web` на Vercel.
-2. Добавьте env в Vercel:
-   `TELEGRAM_BOT_TOKEN`,
-   `TELEGRAM_WEBHOOK_SECRET`,
-   `NEXT_PUBLIC_APP_URL`,
-   `SUPABASE_URL`,
-   `SUPABASE_ANON_KEY`,
-   `SUPABASE_SERVICE_ROLE_KEY`,
-   `SUPABASE_STORAGE_BUCKET`,
-   `STT_API_KEY`,
-   `STT_API_URL`,
-   `STT_MODEL`,
-   `LLM_API_KEY`,
-   `LLM_API_URL`,
-   `LLM_MODEL`,
-   `DEFAULT_SHOP_NAME`.
-3. Сделайте Redeploy после добавления env.
-4. Локально заполните `.env.local`, включая `NEXT_PUBLIC_APP_URL=https://your-vercel-domain`.
-5. Выполните `npm run telegram:set-webhook`.
-6. Проверьте `npm run telegram:webhook-info`: `url` должен быть `${NEXT_PUBLIC_APP_URL}/api/telegram/webhook`, `last_error_message` должен быть пустым.
-7. Напишите боту `/start`.
-8. Отправьте голосовое.
-9. Проверьте Supabase и веб-панель.
-
-На Vercel polling не запускается. Production-путь: Telegram voice message -> Vercel API route -> `processTelegramUpdate(update)` -> существующая обработка голосового -> Supabase -> веб-панель.
-
 ## Supabase
 
-1. Создайте проект Supabase.
-2. Примените миграцию `supabase/migrations/001_init.sql`.
-3. При необходимости выполните `supabase/seed.sql` для демо-данных.
-4. Создайте или проверьте bucket `voice-records`.
-5. Заполните `.env.local`.
+Перед развёртыванием примените миграции по порядку. Последняя миграция добавляет обратимое удаление позиции, необходимое для изменения, исключения, восстановления и сброса дня. `seed.sql` необязателен и предназначен только для демонстрационных данных.
 
-## Демо-сценарий
+## Vercel и Telegram webhook
 
-1. Запустить проект.
-2. Отправить голосовое в Telegram-бот: `хлеб 3 по 40, молоко 2 по 90`.
-3. Открыть веб-панель.
-4. Увидеть текстовую запись на странице `/records`.
-5. Открыть `/daily-report` и увидеть таблицу товаров, количества и выручки.
-6. Отфильтровать записи за день или месяц.
-7. Проверить блок “Нужно проверить”, если в голосовом не была названа цена.
+1. Примените миграции Supabase.
+2. Добавьте в Vercel все переменные из `.env.example` и выполните повторное развёртывание.
+3. Укажите в `NEXT_PUBLIC_APP_URL` HTTPS-адрес развёртывания.
+4. Локально выполните `npm run telegram:set-webhook`.
+5. Выполните `npm run telegram:webhook-info` и проверьте URL и пустой `last_error_message`.
+6. В BotFather задайте Menu Button с тем же адресом Web App.
 
-## Что важно
+Polling (`npm run bot:dev`) используется только локально и не должен работать одновременно с производственным webhook.
 
-- ИИ не должен выдумывать цены, товары или аналитику.
-- Если цена неизвестна, позиция не попадает в итоговую выручку.
-- Позиции без цены отображаются в блоке “Нужно проверить”.
-- Проект остаётся простым голосовым журналом продаж.
+## Демонстрационный сценарий
+
+1. Отправьте: «Сникерс 5 штук по 60 рублей».
+2. Откройте Telegram Mini App → «Отчёт» → «Сегодня».
+3. Ожидайте 5 единиц и 300 ₽.
+4. Измените цену на 70 и сохраните: ожидайте 350 ₽.
+5. Исключите позицию: ожидайте 0 ₽; восстановите: ожидайте 350 ₽.
+6. Сбросьте выбранный день и убедитесь, что другая дата не изменилась.
+
+## Ограничения
+
+Текущий MVP использует демонстрационные политики анонимного чтения и не имеет производственной авторизации владельца. До серверной проверки Telegram init data, изоляции магазинов, идемпотентности update и транзакционной записи используйте только тестовые данные. Подробности находятся в [архитектуре](docs/architecture/architecture.md) и [дорожной карте](docs/roadmap/roadmap.md).

@@ -1,10 +1,22 @@
+import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { DateFilter } from "@/components/DateFilter";
 import { EmptyState } from "@/components/EmptyState";
 import { RefreshButton } from "@/components/RefreshButton";
 import { getDailyReport } from "@/features/records/records.api";
 import type { SearchParams } from "@/features/records/records.types";
-import { formatCurrency, formatQuantity, getPreset, getStatusLabel } from "@/features/records/records.utils";
-import { updateSaleItemAction } from "./actions";
+import {
+  formatCurrency,
+  formatQuantity,
+  getPreset,
+  getStatusLabel,
+  getStringParam
+} from "@/features/records/records.utils";
+import {
+  deleteSaleItemAction,
+  resetDayRevenueAction,
+  restoreSaleItemAction,
+  updateSaleItemAction
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -15,17 +27,30 @@ type DailyReportPageProps = {
 export default async function DailyReportPage({ searchParams }: DailyReportPageProps) {
   const params = await searchParams;
   const period = getPreset(params.period);
-  const date = Array.isArray(params.date) ? params.date[0] : params.date;
-  const { range, summary } = await getDailyReport({ period, date });
+  const date = getStringParam(params.date);
+  const mutation = getStringParam(params.mutation);
+  const message = getStringParam(params.message);
+  const { range, summary, items, deletedItems } = await getDailyReport({ period, date });
+  const returnQuery = new URLSearchParams({ period });
+  if (date) returnQuery.set("date", date);
+  const returnTo = `/daily-report?${returnQuery.toString()}#items`;
+  const isSingleDay = period === "today" || period === "yesterday" || period === "custom";
 
   return (
     <section className="pageStack">
       <div className="pageTitle">
         <div>
-          <p className="eyebrow">Продажи</p>
-          <h2>Отчёт по продажам</h2>
+          <p className="eyebrow">Сводка магазина</p>
+          <h2>Продажи и выручка</h2>
+          <p className="pageLead">Проверьте распознанные товары, исправьте цену или исключите ошибочную позицию.</p>
         </div>
       </div>
+
+      {message ? (
+        <div className={`actionNotice actionNotice-${mutation === "success" ? "success" : "error"}`} role="status">
+          {message}
+        </div>
+      ) : null}
 
       <aside className="summaryBar" aria-label="Итоги за выбранный период">
         <div className="summaryPeriod">
@@ -42,7 +67,22 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
             <strong>{formatQuantity(summary.totalQuantity)}</strong>
           </div>
         </div>
-        <RefreshButton />
+        <div className="summaryActions">
+          <RefreshButton />
+          {isSingleDay && items.length ? (
+            <form action={resetDayRevenueAction}>
+              <input type="hidden" name="period" value={period} />
+              <input type="hidden" name="date" value={date ?? ""} />
+              <input type="hidden" name="returnTo" value={returnTo} />
+              <ConfirmSubmitButton
+                className="dangerGhostButton"
+                confirmMessage="Сбросить выручку за этот день? Все товары дня будут исключены из отчёта, но останутся доступными для восстановления."
+              >
+                Сбросить день
+              </ConfirmSubmitButton>
+            </form>
+          ) : null}
+        </div>
       </aside>
 
       <DateFilter
@@ -85,59 +125,100 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
           <div className="reportCards">
             {summary.rows.map((row) => (
               <article className="reportCard" key={row.key}>
-                <h3>{row.product_name}</h3>
-                <div className="reportCardValues">
-                  <span>
-                    {formatQuantity(row.quantity)} {row.unit}
-                  </span>
-                  <strong>{formatCurrency(row.revenue)}</strong>
+                <div className="reportCardIcon" aria-hidden="true">{row.product_name.slice(0, 1)}</div>
+                <div>
+                  <h3>{row.product_name}</h3>
+                  <span>{formatQuantity(row.quantity)} {row.unit}</span>
                 </div>
+                <strong>{formatCurrency(row.revenue)}</strong>
               </article>
             ))}
           </div>
         </>
       ) : (
-        <EmptyState title="Продаж за период нет" description="Когда продавец отправит голосовое, итог появится здесь." />
+        <EmptyState title="Нет активных продаж" description="Отправьте голосовое боту или восстановите исключённые позиции ниже." />
       )}
 
-      <section className={`reviewBlock ${summary.reviewItems.length ? "reviewBlockAttention" : "reviewBlockClear"}`} id="review">
-        <div className="reviewStatus">
-          {summary.reviewItems.length
-            ? `⚠️ Нужно проверить: ${summary.reviewItems.length}`
-            : "✅ Нет позиций для проверки"}
+      <section className="itemManager" id="items">
+        <div className="sectionHeading">
+          <div>
+            <p className="eyebrow">Контроль данных</p>
+            <h3>Записанные товары</h3>
+          </div>
+          <span className={summary.reviewItems.length ? "attentionPill" : "clearPill"}>
+            {summary.reviewItems.length ? `Проверить: ${summary.reviewItems.length}` : "Всё проверено"}
+          </span>
         </div>
 
-        {summary.reviewItems.length ? (
-          <div className="reviewList">
-            {summary.reviewItems.map((item) => (
-              <form key={item.id} action={updateSaleItemAction} className="reviewItem" id={`review-${item.id}`}>
-                <input type="hidden" name="itemId" value={item.id} />
-                <div>
-                  <strong>{item.product_name || "Без названия"}</strong>
-                  <p>
-                    {getStatusLabel(item.status)} · уверенность {Math.round(item.confidence * 100)}%
-                  </p>
+        {items.length ? (
+          <div className="itemEditorList">
+            {items.map((item) => (
+              <article className={`itemEditorCard ${item.status !== "processed" ? "itemEditorCardAttention" : ""}`} key={item.id}>
+                <div className="itemEditorHeader">
+                  <div>
+                    <strong>{item.product_name || "Без названия"}</strong>
+                    <span>{item.total === null ? "Не входит в выручку" : formatCurrency(item.total)}</span>
+                  </div>
+                  <span className={`status status-${item.status}`}>{getStatusLabel(item.status)}</span>
                 </div>
-                <label>
-                  Товар
-                  <input name="productName" type="text" defaultValue={item.product_name} required />
-                </label>
-                <label>
-                  Кол-во
-                  <input name="quantity" type="number" min="0.001" step="0.001" defaultValue={item.quantity} required />
-                </label>
-                <label>
-                  Цена
-                  <input name="price" type="number" min="0" step="0.01" defaultValue={item.price ?? ""} required />
-                </label>
-                <button type="submit">Сохранить</button>
-              </form>
+
+                <form action={updateSaleItemAction} className="itemEditForm">
+                  <input type="hidden" name="itemId" value={item.id} />
+                  <input type="hidden" name="returnTo" value={returnTo} />
+                  <label className="productField">
+                    <span>Товар</span>
+                    <input name="productName" type="text" defaultValue={item.product_name} required />
+                  </label>
+                  <label>
+                    <span>Количество</span>
+                    <input name="quantity" type="number" min="0.001" step="0.001" defaultValue={item.quantity} required />
+                  </label>
+                  <label>
+                    <span>Цена, ₽</span>
+                    <input name="price" type="number" min="0" step="0.01" defaultValue={item.price ?? ""} required />
+                  </label>
+                  <button type="submit" className="saveButton">Сохранить</button>
+                </form>
+
+                <form action={deleteSaleItemAction} className="deleteItemForm">
+                  <input type="hidden" name="itemId" value={item.id} />
+                  <input type="hidden" name="returnTo" value={returnTo} />
+                  <ConfirmSubmitButton
+                    className="textDangerButton"
+                    confirmMessage={`Исключить «${item.product_name}» из количества и выручки? Позицию можно будет восстановить.`}
+                  >
+                    Исключить из отчёта
+                  </ConfirmSubmitButton>
+                </form>
+              </article>
             ))}
           </div>
         ) : (
-          <p className="mutedText">Все товары, количество и цены распознаны.</p>
+          <p className="mutedText">Активных товаров за выбранный период нет.</p>
         )}
       </section>
+
+      {deletedItems.length ? (
+        <details className="deletedItemsPanel">
+          <summary>Исключённые товары <span>{deletedItems.length}</span></summary>
+          <p>Они хранятся в базе, не входят в выручку и могут быть восстановлены.</p>
+          <div className="deletedItemsList">
+            {deletedItems.map((item) => (
+              <div className="deletedItem" key={item.id}>
+                <div>
+                  <strong>{item.product_name}</strong>
+                  <span>{item.deleted_reason === "day_reset" ? "Сброс дня" : "Исключено вручную"}</span>
+                </div>
+                <form action={restoreSaleItemAction}>
+                  <input type="hidden" name="itemId" value={item.id} />
+                  <input type="hidden" name="returnTo" value={returnTo} />
+                  <button type="submit" className="restoreButton">Восстановить</button>
+                </form>
+              </div>
+            ))}
+          </div>
+        </details>
+      ) : null}
     </section>
   );
 }

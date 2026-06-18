@@ -1,27 +1,19 @@
-# Scope Rules
+# Правила границ проекта
 
-## Allowed
+## Разрешено
 
-- Voice sales logging.
-- Text transcript.
-- Sale item extraction.
-- Simple product default price.
-- Simple reports.
-- Manual correction of disputed sale items.
+- фиксация продажи голосом;
+- расшифровка текста и извлечение позиций;
+- простая цена товара по умолчанию;
+- простые отчёты;
+- ручное исправление сомнительных позиций.
 
-## Not allowed without separate decision
+## Требует отдельного решения и изменения границ
 
-- CRM.
-- Warehouse.
-- Cash register.
-- Stock balances.
-- Fiscal receipts.
-- Online payment.
-- Barcode workflows.
-- Customer database.
-- Full product catalog.
-- Complex analytics.
+- CRM и клиентская база;
+- склад, остатки и движения товара;
+- касса, фискальные чеки и онлайн-оплата;
+- штрихкоды и полноценный товарный каталог;
+- сложная аналитика и прогнозы.
 
-## Rule
-
-If a feature does not directly support `voice -> text -> sale -> report`, it does not belong in MVP.
+Если функция напрямую не поддерживает сценарий `голос → текст → продажа → отчёт`, она не входит в MVP.

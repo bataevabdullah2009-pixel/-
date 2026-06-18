@@ -1,46 +1,21 @@
-# Out Of Scope
+# За границами проекта
 
-This document exists to protect the project from becoming too large.
+Этот документ защищает проект от неконтролируемого расширения.
 
-## Not a CRM
+## Не CRM
 
-Do not add:
+Нельзя добавлять клиентов, лиды, сделки, повторные контакты, историю клиента и программу лояльности.
 
-- customers;
-- leads;
-- deals;
-- follow-ups;
-- customer history;
-- loyalty logic.
+## Не склад
 
-## Not a warehouse
+Нельзя добавлять остатки, движения товара, списания, поступления, поставщиков и складские отчёты.
 
-Do not add:
+## Не касса
 
-- stock balances;
-- stock movements;
-- write-offs;
-- incoming shipments;
-- suppliers;
-- warehouse reports.
+Нельзя добавлять фискальные чеки, смены, платежи, возвраты, налоговую отчётность и кассовые сессии.
 
-## Not a cash register
+## Не аналитическая платформа
 
-Do not add:
+Нельзя добавлять выдуманные категории, прогнозы, панели с множеством графиков, рейтинги продавцов и сложную BI-аналитику.
 
-- fiscal receipts;
-- shifts;
-- payments;
-- refunds;
-- tax reporting;
-- cashier sessions.
-
-## Not analytics platform
-
-Do not add:
-
-- category analytics;
-- predictions;
-- dashboards with many charts;
-- seller ranking;
-- advanced BI.
+Исключение возможно только после явного изменения границ продукта, отдельной спецификации и активного плана.

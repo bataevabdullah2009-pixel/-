@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { formatDate, formatTime } from "@/lib/date";
+import { dateInputValue, formatDate, formatTime } from "@/lib/date";
 import type { RecordListItem } from "@/features/records/records.types";
 import { formatCurrency, getStatusLabel } from "@/features/records/records.utils";
 
@@ -8,8 +8,7 @@ type RecordCardProps = {
 };
 
 export function RecordCard({ record }: RecordCardProps) {
-  const needsCorrection = record.status === "needs_review" || record.status === "needs_price";
-  const recordDate = record.created_at.slice(0, 10);
+  const recordDate = dateInputValue(record.created_at);
 
   return (
     <article className="recordCard">
@@ -31,11 +30,9 @@ export function RecordCard({ record }: RecordCardProps) {
               Прослушать аудио
             </a>
           ) : null}
-          {needsCorrection ? (
-            <Link href={`/daily-report?period=custom&date=${recordDate}#review`} className="correctionButton">
-              Исправить
-            </Link>
-          ) : null}
+          <Link href={`/daily-report?period=custom&date=${recordDate}#items`} className="correctionButton">
+            Товары и цены
+          </Link>
         </div>
       </div>
     </article>

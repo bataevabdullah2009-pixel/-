@@ -1,64 +1,33 @@
-# Report Rules
+# Правила отчётов
 
-## Main table
+## Основной отчёт
 
-The main report table contains only:
+Основной отчёт содержит только товар, количество и выручку. В нём не показываются продавец, точное время, технический статус, идентификатор, исходная расшифровка и текст ошибки.
 
-- product;
-- quantity;
-- revenue.
+## Группировка
 
-It must not show seller name, sale time, technical statuses or ids.
+1. По `product_id`, если он существует.
+2. По нормализованному имени, если `product_id` отсутствует.
 
-## Grouping
+Обработанная позиция без `product_id` с тем же нормализованным именем объединяется с существующей группой товара. Формы `хлеб`, `Хлеб`, `хлеба` приводятся к `Хлеб`; `молоко`, `молока` — к `Молоко`. Штучные единицы приводятся к `шт`, отсутствующая единица считается `шт`.
 
-Report rows must be grouped:
+## Выручка
 
-1. By `product_id`, when it exists.
-2. By normalized product name, when `product_id` is missing.
-
-If a processed item without `product_id` has the same normalized name as an existing product group,
-it must be merged into that product group.
-
-Product normalization must collapse casing and simple forms:
-
-- `хлеб`, `Хлеб`, `хлеба` -> `Хлеб`;
-- `молоко`, `молока` -> `Молоко`.
-
-Piece units must be displayed as `шт`:
-
-- `штука`;
-- `штуки`;
-- `штук`;
-- `шт.`.
-
-Missing unit defaults to `шт`.
-
-## Revenue
-
-Revenue includes only sale items where:
+В выручку входят только активные позиции, у которых:
 
 - `status = processed`;
-- `price` is not null;
-- `total` is not null.
+- цена и итог не равны `null`;
+- `confidence >= 0.75`;
+- `deleted_at is null`.
 
-## Review block
+## Блок проверки
 
-The review block contains:
+Блок содержит активные `needs_price`, `needs_review`, `failed` и позиции с низкой уверенностью. Ручная правка позволяет менять `product_name`, `quantity` и `price`; допустимое исправление получает `processed`, а итог пересчитывается.
 
-- `needs_price`;
-- `needs_review`;
-- `failed`;
-- low confidence items.
+## Мутации
 
-Manual correction must allow editing `product_name`, `quantity` and `price`.
-After save, the item total is recalculated and a valid corrected item becomes `processed`.
+- мягко удалённая позиция исключается из количества, блока проверки и выручки;
+- сброс разрешён только для одного дня и не меняет другие диапазоны;
+- после правки, исключения, восстановления или сброса `sales.total_amount` пересчитывается из активных обработанных позиций.
 
-## Forbidden in main report
-
-- seller name;
-- exact sale time;
-- raw transcript;
-- technical statuses;
-- ids;
-- error messages.
+Общее количество разных единиц сейчас суммируется одним числом. Это известное ограничение, которое должно быть устранено до реальной эксплуатации.

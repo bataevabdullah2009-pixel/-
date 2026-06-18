@@ -1,34 +1,30 @@
-# AI Rules
+# Правила ИИ
 
-## Allowed AI actions
+## Разрешённые действия
 
-- Speech to text.
-- Punctuation cleanup.
-- Readability cleanup.
-- Extract products mentioned by the seller.
-- Return strict JSON.
+- преобразовывать речь в текст;
+- исправлять пунктуацию и регистр без изменения смысла;
+- извлекать названные продавцом товары;
+- возвращать строгий JSON.
 
-## Forbidden AI actions
+## Запрещённые действия
 
-- Invent product.
-- Invent price.
-- Invent category.
-- Invent analytics.
-- Invent revenue.
-- Treat unknown price as zero revenue in report.
+- придумывать товар, цену, количество, категорию или аналитику;
+- придумывать выручку;
+- считать неизвестную цену нулевой ценой продажи;
+- терять или менять порядок названных позиций.
 
-## Confidence
+## Уверенность и статусы
 
-- `confidence >= 0.75` can be processed if price is known.
-- `confidence < 0.75` must be `needs_review`.
-- Empty transcript must be `needs_review`.
-- Empty `product_name` must be `needs_review`.
-- `quantity = null` must become `quantity = 1` and `needs_review`.
-- Missing price must be `needs_price`.
+- `confidence >= 0.75` допускает `processed`, если известны обязательные данные и цена;
+- `confidence < 0.75` требует `needs_review`;
+- пустая расшифровка или пустое имя требуют `needs_review`;
+- отсутствующее количество сохраняется как `1`, но требует `needs_review`;
+- отсутствующая после поиска товара цена требует `needs_price`.
 
-## Normalization
+## Нормализация
 
-- Product lookup uses a trimmed lower-case normalized key.
-- Simple spoken forms are normalized before report grouping: `хлеба` -> `Хлеб`, `молока` -> `Молоко`.
-- Piece units are normalized to `шт`: `штука`, `штуки`, `штук`, `шт.`.
-- Missing unit defaults to `шт`.
+- для поиска используется обрезанный ключ в нижнем регистре;
+- простые речевые формы нормализуются перед группировкой: `хлеба` → `Хлеб`, `молока` → `Молоко`;
+- `штука`, `штуки`, `штук` и `шт.` приводятся к `шт`;
+- отсутствующая единица по умолчанию равна `шт`.

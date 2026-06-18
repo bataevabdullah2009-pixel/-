@@ -1,58 +1,39 @@
-# Owner Stories
+# Истории владельца
 
-## O-01 Daily report
+## O-01 Отчёт за период
 
-As an owner, I want to see a daily sales table so that I do not calculate voice notes manually.
+Как владелец, я хочу видеть таблицу продаж, чтобы не считать голосовые записи вручную.
 
-Acceptance:
+Критерии: `/daily-report` показывает товар, количество и выручку, одинаковые товары сгруппированы, итог виден.
 
-- `/daily-report` shows product, quantity, revenue.
-- Same products are grouped.
-- Total row is visible.
+## O-02 Количество и выручка
 
-## O-02 Quantity sold
+Как владелец, я хочу видеть количество по товару и общую выручку выбранного периода.
 
-As an owner, I want to see quantity sold per product.
+Критерии: учитываются только активные обработанные позиции с известной ценой, единица показана в строке.
 
-Acceptance:
+## O-03 Проверка сомнительных позиций
 
-- Report sums quantity by product.
-- Unit is shown.
+Как владелец, я хочу видеть позиции без цены или с низкой уверенностью и исправлять их.
 
-## O-03 Daily revenue
+Критерии: `needs_price` и `needs_review` находятся в блоке проверки; можно изменить имя, количество и цену; допустимое исправление получает `processed`.
 
-As an owner, I want to see total revenue for the selected period.
+## O-04 Поиск и фильтр продавца
 
-Acceptance:
+Как владелец, я хочу искать записи по тексту и фильтровать их по продавцу.
 
-- Revenue includes only processed items with known price.
-- Unknown prices are excluded.
+Критерии: `/records` фильтрует исходный или очищенный текст и выбранного продавца.
 
-## O-04 Review missing prices
+## O-05 Правка позиции
 
-As an owner, I want to see items without price or with low confidence so that I can fix them manually.
+Как владелец, я хочу изменить название, количество или цену активной позиции и сразу увидеть пересчитанную выручку.
 
-Acceptance:
+## O-06 Исключение и восстановление
 
-- `needs_price` items appear in “Нужно проверить”.
-- `needs_review` items appear in “Нужно проверить”.
-- Owner can edit product name, quantity and price.
-- Corrected item becomes `processed` and appears in the report.
+Как владелец, я хочу исключить ошибочную позицию без уничтожения исходной записи и восстановить её при ошибке.
 
-## O-05 Search records
+## O-07 Сброс дня
 
-As an owner, I want to search records by text.
+Как владелец, я хочу сбросить только выбранный день, не меняя историю других дат.
 
-Acceptance:
-
-- `/records` has search field.
-- Search filters raw or cleaned text.
-
-## O-06 Filter by seller
-
-As an owner, I want to filter records by seller.
-
-Acceptance:
-
-- `/records` has seller filter.
-- Records list changes by selected seller.
+Критерии O-05–O-07: мутация пересчитывает продажу, сохраняет аудит и не переписывает расшифровку или JSON парсера.

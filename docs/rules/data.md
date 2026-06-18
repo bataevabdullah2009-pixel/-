@@ -1,33 +1,30 @@
-# Data Rules
+# Правила данных
 
-## Required fields
+## Обязательные поля и вычисления
 
-- Every table row must have `created_at`.
-- Voice records must have `seller_id` when seller exists.
-- Sales must keep `raw_text` and `cleaned_text`.
-- Sale items must keep `product_name`, `quantity`, `unit`, `price`, `total`, `status`.
-- Sale items should keep `product_id` when a matching product is found.
-- Sale item `unit` must be normalized before reporting and correction saves.
-- Corrected sale items must recalculate `total` from `quantity * price`.
+- каждая бизнес-строка имеет `created_at`;
+- голосовая запись связана с продавцом, если продавец определён;
+- продажа хранит `raw_text` и `cleaned_text`;
+- позиция хранит имя, количество, единицу, цену, итог и статус;
+- при совпадении товара сохраняется `product_id`;
+- единица нормализуется до отчёта и при ручной правке;
+- итог всегда пересчитывается как `quantity × price`.
 
-## Deletion
+## Исключение и восстановление
 
-- Do not physically delete business records.
-- Use statuses for failed or disputed data.
+- голосовые записи, продажи и аудио нельзя физически удалять из пользовательского интерфейса;
+- исключение позиции и сброс дня используют только поля мягкого удаления `sale_items`;
+- восстановление возвращает `deleted_previous_status` и пересчитывает родительскую продажу;
+- исходные расшифровка и JSON парсера не переписываются.
 
-## Audit
+## Аудит
 
-Log:
+Фиксируются ошибки обработки и сохранения, ответ парсера, создание позиций, ручная правка, исключение, восстановление и сброс дня. Каждая мутация владельца обязана создать событие аудита.
 
-- processing failures;
-- parser failures;
-- save failures;
-- manual correction events, when implemented fully.
+## Правила статусов
 
-## Status rules
-
-- `confidence < 0.75` -> `needs_review`.
-- Empty `product_name` -> `needs_review`.
-- Missing or invalid `quantity` -> save `quantity = 1` and use `needs_review`.
-- Missing price after default product lookup -> `needs_price`.
-- Valid manual correction with product, quantity and price -> `processed`.
+- `confidence < 0.75` → `needs_review`;
+- пустой `product_name` → `needs_review`;
+- отсутствующее или недопустимое `quantity` → `quantity = 1` и `needs_review`;
+- отсутствующая после поиска товара цена → `needs_price`;
+- допустимая ручная корректировка → `processed`.

@@ -172,4 +172,43 @@ describe("sales report", () => {
     expect(calculateItemTotal(7, 90)).toBe(630);
     expect(calculateItemTotal(3, null)).toBeNull();
   });
+
+  it("excludes soft-deleted items from quantity and revenue", () => {
+    const items: SaleItem[] = [
+      {
+        id: "active",
+        sale_id: "sale-1",
+        product_name: "Хлеб",
+        quantity: 2,
+        unit: "шт",
+        price: 40,
+        total: 80,
+        confidence: 1,
+        status: "processed",
+        created_at: "2026-06-18T08:00:00.000Z"
+      },
+      {
+        id: "deleted",
+        sale_id: "sale-1",
+        product_name: "Молоко",
+        quantity: 3,
+        unit: "шт",
+        price: 90,
+        total: 270,
+        confidence: 1,
+        status: "processed",
+        created_at: "2026-06-18T09:00:00.000Z",
+        deleted_at: "2026-06-18T10:00:00.000Z",
+        deleted_reason: "manual",
+        deleted_previous_status: "processed"
+      }
+    ];
+
+    const report = buildSalesReport(items);
+
+    expect(report.rows).toHaveLength(1);
+    expect(report.totalQuantity).toBe(2);
+    expect(report.totalRevenue).toBe(80);
+    expect(report.reviewItems).toHaveLength(0);
+  });
 });

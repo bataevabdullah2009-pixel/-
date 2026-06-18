@@ -1,74 +1,52 @@
-# Implemented Features
+# Реализованные функции
 
-## Telegram bot
+## Telegram-бот
 
-- `/start` command.
-- Text message fallback.
-- Voice message handler.
-- Shared `processTelegramUpdate(update)`.
-- Local polling through `npm run bot:dev`.
-- Vercel webhook route `/api/telegram/webhook`.
-- Telegram webhook secret header validation.
-- Telegram audio download.
-- Seller registration by Telegram ID.
-- Confirmation message after save.
-- Failure message after processing error.
+- Команда `/start` и ответ на текстовое сообщение.
+- Обработчик голосовых сообщений.
+- Общий `processTelegramUpdate(update)` для polling и webhook.
+- Локальный запуск через `npm run bot:dev`.
+- Vercel route `/api/telegram/webhook` с проверкой секретного заголовка.
+- Скачивание Telegram-аудио и регистрация продавца по Telegram ID.
+- Подтверждение сохранения и безопасное сообщение об ошибке.
 
-## AI pipeline
+## Обработка ИИ
 
-- STT service for Whisper-compatible API.
-- Cleanup text service.
-- Sale parser service.
-- Strict JSON validation through Zod.
-- `needs_review` for empty or uncertain transcript.
+- STT-сервис для Whisper-совместимого API.
+- Очистка текста и структурирование продажи.
+- Строгая проверка JSON через Zod и исходный текст.
+- Статус `needs_review` для пустой или сомнительной расшифровки.
 
-## Storage and database
+## Хранение и БД
 
-- Supabase Storage upload.
-- `shops` table.
-- `sellers` table.
-- `products` table.
-- `voice_records` table.
-- `sales` table.
-- `sale_items` table.
-- `audit_logs` table.
-- RLS policies.
-- Seed data.
+- Загрузка в Supabase Storage.
+- Таблицы `shops`, `sellers`, `products`, `voice_records`, `sales`, `sale_items`, `audit_logs`.
+- RLS, демонстрационные политики и начальные данные.
+- Исходный JSON парсера и события обработки в аудите.
+- Мягкое удаление позиции с возможностью восстановления.
 
-## Web dashboard
+## Веб-панель
 
-- `/daily-report`.
-- `/records`.
-- `/sellers`.
-- Date filters.
-- Seller filter.
-- Text search.
-- Record cards.
-- Empty state.
-- Review block.
-- Manual item correction form for product name, quantity and price.
-- Responsive mobile report cards without horizontal scrolling.
-- Sticky report summary and manual Supabase refresh action.
-- Mobile bottom navigation for reports, records and sellers.
-- Route loading skeletons and mobile-friendly empty states.
+- Страницы `/daily-report`, `/records` и `/sellers`.
+- Фильтры даты и продавца, поиск по тексту, карточки и пустые состояния.
+- Правка названия, количества и цены любой активной позиции.
+- Исключение, восстановление и обратимый сброс одного дня с аудитом.
+- Мобильные карточки без горизонтальной прокрутки, закреплённая сводка и нижняя навигация.
+- Состояния загрузки и понятная обратная связь мутаций.
 
-## Reports
+## Отчёты
 
-- Grouping by `product_id` or normalized product name.
-- Product name normalization for common spoken forms.
-- Unit normalization to `шт`.
-- Quantity total.
-- Revenue total.
-- Excluding unknown prices from revenue.
-- Review list for disputed items.
+- Группировка по `product_id` или нормализованному имени.
+- Нормализация распространённых форм названия и единиц.
+- Расчёт количества и выручки.
+- Исключение неизвестных цен, сомнительных и мягко удалённых позиций.
 
-## Quality
+## Качество
 
-- npm workspaces.
-- TypeScript strict mode.
-- ESLint.
-- Vitest.
-- Shared types.
-- Shared Zod schemas.
-- Shared date/report utilities.
-- Telegram webhook setup and info scripts.
+- npm workspaces, строгий TypeScript, ESLint и Vitest.
+- Общие типы, Zod-схемы и утилиты.
+- Скрипты установки и диагностики Telegram webhook.
+
+Интеграционные тесты Supabase, CI и производственная авторизация пока не реализованы; они находятся в дорожной карте.
+
+Встроенные демонстрационные данные при отсутствующей конфигурации и пустые результаты при ошибке чтения являются текущим техническим поведением, но не считаются завершённой обработкой ошибок.

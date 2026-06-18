@@ -1,29 +1,32 @@
-# Planned Features
+# Планируемые функции
 
-Planned features are allowed only after MVP acceptance.
+Планируемые функции разрешено реализовывать только после приёмки MVP и создания активного плана.
 
-## Recommended next
+## Обязательное развитие
 
-| Feature | Why |
+| Функция | Причина |
 | --- | --- |
-| Excel export | Owner can send daily report outside the app. |
-| Better manual correction UI | Faster correction of missing prices. |
-| Roles owner/seller | Safer access control. |
-| PWA mode | Easier mobile access. |
-| Integration tests | More confidence in bot and Supabase flow. |
+| Авторизация владельца и изоляция магазина | Безопасная работа с реальными данными. |
+| Идемпотентность Telegram update | Защита от повторных продаж при повторной доставке. |
+| Транзакционные операции БД | Защита от частично сохранённых продаж и мутаций. |
+| Интеграционные и браузерные тесты | Проверка Supabase, webhook и полного пользовательского сценария. |
+| CI и проверка миграций | Автоматическая защита основной ветки. |
 
-## Possible later
+## Возможности после стабилизации
 
-| Feature | Condition |
+| Функция | Условие |
 | --- | --- |
-| Product default price editor | Must stay simple, no stock logic. |
-| Audio playback inside dashboard | Must use signed URLs. |
-| Seller activity count | Count records only, no CRM scoring. |
+| Экспорт в Excel | Экспортирует текущий отчёт без служебных данных. |
+| Расширенный интерфейс исправления | Не скрывает исходную расшифровку и аудит. |
+| PWA-режим | Не вводит небезопасные автономные мутации. |
+| Редактор цен по умолчанию | Остаётся простым, без остатков и складской логики. |
+| Воспроизведение аудио | Использует только короткоживущие подписанные ссылки. |
+| Счётчик активности продавца | Считает записи без CRM-оценок и рейтингов. |
 
-## Not planned for MVP
+## Не планируется в MVP
 
-- Inventory.
-- Payments.
-- Fiscal receipts.
-- Customer management.
-- Product stock movement.
+- складские остатки и движения;
+- платежи и возвраты;
+- фискальные чеки;
+- управление клиентами;
+- сложная BI-аналитика и прогнозы.

@@ -1,45 +1,27 @@
-# Teacher Stories
+# Истории куратора
 
-## T-01 Understand project
+## T-01 Понять проект
 
-As a teacher, I want to open README and understand what the project does.
+Как куратор, я хочу открыть корневое описание и понять назначение, технологии, окружение, команды и демонстрационный сценарий.
 
-Acceptance:
+## T-02 Понять архитектуру
 
-- README has description, stack, env, commands and demo flow.
+Как куратор, я хочу открыть `docs/architecture/architecture.md` и увидеть поток данных, компоненты, таблицы, безопасность и технический долг.
 
-## T-02 Understand architecture
+## T-03 Проверить границы
 
-As a teacher, I want to open architecture docs and understand data flow.
+Как куратор, я хочу явно видеть, что CRM, склад, касса и платежи не входят в MVP.
 
-Acceptance:
+## T-04 Запустить проверки
 
-- `docs/architecture/README.md` describes flow and entities.
-- Supabase tables are documented.
+Как куратор, я хочу выполнить lint, тесты и сборку по документированным командам.
 
-## T-03 Check scope
+## T-05 Проверить планы
 
-As a teacher, I want to see what is not included in MVP.
+Как куратор, я хочу различать активные, завершённые и будущие планы, а также локальную и внешнюю готовность.
 
-Acceptance:
+## T-06 Проверить GitHub-процесс
 
-- Specs and rules clearly say no CRM, no warehouse, no cash register.
+Как куратор, я хочу понимать, как создаются ветка, коммит и Pull Request, какие проверки обязательны и какие файлы нельзя отправлять в GitHub.
 
-## T-04 Run checks
-
-As a teacher, I want to run lint, tests and build.
-
-Acceptance:
-
-- Commands are listed in README.
-- Commands pass.
-
-## T-05 Review plans
-
-As a teacher, I want to see active and completed plans.
-
-Acceptance:
-
-- `docs/plans/active.md` exists.
-- `docs/plans/completed.md` exists.
-- `docs/plans/README.md` links to them.
+Критерии: `docs/rules/git-and-github.md` описывает полный процесс, а документация честно указывает, что GitHub Actions пока не настроен.
