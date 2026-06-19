@@ -9,7 +9,7 @@
 
 ## Секреты только для сервера
 
-- `SUPABASE_SERVICE_ROLE_KEY` используется сервисами бота, route и серверными действиями;
+- `SUPABASE_SERVICE_ROLE_KEY` используется сервисами бота, route и серверными действиями; web-модули Supabase/мутаций помечены `server-only`;
 - `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `STT_API_KEY`, `LLM_API_KEY` используются только сервером;
 - отсутствующий или неверный секрет webhook возвращает 401;
 - журналы проходят рекурсивное маскирование.

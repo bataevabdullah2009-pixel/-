@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SaleItem } from "../packages/shared/types";
 import {
+  buildExcludedSaleItemPatch,
   buildManualSaleItemPatch,
   buildSalesReport,
   calculateItemTotal,
@@ -151,20 +152,33 @@ describe("sales report", () => {
     ).toBe("needs_review");
   });
 
-  it("marks manual correction as processed", () => {
+  it("updates a sale item with recalculated total and processed status", () => {
     const patch = buildManualSaleItemPatch({
-      productName: "хлеба",
-      quantity: 3,
-      price: 40
+      productName: "Хлеб",
+      quantity: 20,
+      price: 300
     });
 
     expect(patch).toMatchObject({
       product_name: "Хлеб",
-      quantity: 3,
+      quantity: 20,
       unit: "шт",
-      price: 40,
-      total: 120,
-      status: "processed"
+      price: 300,
+      total: 6000,
+      status: "processed",
+      confidence: 1
+    });
+  });
+
+  it("builds a soft-delete patch with excluded status", () => {
+    const patch = buildExcludedSaleItemPatch("processed", "2026-06-19T10:00:00.000Z");
+
+    expect(patch).toEqual({
+      status: "excluded",
+      deleted_at: "2026-06-19T10:00:00.000Z",
+      deleted_reason: "excluded_by_owner",
+      deleted_previous_status: "processed",
+      updated_at: "2026-06-19T10:00:00.000Z"
     });
   });
 
@@ -196,10 +210,10 @@ describe("sales report", () => {
         price: 90,
         total: 270,
         confidence: 1,
-        status: "processed",
+        status: "excluded",
         created_at: "2026-06-18T09:00:00.000Z",
         deleted_at: "2026-06-18T10:00:00.000Z",
-        deleted_reason: "manual",
+        deleted_reason: "excluded_by_owner",
         deleted_previous_status: "processed"
       }
     ];
@@ -210,5 +224,41 @@ describe("sales report", () => {
     expect(report.totalQuantity).toBe(2);
     expect(report.totalRevenue).toBe(80);
     expect(report.reviewItems).toHaveLength(0);
+  });
+
+  it("does not include needs_price items in revenue", () => {
+    const report = buildSalesReport([{
+      id: "needs-price",
+      sale_id: "sale-1",
+      product_name: "Чай",
+      quantity: 5,
+      unit: "шт",
+      price: null,
+      total: null,
+      confidence: 1,
+      status: "needs_price",
+      created_at: "2026-06-19T08:00:00.000Z"
+    }]);
+
+    expect(report.totalRevenue).toBe(0);
+    expect(report.reviewItems).toHaveLength(1);
+  });
+
+  it("includes active processed items in revenue", () => {
+    const report = buildSalesReport([{
+      id: "processed",
+      sale_id: "sale-1",
+      product_name: "Чай",
+      quantity: 20,
+      unit: "шт",
+      price: 300,
+      total: 6000,
+      confidence: 1,
+      status: "processed",
+      created_at: "2026-06-19T08:00:00.000Z"
+    }]);
+
+    expect(report.totalQuantity).toBe(20);
+    expect(report.totalRevenue).toBe(6000);
   });
 });

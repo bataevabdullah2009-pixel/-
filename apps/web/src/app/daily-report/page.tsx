@@ -2,7 +2,7 @@ import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { DateFilter } from "@/components/DateFilter";
 import { EmptyState } from "@/components/EmptyState";
 import { RefreshButton } from "@/components/RefreshButton";
-import { getDailyReport } from "@/features/records/records.api";
+import { getReport } from "@/features/records/records.api";
 import type { SearchParams } from "@/features/records/records.types";
 import {
   formatCurrency,
@@ -12,7 +12,7 @@ import {
   getStringParam
 } from "@/features/records/records.utils";
 import {
-  deleteSaleItemAction,
+  excludeSaleItemAction,
   resetDayRevenueAction,
   restoreSaleItemAction,
   updateSaleItemAction
@@ -30,7 +30,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
   const date = getStringParam(params.date);
   const mutation = getStringParam(params.mutation);
   const message = getStringParam(params.message);
-  const { range, summary, items, deletedItems } = await getDailyReport({ period, date });
+  const { range, summary, items, deletedItems } = await getReport({ period, date });
   const returnQuery = new URLSearchParams({ period });
   if (date) returnQuery.set("date", date);
   const returnTo = `/daily-report?${returnQuery.toString()}#items`;
@@ -175,12 +175,12 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
                   </label>
                   <label>
                     <span>Цена, ₽</span>
-                    <input name="price" type="number" min="0" step="0.01" defaultValue={item.price ?? ""} required />
+                    <input name="price" type="number" min="0.01" step="0.01" defaultValue={item.price ?? ""} required />
                   </label>
                   <button type="submit" className="saveButton">Сохранить</button>
                 </form>
 
-                <form action={deleteSaleItemAction} className="deleteItemForm">
+                <form action={excludeSaleItemAction} className="deleteItemForm">
                   <input type="hidden" name="itemId" value={item.id} />
                   <input type="hidden" name="returnTo" value={returnTo} />
                   <ConfirmSubmitButton

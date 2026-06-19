@@ -20,10 +20,12 @@ Route не дублирует логику бота и вызывает `process
 
 ## Внутренние серверные действия
 
+Слой `records.api.ts` предоставляет серверные функции `getReport`, `getReviewItems`, `updateSaleItem` и `excludeSaleItem`. Модули с административным Supabase-клиентом помечены как server-only; `SUPABASE_SERVICE_ROLE_KEY` не попадает в браузерный bundle.
+
 | Действие | Вход | Результат | Основные ошибки |
 | --- | --- | --- | --- |
-| `updateSaleItemAction` | ID, имя, количество, цена, обратный URL | Обновление, пересчёт, аудит и повторная проверка страниц | Недопустимые поля, отсутствующая позиция или Supabase |
-| `deleteSaleItemAction` | ID позиции | Мягкое удаление `manual` и пересчёт | Нет миграции, позиции или окружения |
+| `updateSaleItemAction` | ID, имя, `quantity > 0`, `price > 0`, обратный URL | Обновление одной активной позиции, `total = quantity × price`, `processed`, `confidence = 1`, `updated_at`, пересчёт и аудит | Пользователь получает только безопасное сообщение сохранения |
+| `excludeSaleItemAction` | ID позиции | `excludeSaleItem`: `deleted_at`, `deleted_reason = excluded_by_owner`, `status = excluded`, `updated_at` и пересчёт | Пользователь получает только безопасное сообщение исключения |
 | `restoreSaleItemAction` | ID позиции | Снятие удаления и возврат предыдущего статуса | Нет позиции или окружения |
 | `resetDayRevenueAction` | Сегодня, вчера или дата | Мягкое удаление всех активных позиций дня | Диапазон больше одного дня запрещён |
 

@@ -66,6 +66,7 @@ Next.js App Router выполняет две роли:
 - `migrations/001_init.sql` создаёт таблицы, индексы, RLS, демонстрационные политики и приватный Storage bucket;
 - `20260617184050_add_voice_parser_diagnostics.sql` добавляет `voice_records.parser_json`;
 - `20260618082931_add_sale_item_soft_delete.sql` добавляет обратимое исключение позиций;
+- `20260619132225_align_sale_item_update_and_exclusion.sql` добавляет `updated_at`, статус `excluded`, причину `excluded_by_owner` и индекс активных позиций;
 - `seed.sql` создаёт демонстрационный магазин, продавца, товары и продажу.
 
 ### `scripts` и `tests`
@@ -96,7 +97,7 @@ Next.js App Router выполняет две роли:
 3. Мягко удалённые, сомнительные и неоценённые позиции исключаются из выручки.
 4. Допустимые позиции группируются по `product_id`, иначе по нормализованному имени.
 5. Владелец может изменить название, количество и цену активной позиции.
-6. Исключение устанавливает `deleted_at`, `deleted_reason` и `deleted_previous_status`.
+6. Исключение устанавливает `deleted_at`, `deleted_reason = excluded_by_owner`, `deleted_previous_status`, `status = excluded` и `updated_at`.
 7. Восстановление возвращает сохранённый статус и очищает поля исключения.
 8. Сброс дня мягко удаляет все активные позиции продаж выбранного дня.
 9. После каждого действия пересчитываются `sales.total_amount`, статус продажи и статус связанной голосовой записи; действие записывается в `audit_logs`.
@@ -154,10 +155,10 @@ Storage object ← voice_records.audio_path
 ### `sale_items`
 
 - `id`, `sale_id`, необязательный `product_id`;
-- `product_name`, `quantity`, `unit`, `price`, `total`, `confidence`, `status`, `created_at`;
+- `product_name`, `quantity`, `unit`, `price`, `total`, `confidence`, `status`, `created_at`, `updated_at`;
 - `deleted_at`, `deleted_reason`, `deleted_previous_status` — поля мягкого удаления.
 
-Допустимые причины удаления: `manual` и `day_reset`. Метаданные удаления либо заполнены все вместе, либо все равны `null`.
+Допустимые причины удаления: `excluded_by_owner`, `day_reset` и `manual` только для прежних строк. Метаданные удаления либо заполнены все вместе, либо все равны `null`.
 
 ### `audit_logs`
 
@@ -169,12 +170,12 @@ Storage object ← voice_records.audio_path
 ## Статусы и вычисляемые правила
 
 - `voice_records` и `sales`: `pending`, `processed`, `needs_review`, `failed`;
-- `sale_items`: `processed`, `needs_price`, `needs_review`, `failed`;
-- порог уверенности для выручки — `0.75`;
+- `sale_items`: `processed`, `needs_price`, `needs_review`, `failed`, `excluded`;
+- порог `0.75` назначает статус при первоначальной обработке; отчёт затем опирается на `status = processed`;
 - неизвестная цена даёт `needs_price` и не входит в выручку;
 - пустое имя, неявное количество или низкая уверенность дают `needs_review`;
 - итог всегда вычисляется как `quantity × price` приложением;
-- мягкое удаление не является отдельным статусом.
+- ручное исключение является soft delete со статусом `excluded`; сброс дня сохраняет прежний статус и отличается причиной.
 
 ## Границы безопасности
 

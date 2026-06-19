@@ -1,6 +1,6 @@
 export type VoiceRecordStatus = "pending" | "processed" | "needs_review" | "failed";
 
-export type SaleItemStatus = "processed" | "needs_price" | "needs_review" | "failed";
+export type SaleItemStatus = "processed" | "needs_price" | "needs_review" | "failed" | "excluded";
 
 export type DateRangePreset = "today" | "yesterday" | "week" | "month" | "year" | "custom";
 
@@ -50,8 +50,9 @@ export type SaleItem = {
   confidence: number;
   status: SaleItemStatus;
   created_at: string;
+  updated_at?: string;
   deleted_at?: string | null;
-  deleted_reason?: "manual" | "day_reset" | null;
+  deleted_reason?: "manual" | "excluded_by_owner" | "day_reset" | null;
   deleted_previous_status?: SaleItemStatus | null;
 };
 

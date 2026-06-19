@@ -35,7 +35,8 @@ export function getStatusLabel(status: string) {
     processed: "Готово",
     needs_review: "Проверить",
     failed: "Ошибка",
-    needs_price: "Нужна цена"
+    needs_price: "Нужна цена",
+    excluded: "Исключено"
   };
 
   return labels[status] ?? status;

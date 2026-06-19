@@ -2,9 +2,9 @@
 
 Это единственный активный checklist; production-hardening остаётся в backlog.
 
-- [x] `npm run lint` прошёл 18 июня 2026 года.
-- [x] `npm run test` прошёл: 26 тестов.
-- [x] `npm run build` прошёл, включая Next.js production build.
+- [x] `npm run lint` прошёл 19 июня 2026 года.
+- [x] `npm run test` прошёл: 29 тестов.
+- [x] `npm run build` прошёл 19 июня 2026 года, включая Next.js production build.
 - [ ] Все миграции применены в Supabase.
 - [ ] Переменные Vercel заданы, развёртывание обновлено.
 - [ ] Webhook установлен с секретом и не содержит ошибки.

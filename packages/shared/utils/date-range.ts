@@ -285,6 +285,19 @@ export function buildManualSaleItemPatch(params: {
   };
 }
 
+export function buildExcludedSaleItemPatch(
+  previousStatus: Exclude<SaleItemStatus, "excluded">,
+  timestamp = new Date().toISOString()
+) {
+  return {
+    status: "excluded" as const,
+    deleted_at: timestamp,
+    deleted_reason: "excluded_by_owner" as const,
+    deleted_previous_status: previousStatus,
+    updated_at: timestamp
+  };
+}
+
 export function buildSalesReport(items: SaleItem[]): ReportSummary {
   const rows = new Map<string, { key: string; product_name: string; quantity: number; unit: string; revenue: number }>();
   const reviewItems: SaleItem[] = [];
@@ -311,7 +324,7 @@ export function buildSalesReport(items: SaleItem[]): ReportSummary {
       continue;
     }
 
-    if (item.status !== "processed" || item.price === null || item.total === null || item.confidence < 0.75) {
+    if (item.status !== "processed" || item.price === null || item.total === null) {
       reviewItems.push(item);
       continue;
     }

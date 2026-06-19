@@ -5,11 +5,14 @@ import { redirect } from "next/navigation";
 import { getDateRange } from "@voice-sales-log/shared/utils/date-range";
 import type { DateRangePreset } from "@voice-sales-log/shared/types";
 import {
+  excludeSaleItem,
   resetDayRevenue,
   restoreSaleItem,
-  softDeleteSaleItem,
   updateSaleItem
 } from "@/features/records/records.api";
+
+const UPDATE_ERROR_MESSAGE = "Не удалось сохранить товар. Проверьте данные и попробуйте ещё раз.";
+const EXCLUDE_ERROR_MESSAGE = "Не удалось исключить товар из отчёта.";
 
 function safeReturnTo(formData: FormData) {
   const candidate = String(formData.get("returnTo") ?? "/daily-report");
@@ -39,25 +42,40 @@ export async function updateSaleItemAction(formData: FormData) {
   const priceValue = String(formData.get("price") ?? "").trim();
   const price = Number(priceValue);
 
-  if (!itemId || !productName || !Number.isFinite(quantity) || quantity <= 0 || !priceValue || !Number.isFinite(price) || price < 0) {
+  if (!itemId || !productName || !Number.isFinite(quantity) || quantity <= 0 || !priceValue || !Number.isFinite(price) || price <= 0) {
     finishMutation(returnTo, {
       ok: false,
-      message: "Заполните товар, положительное количество и цену не меньше нуля."
+      message: UPDATE_ERROR_MESSAGE
     });
   }
 
-  const result = await updateSaleItem({ itemId, productName, quantity, price });
-  finishMutation(returnTo, result);
+  let result: { ok: boolean; message: string };
+  try {
+    result = await updateSaleItem({ itemId, productName, quantity, price });
+  } catch (error) {
+    console.error("Failed to update sale item", error);
+    result = { ok: false, message: UPDATE_ERROR_MESSAGE };
+  }
+
+  finishMutation(returnTo, result.ok ? result : { ok: false, message: UPDATE_ERROR_MESSAGE });
 }
 
-export async function deleteSaleItemAction(formData: FormData) {
+export async function excludeSaleItemAction(formData: FormData) {
   const returnTo = safeReturnTo(formData);
   const itemId = String(formData.get("itemId") ?? "");
-  const result = itemId
-    ? await softDeleteSaleItem(itemId)
-    : { ok: false, message: "Позиция не найдена." };
+  if (!itemId) {
+    finishMutation(returnTo, { ok: false, message: EXCLUDE_ERROR_MESSAGE });
+  }
 
-  finishMutation(returnTo, result);
+  let result: { ok: boolean; message: string };
+  try {
+    result = await excludeSaleItem(itemId);
+  } catch (error) {
+    console.error("Failed to exclude sale item", error);
+    result = { ok: false, message: EXCLUDE_ERROR_MESSAGE };
+  }
+
+  finishMutation(returnTo, result.ok ? result : { ok: false, message: EXCLUDE_ERROR_MESSAGE });
 }
 
 export async function restoreSaleItemAction(formData: FormData) {

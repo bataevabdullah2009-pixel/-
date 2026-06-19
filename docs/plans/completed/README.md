@@ -16,3 +16,4 @@
 7. [Vercel webhook](./007-vercel-webhook/summary.md)
 8. [Telegram Mini App](./008-telegram-mini-app/summary.md)
 9. [Русская документация и правила GitHub](./009-russian-documentation/summary.md)
+10. [Стабилизация мутаций товаров](./010-sale-item-mutations/summary.md)

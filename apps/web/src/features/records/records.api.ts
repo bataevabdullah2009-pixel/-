@@ -1,4 +1,7 @@
+import "server-only";
+
 import {
+  buildExcludedSaleItemPatch,
   buildManualSaleItemPatch,
   buildSalesReport,
   displayProductName,
@@ -210,7 +213,7 @@ export async function getRecords(filters: RecordFilters): Promise<RecordListItem
   );
 }
 
-export async function getDailyReport(filters: ReportFilters) {
+export async function getReport(filters: ReportFilters) {
   const range = getDateRange(filters.period, { date: filters.date });
   const supabase = getSupabaseServerClient();
 
@@ -242,7 +245,11 @@ export async function getDailyReport(filters: ReportFilters) {
         total,
         confidence,
         status,
-        created_at
+        created_at,
+        updated_at,
+        deleted_at,
+        deleted_reason,
+        deleted_previous_status
       )
     `
     )
@@ -258,28 +265,6 @@ export async function getDailyReport(filters: ReportFilters) {
     };
   }
 
-  const saleIds = (data ?? []).map((sale: any) => String(sale.id));
-  const deletionMetadata = new Map<string, {
-    deleted_at: string | null;
-    deleted_reason: SaleItem["deleted_reason"];
-    deleted_previous_status: SaleItem["deleted_previous_status"];
-  }>();
-
-  if (saleIds.length) {
-    const { data: metadataRows } = await supabase
-      .from("sale_items")
-      .select("id, deleted_at, deleted_reason, deleted_previous_status")
-      .in("sale_id", saleIds);
-
-    for (const row of metadataRows ?? []) {
-      deletionMetadata.set(String(row.id), {
-        deleted_at: row.deleted_at ? String(row.deleted_at) : null,
-        deleted_reason: row.deleted_reason,
-        deleted_previous_status: row.deleted_previous_status
-      });
-    }
-  }
-
   const items: SaleItem[] = (data ?? []).flatMap((sale: any) =>
     (sale.sale_items ?? []).map((item: any) => ({
       id: String(item.id),
@@ -293,9 +278,10 @@ export async function getDailyReport(filters: ReportFilters) {
       confidence: Number(item.confidence),
       status: item.status,
       created_at: String(sale.created_at),
-      deleted_at: deletionMetadata.get(String(item.id))?.deleted_at ?? null,
-      deleted_reason: deletionMetadata.get(String(item.id))?.deleted_reason ?? null,
-      deleted_previous_status: deletionMetadata.get(String(item.id))?.deleted_previous_status ?? null
+      updated_at: item.updated_at ? String(item.updated_at) : undefined,
+      deleted_at: item.deleted_at ? String(item.deleted_at) : null,
+      deleted_reason: item.deleted_reason ?? null,
+      deleted_previous_status: item.deleted_previous_status ?? null
     }))
   );
 
@@ -309,6 +295,11 @@ export async function getDailyReport(filters: ReportFilters) {
     items: sortedItems.filter((item) => !item.deleted_at),
     deletedItems: sortedItems.filter((item) => Boolean(item.deleted_at))
   };
+}
+
+export async function getReviewItems(filters: ReportFilters) {
+  const report = await getReport(filters);
+  return report.summary.reviewItems;
 }
 
 async function getSaleContext(admin: AdminClient, saleId: string) {
@@ -414,23 +405,10 @@ export async function updateSaleItem(params: {
     };
   }
 
-  if (!Number.isFinite(params.price) || params.price < 0) {
+  if (!Number.isFinite(params.price) || params.price <= 0) {
     return {
       ok: false,
       message: "Укажите корректную цену."
-    };
-  }
-
-  const patch = buildManualSaleItemPatch({
-    productName: params.productName,
-    quantity: params.quantity,
-    price: params.price
-  });
-
-  if (!patch.normalized_product_name) {
-    return {
-      ok: false,
-      message: "Укажите товар."
     };
   }
 
@@ -449,6 +427,20 @@ export async function updateSaleItem(params: {
 
   if (existingItem.deleted_at) {
     return { ok: false, message: "Сначала восстановите исключённую позицию." };
+  }
+
+  const patch = buildManualSaleItemPatch({
+    productName: params.productName,
+    quantity: params.quantity,
+    unit: existingItem.unit,
+    price: params.price
+  });
+
+  if (!patch.normalized_product_name) {
+    return {
+      ok: false,
+      message: "Укажите товар."
+    };
   }
 
   const saleContext = await getSaleContext(admin, existingItem.sale_id);
@@ -478,6 +470,7 @@ export async function updateSaleItem(params: {
   );
   const productName = product?.name ? displayProductName(String(product.name)) : patch.product_name;
   const unit = normalizeUnit(product?.unit ? String(product.unit) : patch.unit);
+  const updatedAt = new Date().toISOString();
 
   const { data: item, error } = await admin
     .from("sale_items")
@@ -489,9 +482,11 @@ export async function updateSaleItem(params: {
       price: patch.price,
       total: patch.total,
       status: patch.status,
-      confidence: patch.confidence
+      confidence: patch.confidence,
+      updated_at: updatedAt
     })
     .eq("id", params.itemId)
+    .is("deleted_at", null)
     .select("sale_id")
     .single();
 
@@ -538,7 +533,7 @@ export async function updateSaleItem(params: {
   };
 }
 
-export async function softDeleteSaleItem(itemId: string): Promise<MutationResult> {
+export async function excludeSaleItem(itemId: string): Promise<MutationResult> {
   const admin = getSupabaseAdminClient();
 
   if (!admin) {
@@ -564,22 +559,20 @@ export async function softDeleteSaleItem(itemId: string): Promise<MutationResult
     return { ok: false, message: context.error ?? "Продажа не найдена." };
   }
 
-  const deletedAt = new Date().toISOString();
-  const { error } = await admin
+  const patch = buildExcludedSaleItemPatch(item.status);
+  const { data: excludedItem, error } = await admin
     .from("sale_items")
-    .update({
-      deleted_at: deletedAt,
-      deleted_reason: "manual",
-      deleted_previous_status: item.status
-    })
+    .update(patch)
     .eq("id", itemId)
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .select("sale_id")
+    .single();
 
   if (error) {
     return { ok: false, message: error.message };
   }
 
-  const recalculation = await recalculateSale(admin, item.sale_id);
+  const recalculation = await recalculateSale(admin, excludedItem.sale_id);
   if (!recalculation.ok) {
     return recalculation;
   }
@@ -587,8 +580,8 @@ export async function softDeleteSaleItem(itemId: string): Promise<MutationResult
   const auditError = await writeAuditLog(admin, context.data, "sale_item_deleted", {
     item_id: item.id,
     product_name: item.product_name,
-    deleted_at: deletedAt,
-    reason: "manual"
+    deleted_at: patch.deleted_at,
+    reason: patch.deleted_reason
   });
 
   return auditError
@@ -622,13 +615,15 @@ export async function restoreSaleItem(itemId: string): Promise<MutationResult> {
     return { ok: false, message: context.error ?? "Продажа не найдена." };
   }
 
+  const updatedAt = new Date().toISOString();
   const { error } = await admin
     .from("sale_items")
     .update({
       status: item.deleted_previous_status ?? "needs_review",
       deleted_at: null,
       deleted_reason: null,
-      deleted_previous_status: null
+      deleted_previous_status: null,
+      updated_at: updatedAt
     })
     .eq("id", itemId)
     .not("deleted_at", "is", null);
@@ -708,7 +703,8 @@ export async function resetDayRevenue(range: { start: string; end: string }): Pr
       .update({
         deleted_at: deletedAt,
         deleted_reason: "day_reset",
-        deleted_previous_status: status
+        deleted_previous_status: status,
+        updated_at: deletedAt
       })
       .in("id", ids)
       .is("deleted_at", null);
