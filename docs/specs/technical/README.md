@@ -15,6 +15,13 @@
 | [Расчёт отчёта](./report-calculation.md) | Агрегация количества, выручки и исключений. |
 | [Мобильный интерфейс](./frontend-mobile.md) | Telegram Web App и мутации позиции. |
 | [Безопасность и окружение](./security-env.md) | Секреты, service role, webhook и ограничения MVP. |
+| [Авторизация и изоляция магазинов](./auth-and-shop-isolation.md) | Owner/seller, `shop_id`, RLS и критерии production-доступа. |
+| [Идемпотентность](./idempotency.md) | Защита от повторной доставки Telegram update. |
+| [Транзакции](./transactions.md) | Атомарная запись продажи, позиций и мутаций. |
+| [Monitoring](./monitoring.md) | Логи, метрики, ошибки STT/LLM/Supabase/webhook и alerting. |
+| [Backup и restore](./backup-and-restore.md) | Резервирование БД/Storage и проверка восстановления. |
+| [GitHub Actions](./github-actions.md) | Обязательный CI для lint, test, build и env-проверок. |
+| [Интеграционные тесты](./integration-tests.md) | Webhook, voice mocks, отчёты, review и mobile E2E. |
 | [Обработка ошибок](./error-handling.md) | Ошибки, статусы, аудит и сообщения. |
 | [Стратегия тестирования](./testing-strategy.md) | Модульные, интеграционные и ручные проверки. |
 | [Развёртывание Vercel](./deployment-vercel.md) | Порядок развёртывания, миграции и диагностика. |

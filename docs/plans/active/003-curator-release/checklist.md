@@ -1,5 +1,7 @@
 # Контрольный список
 
+Это единственный активный checklist; production-hardening остаётся в backlog.
+
 - [x] `npm run lint` прошёл 18 июня 2026 года.
 - [x] `npm run test` прошёл: 26 тестов.
 - [x] `npm run build` прошёл, включая Next.js production build.

@@ -1,101 +1,119 @@
 # voice-sales-log
 
-Голосовой журнал продаж: продавец отправляет голосовое сообщение Telegram-боту, система распознаёт товар, количество и цену, сохраняет результат в Supabase и показывает владельцу отчёт в Telegram Mini App.
+`voice-sales-log` — учебный голосовой журнал продаж небольшого магазина. Продавец диктует продажу Telegram-боту, система распознаёт речь, извлекает товар, количество и цену, сохраняет результат в Supabase, а владелец проверяет отчёт в Telegram Mini App.
 
-Это учебный MVP для небольшого магазина. Проект не является CRM, складом, кассой, системой фискализации или онлайн-оплатой.
+Проект решает узкую задачу: заменить тетрадь и ручной вечерний подсчёт быстрым сценарием «сказал → сохранил → проверил». Это не CRM, не склад, не касса и не система онлайн-оплаты.
 
-## Основной сценарий
+> Текущий MVP предназначен для демонстрации. До использования реальных коммерческих данных обязательны авторизация владельца, изоляция магазинов, идемпотентность, транзакции, мониторинг и резервное восстановление.
 
-1. В рабочем окружении Telegram доставляет update в webhook на Vercel; локально бот использует polling.
-2. Бот скачивает и сохраняет аудио, затем вызывает Whisper-совместимый STT.
-3. LLM возвращает строгий JSON, а детерминированная проверка запрещает угадывать значения.
-4. `voice_records`, `sales`, `sale_items` и `audit_logs` сохраняются в Supabase.
-5. Владелец открывает `/daily-report`, выбирает период и видит количество и выручку.
-6. Любую позицию можно исправить, обратимо исключить или восстановить; «Сбросить день» обратимо исключает все позиции выбранного дня.
+## Как работает проект
 
-## Технологии
+1. Продавец отправляет `/start`, затем голосовое сообщение с товаром, количеством и ценой.
+2. В production Telegram доставляет update в защищённый webhook Vercel; локально используется polling.
+3. Бот загружает аудио в приватный Supabase Storage и отправляет его в Whisper-совместимый STT.
+4. LLM возвращает строгий JSON, а приложение проверяет значения по исходному тексту и самостоятельно считает итог.
+5. `voice_records`, `sales`, `sale_items` и `audit_logs` сохраняются в Supabase.
+6. Владелец смотрит отчёт, журнал и продавцов, исправляет сомнительные позиции, исключает и восстанавливает их.
 
-TypeScript, Next.js, React, Telegraf, Telegram Bot API, Supabase Postgres/Storage, Whisper-совместимый STT, OpenAI-совместимый LLM, Vercel, Zod и Vitest.
+```text
+Telegram → Vercel webhook → STT → LLM parser → Supabase → Web App
+```
+
+## Стек
+
+TypeScript, Next.js, React, Telegraf, Telegram Bot API, Supabase Postgres/Storage, Whisper-совместимый STT, OpenAI-совместимый LLM, Zod, Vitest и Vercel.
 
 ## Структура репозитория
 
 ```text
-apps/web        Next.js Web App, отчёты, серверные действия и Telegram webhook
-apps/bot        Telegram-обработчики, локальный polling и обработка голоса
-packages/shared Типы, Zod-схемы, парсер, даты и расчёт отчёта
-supabase        Миграции и демонстрационные данные
-scripts         Эксплуатационные скрипты webhook
+apps/bot        Telegram-обработчики, polling и голосовой конвейер
+apps/web        Next.js Web App, серверные действия и Telegram webhook
+packages/shared Общие типы, Zod-схемы, парсер, даты и расчёт отчёта
+supabase        Последовательные миграции и демонстрационный seed
+scripts         Установка и диагностика Telegram webhook
 tests           Модульные и регрессионные тесты
-docs            Спецификации, планы, правила, истории, архитектура и дорожная карта
-codex/skills    Основной проектный навык для Codex
+docs            Спецификации, архитектура, правила, планы и roadmap
+codex/skills    Проектный навык Codex
 ```
 
-## Карта документации
+Главная карта документов: [docs/INDEX.md](docs/INDEX.md).
 
-| Раздел | Расположение |
-| --- | --- |
-| Обзор | [docs/overview/README.md](docs/overview/README.md) |
-| Глобальная спецификация | [docs/specs/global.md](docs/specs/global.md) |
-| Технические спецификации | [docs/specs/technical/README.md](docs/specs/technical/README.md) |
-| Продуктовые спецификации | [docs/specs/product/README.md](docs/specs/product/README.md) |
-| Спецификации данных | [docs/specs/data/README.md](docs/specs/data/README.md) |
-| Функции | [docs/features/README.md](docs/features/README.md) |
-| Активные планы | [docs/plans/active/](docs/plans/active/) |
-| Завершённые планы | [docs/plans/completed/](docs/plans/completed/) |
-| Будущие задачи | [docs/plans/backlog/](docs/plans/backlog/) |
-| Правила | [docs/rules/README.md](docs/rules/README.md) |
-| Git и GitHub | [docs/rules/git-and-github.md](docs/rules/git-and-github.md) |
-| Архитектура | [docs/architecture/architecture.md](docs/architecture/architecture.md) |
-| Дорожная карта | [docs/roadmap/roadmap.md](docs/roadmap/roadmap.md) |
-| Пользовательские истории | [docs/stories/README.md](docs/stories/README.md) |
-| Проектный навык | [codex/skills/voice-sales-log/SKILL.md](codex/skills/voice-sales-log/SKILL.md) |
+## Локальный запуск
 
-Рекомендуемый порядок чтения: обзор → глобальная спецификация → продуктовые, технические и информационные спецификации → правила → активные планы.
-
-## Установка и запуск
+Требования: Node.js 20+ и npm.
 
 ```bash
 npm install
+```
+
+Скопируйте `.env.example` в `.env.local` и заполните значения локально.
+
+> Никогда не коммитьте `.env.local`. `SUPABASE_SERVICE_ROLE_KEY` разрешён только в серверном коде и настройках серверного окружения.
+
+```bash
 npm run web:dev
 npm run bot:dev
 ```
 
-В PowerShell с запрещёнными сценариями используйте `npm.cmd` и `npx.cmd`.
+`bot:dev` запускает polling. Не запускайте его одновременно с production webhook.
 
-Скопируйте `.env.example` в `.env.local` и заполните значения только локально. Не коммитьте `.env.local`. Переменная `SUPABASE_SERVICE_ROLE_KEY` предназначена только для серверного кода.
+## Команды
 
-## Команды качества
+| Команда | Назначение |
+| --- | --- |
+| `npm run dev` | Одновременно запустить локальные bot и web процессы. |
+| `npm run bot:dev` | Запустить Telegram polling локально. |
+| `npm run web:dev` | Запустить Next.js Web App с `.env.local`. |
+| `npm run lint` | Проверить ESLint. |
+| `npm run test` | Выполнить Vitest. |
+| `npm run build` | Собрать все workspaces. |
+| `npm run web:build` | Собрать только Web App с `.env.local`. |
+| `npm run telegram:set-webhook` | Установить Telegram webhook из `.env.local`. |
+| `npm run telegram:webhook-info` | Показать URL, очередь и последнюю ошибку webhook. |
 
-```bash
-npm run lint
-npm run test
-npm run build
-```
+В PowerShell с запрещёнными сценариями используйте `npm.cmd` вместо `npm`.
 
 ## Supabase
 
-Перед развёртыванием примените миграции по порядку. Последняя миграция добавляет обратимое удаление позиции, необходимое для изменения, исключения, восстановления и сброса дня. `seed.sql` необязателен и предназначен только для демонстрационных данных.
+1. Создайте проект Supabase и приватный bucket, определённый миграциями.
+2. Примените все SQL-файлы из `supabase/migrations` по имени и времени создания.
+3. При необходимости примените `supabase/seed.sql` только к демонстрационному окружению.
+4. Не изменяйте уже применённую миграцию: любое изменение схемы оформляется новым SQL-файлом.
 
-## Vercel и Telegram webhook
+## Deploy на Vercel
 
-1. Примените миграции Supabase.
-2. Добавьте в Vercel все переменные из `.env.example` и выполните повторное развёртывание.
-3. Укажите в `NEXT_PUBLIC_APP_URL` HTTPS-адрес развёртывания.
-4. Локально выполните `npm run telegram:set-webhook`.
-5. Выполните `npm run telegram:webhook-info` и проверьте URL и пустой `last_error_message`.
-6. В BotFather задайте Menu Button с тем же адресом Web App.
+1. Импортируйте репозиторий как Next.js-проект из workspace `apps/web`.
+2. Убедитесь, что Vercel устанавливает зависимости монорепозитория и собирает `apps/web`.
+3. Добавьте все переменные из `.env.example` в нужные Vercel environments; значения не помещайте в Git.
+4. Укажите публичный HTTPS URL в `NEXT_PUBLIC_APP_URL` без завершающего `/`.
+5. Сначала примените миграции Supabase, затем выполните redeploy.
+6. Проверьте `/daily-report` и журналы Functions для `/api/telegram/webhook`.
 
-Polling (`npm run bot:dev`) используется только локально и не должен работать одновременно с производственным webhook.
+Подробный порядок: [deployment-vercel.md](docs/specs/technical/deployment-vercel.md).
 
-## Демонстрационный сценарий
+## Установка Telegram webhook
 
-1. Отправьте: «Сникерс 5 штук по 60 рублей».
-2. Откройте Telegram Mini App → «Отчёт» → «Сегодня».
-3. Ожидайте 5 единиц и 300 ₽.
-4. Измените цену на 70 и сохраните: ожидайте 350 ₽.
-5. Исключите позицию: ожидайте 0 ₽; восстановите: ожидайте 350 ₽.
-6. Сбросьте выбранный день и убедитесь, что другая дата не изменилась.
+После успешного deploy задайте в локальном `.env.local` тот же `NEXT_PUBLIC_APP_URL`, токен бота и секрет webhook:
+
+```bash
+npm run telegram:set-webhook
+npm run telegram:webhook-info
+```
+
+Ожидаемый URL оканчивается на `/api/telegram/webhook`, а `last_error_message` равен `null`. Команда установки использует `drop_pending_updates`, поэтому не запускайте её без понимания последствий для очереди. В BotFather задайте Menu Button с HTTPS-адресом Web App.
+
+## Сценарий проверки для куратора
+
+1. Открыть [docs/INDEX.md](docs/INDEX.md) и проверить границы MVP, архитектуру и единственный активный план.
+2. Выполнить `npm run lint`, `npm run test` и `npm run build`.
+3. Отправить боту `/start`, затем голосом: «Сникерс 5 штук по 60 рублей».
+4. Убедиться, что бот сообщил статус обработки, а в отчёте появились 5 единиц и 300 ₽.
+5. Изменить цену на 70 и проверить итог 350 ₽.
+6. Исключить позицию, проверить 0 ₽, затем восстановить и снова получить 350 ₽.
+7. Убедиться, что исходная запись и другая дата не изменились.
+
+Локальные тесты не подтверждают состояние Telegram, Vercel или Supabase. Внешний шаг считается пройденным только после фактической проверки.
 
 ## Ограничения
 
-Текущий MVP использует демонстрационные политики анонимного чтения и не имеет производственной авторизации владельца. До серверной проверки Telegram init data, изоляции магазинов, идемпотентности update и транзакционной записи используйте только тестовые данные. Подробности находятся в [архитектуре](docs/architecture/architecture.md) и [дорожной карте](docs/roadmap/roadmap.md).
+MVP работает в демонстрационном режиме: Web App не имеет надёжной авторизации владельца, а RLS не обеспечивает production-изоляцию магазинов. Полный список блокеров находится в [production-readiness.md](docs/specs/product/production-readiness.md).
