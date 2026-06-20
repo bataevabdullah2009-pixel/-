@@ -204,6 +204,33 @@ export function calculateItemTotal(quantity: number, price: number | null | unde
   return Number((quantity * price).toFixed(2));
 }
 
+const MEANINGLESS_PRODUCT_TOKENS = new Set([
+  "а",
+  "ага",
+  "вот",
+  "да",
+  "неразборчиво",
+  "нет",
+  "ну",
+  "товар",
+  "ээ",
+  "эм",
+  "unknown"
+]);
+
+export function isMeaningfulProductName(name: string | null | undefined) {
+  const normalized = normalizeProductName(name);
+
+  if (!normalized || normalized.length > 120 || /(.)\1{4,}/u.test(normalized)) {
+    return false;
+  }
+
+  const tokens = normalized.match(/[\p{L}\p{N}%]+/gu) ?? [];
+  const letters = normalized.match(/\p{L}/gu) ?? [];
+
+  return letters.length >= 2 && tokens.some((token) => token.length >= 2 && !MEANINGLESS_PRODUCT_TOKENS.has(token));
+}
+
 export function resolveSaleItemStatus(params: {
   productName: string | null | undefined;
   quantityWasMissing?: boolean;
@@ -211,7 +238,7 @@ export function resolveSaleItemStatus(params: {
   total: number | null;
   confidence: number;
 }): SaleItemStatus {
-  if (!normalizeProductName(params.productName) || params.quantityWasMissing || params.confidence < 0.75) {
+  if (!isMeaningfulProductName(params.productName) || params.quantityWasMissing || params.confidence < 0.75) {
     return "needs_review";
   }
 

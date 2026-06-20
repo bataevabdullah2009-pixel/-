@@ -30,7 +30,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
   const date = getStringParam(params.date);
   const mutation = getStringParam(params.mutation);
   const message = getStringParam(params.message);
-  const { range, summary, items, deletedItems } = await getReport({ period, date });
+  const { range, summary, items, deletedItems, error } = await getReport({ period, date });
   const returnQuery = new URLSearchParams({ period });
   if (date) returnQuery.set("date", date);
   const returnTo = `/daily-report?${returnQuery.toString()}#items`;
@@ -51,6 +51,8 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
           {message}
         </div>
       ) : null}
+
+      {error ? <div className="actionNotice actionNotice-error" role="alert">{error}</div> : null}
 
       <aside className="summaryBar" aria-label="Итоги за выбранный период">
         <div className="summaryPeriod">

@@ -6,7 +6,7 @@ import { getDateRange } from "@voice-sales-log/shared/utils/date-range";
 import type { DateRangePreset } from "@voice-sales-log/shared/types";
 import {
   excludeSaleItem,
-  resetDayRevenue,
+  resetDay,
   restoreSaleItem,
   updateSaleItem
 } from "@/features/records/records.api";
@@ -81,11 +81,17 @@ export async function excludeSaleItemAction(formData: FormData) {
 export async function restoreSaleItemAction(formData: FormData) {
   const returnTo = safeReturnTo(formData);
   const itemId = String(formData.get("itemId") ?? "");
-  const result = itemId
-    ? await restoreSaleItem(itemId)
-    : { ok: false, message: "Позиция не найдена." };
+  let result = { ok: false, message: "Не удалось восстановить товар." };
 
-  finishMutation(returnTo, result);
+  if (itemId) {
+    try {
+      result = await restoreSaleItem(itemId);
+    } catch (error) {
+      console.error("Failed to restore sale item", error);
+    }
+  }
+
+  finishMutation(returnTo, result.ok ? result : { ok: false, message: "Не удалось восстановить товар." });
 }
 
 export async function resetDayRevenueAction(formData: FormData) {
@@ -103,6 +109,13 @@ export async function resetDayRevenueAction(formData: FormData) {
   }
 
   const range = getDateRange(periodValue as DateRangePreset, { date });
-  const result = await resetDayRevenue({ start: range.start, end: range.end });
-  finishMutation(returnTo, result);
+  let result: { ok: boolean; message: string };
+  try {
+    result = await resetDay({ start: range.start, end: range.end });
+  } catch (error) {
+    console.error("Failed to reset daily report", error);
+    result = { ok: false, message: "Не удалось сбросить отчёт за день." };
+  }
+
+  finishMutation(returnTo, result.ok ? result : { ok: false, message: "Не удалось сбросить отчёт за день." });
 }

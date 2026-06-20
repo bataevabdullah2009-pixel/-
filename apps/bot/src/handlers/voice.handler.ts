@@ -4,8 +4,10 @@ import type { AppEnv } from "../config/env";
 import { prepareTelegramVoiceForStt } from "../services/audio-conversion.service";
 import { cleanupTranscript, parseSaleTranscript } from "../services/cleanup-text.service";
 import {
+  requireSeller,
   saveFailedVoiceRecord,
   saveProcessedSale,
+  SellerAccessError,
   writeProcessingAuditLog
 } from "../services/records.service";
 import { uploadVoiceAudio } from "../services/storage.service";
@@ -29,6 +31,19 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
 
     if (!telegramId) {
       await ctx.reply("Не удалось определить продавца. Попробуйте команду /start.");
+      return;
+    }
+
+    try {
+      await requireSeller(env, telegramId, sellerName);
+    } catch (error) {
+      if (error instanceof SellerAccessError) {
+        await ctx.reply(error.message);
+        return;
+      }
+
+      logger.error("Seller access check failed", { error, telegramId, telegramMessageId });
+      await ctx.reply("Не удалось проверить привязку к магазину. Попробуйте позже.");
       return;
     }
 
@@ -112,6 +127,11 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
       const responseText = parsedSale.cleaned_text || "Текст требует ручной проверки.";
       await ctx.reply(`✅ Запись сохранена:\n${responseText}\n\nСтатус: ${result.status}`);
     } catch (error) {
+      if (error instanceof SellerAccessError) {
+        await ctx.reply(error.message);
+        return;
+      }
+
       const unsafeMessage = error instanceof Error ? error.message : "Unknown voice processing error.";
       const messageText = redactSensitiveText(unsafeMessage);
       logger.error("Voice processing failed", { error: messageText, telegramId, telegramMessageId });

@@ -1,6 +1,6 @@
 import type { Context, Telegraf } from "telegraf";
 import type { AppEnv } from "../config/env";
-import { findOrCreateSeller } from "../services/records.service";
+import { requireSeller, SellerAccessError } from "../services/records.service";
 import { logger } from "../utils/logger";
 
 export function registerStartHandler(bot: Telegraf<Context>, env: AppEnv) {
@@ -14,11 +14,16 @@ export function registerStartHandler(bot: Telegraf<Context>, env: AppEnv) {
     }
 
     try {
-      await findOrCreateSeller(env, telegramId, name);
+      await requireSeller(env, telegramId, name);
       await ctx.reply("Здравствуйте! Отправьте голосовое с продажей: товар, количество и цену.");
     } catch (error) {
+      if (error instanceof SellerAccessError) {
+        await ctx.reply(error.message);
+        return;
+      }
+
       logger.error("Failed to register seller", { error });
-      await ctx.reply("Не удалось зарегистрировать продавца. Проверьте настройки и попробуйте позже.");
+      await ctx.reply("Не удалось проверить доступ продавца. Попробуйте позже.");
     }
   });
 }

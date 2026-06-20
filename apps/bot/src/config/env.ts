@@ -12,6 +12,7 @@ const envSchema = z.object({
   LLM_API_KEY: z.string().trim().min(1),
   LLM_API_URL: z.string().trim().url(),
   LLM_MODEL: z.string().trim().min(1),
+  DEMO_MODE: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
   DEFAULT_SHOP_NAME: z.string().trim().min(1).default("Демо-магазин")
 });
 

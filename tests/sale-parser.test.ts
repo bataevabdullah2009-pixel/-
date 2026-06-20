@@ -58,6 +58,16 @@ describe("sale parser evidence rules", () => {
     });
   });
 
+  it("parses Pringles quantity and price into a processed sale item", () => {
+    expect(parseExample("Чипсы Принглс 20 штук по 300 рублей", "Чипсы Принглс")).toMatchObject({
+      product_name: "Чипсы Принглс",
+      quantity: 20,
+      price: 300,
+      total: 6000,
+      status: "processed"
+    });
+  });
+
   it("normalizes kilograms and recalculates total", () => {
     expect(parseExample("Шоколад 2 килограмма по 2000 рублей", "Шоколад")).toMatchObject({
       product_name: "Шоколад",

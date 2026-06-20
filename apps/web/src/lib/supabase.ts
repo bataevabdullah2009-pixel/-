@@ -2,7 +2,6 @@ import "server-only";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-let publicClient: SupabaseClient | null = null;
 let adminClient: SupabaseClient | null = null;
 
 function createSupabaseClient(key: string) {
@@ -18,11 +17,6 @@ function createSupabaseClient(key: string) {
       autoRefreshToken: false
     }
   });
-}
-
-export function getSupabaseServerClient() {
-  publicClient ??= createSupabaseClient(process.env.SUPABASE_ANON_KEY ?? "");
-  return publicClient;
 }
 
 export function getSupabaseAdminClient() {

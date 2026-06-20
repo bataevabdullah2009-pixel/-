@@ -150,6 +150,16 @@ describe("sales report", () => {
         confidence: 0.95
       }).status
     ).toBe("needs_review");
+
+    expect(
+      normalizeSaleItemFields({
+        product_name: "ээээээ",
+        quantity: 1,
+        unit: "шт",
+        price: 40,
+        confidence: 0.95
+      }).status
+    ).toBe("needs_review");
   });
 
   it("updates a sale item with recalculated total and processed status", () => {

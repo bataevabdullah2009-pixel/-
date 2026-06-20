@@ -12,6 +12,33 @@ import type { AppEnv } from "../config/env";
 
 let client: SupabaseClient | null = null;
 
+export class SellerAccessError extends Error {
+  constructor(message = "Ваш Telegram не привязан к магазину. Обратитесь к владельцу.") {
+    super(message);
+    this.name = "SellerAccessError";
+  }
+}
+
+export type SellerContext = {
+  id: string;
+  shopId: string;
+};
+
+export function resolveSellerAccess(
+  seller: { id: string; shop_id: string; is_active: boolean } | null,
+  demoMode: boolean
+): SellerContext | null {
+  if (seller?.is_active) {
+    return { id: seller.id, shopId: seller.shop_id };
+  }
+
+  if (seller || !demoMode) {
+    throw new SellerAccessError();
+  }
+
+  return null;
+}
+
 function getSupabase(env: AppEnv) {
   client ??= createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
     auth: {
@@ -52,13 +79,12 @@ async function getDefaultShopId(env: AppEnv) {
   return data.id as string;
 }
 
-export async function findOrCreateSeller(env: AppEnv, telegramId: number, name: string | null) {
+export async function requireSeller(env: AppEnv, telegramId: number, name: string | null): Promise<SellerContext> {
   const supabase = getSupabase(env);
-  const shopId = await getDefaultShopId(env);
 
   const { data: existingSeller, error: selectError } = await supabase
     .from("sellers")
-    .select("id, shop_id, name")
+    .select("id, shop_id, name, is_active")
     .eq("telegram_id", telegramId)
     .maybeSingle();
 
@@ -66,12 +92,19 @@ export async function findOrCreateSeller(env: AppEnv, telegramId: number, name: 
     throw selectError;
   }
 
-  if (existingSeller?.id) {
-    return {
-      id: existingSeller.id as string,
-      shopId: existingSeller.shop_id as string
-    };
-  }
+  const existingAccess = resolveSellerAccess(
+    existingSeller?.id
+      ? {
+          id: String(existingSeller.id),
+          shop_id: String(existingSeller.shop_id),
+          is_active: Boolean(existingSeller.is_active)
+        }
+      : null,
+    env.DEMO_MODE
+  );
+  if (existingAccess) return existingAccess;
+
+  const shopId = await getDefaultShopId(env);
 
   const { data, error } = await supabase
     .from("sellers")
@@ -92,6 +125,8 @@ export async function findOrCreateSeller(env: AppEnv, telegramId: number, name: 
     shopId: data.shop_id as string
   };
 }
+
+export const findOrCreateSeller = requireSeller;
 
 type ProductLookup = {
   id: string;
@@ -171,6 +206,37 @@ async function resolveSaleItem(env: AppEnv, shopId: string, item: ParsedSaleItem
   };
 }
 
+type ResolvedSaleItem = Awaited<ReturnType<typeof resolveSaleItem>>;
+
+export function buildVoiceSaleRpcPayload(params: {
+  seller: SellerContext;
+  telegramMessageId: string;
+  audioPath: string | null;
+  audioUrl: string | null;
+  rawText: string;
+  parsedSale: ParsedSale;
+  parserJson: unknown | null;
+  errorMessage: string | null;
+  saleStatus: VoiceRecordStatus;
+  totalAmount: number;
+  resolvedItems: ResolvedSaleItem[];
+}) {
+  return {
+    p_shop_id: params.seller.shopId,
+    p_seller_id: params.seller.id,
+    p_telegram_message_id: params.telegramMessageId,
+    p_audio_path: params.audioPath,
+    p_audio_url: params.audioUrl,
+    p_raw_text: params.rawText,
+    p_cleaned_text: params.parsedSale.cleaned_text,
+    p_parser_json: params.parserJson,
+    p_status: params.saleStatus,
+    p_error_message: params.errorMessage,
+    p_total_amount: params.totalAmount,
+    p_items: params.resolvedItems
+  };
+}
+
 export async function saveProcessedSale(params: {
   env: AppEnv;
   sellerTelegramId: number;
@@ -196,7 +262,7 @@ export async function saveProcessedSale(params: {
     errorMessage
   } = params;
   const supabase = getSupabase(env);
-  const seller = await findOrCreateSeller(env, sellerTelegramId, sellerName);
+  const seller = await requireSeller(env, sellerTelegramId, sellerName);
   const resolvedItems = await Promise.all(parsedSale.items.map((item) => resolveSaleItem(env, seller.shopId, item)));
   const saleStatus = resolveSaleStatus(resolvedItems, parsedSale.needs_review);
   const totalAmount = Number(
@@ -206,65 +272,40 @@ export async function saveProcessedSale(params: {
       .toFixed(2)
   );
 
-  const { data: voiceRecord, error: voiceError } = await supabase
-    .from("voice_records")
-    .insert({
-      shop_id: seller.shopId,
-      seller_id: seller.id,
-      telegram_message_id: telegramMessageId,
-      audio_path: audioPath,
-      audio_url: audioUrl,
-      raw_text: rawText,
-      cleaned_text: parsedSale.cleaned_text,
-      parser_json: parserJson,
-      status: saleStatus,
-      error_message: errorMessage ?? null
-    })
-    .select("id")
-    .single();
+  const rpcPayload = buildVoiceSaleRpcPayload({
+    seller,
+    telegramMessageId,
+    audioPath,
+    audioUrl,
+    rawText,
+    parsedSale,
+    parserJson,
+    errorMessage: errorMessage ?? null,
+    saleStatus,
+    totalAmount,
+    resolvedItems
+  });
+  const { data: persistedRows, error: persistenceError } = await supabase.rpc("save_voice_sale", rpcPayload);
 
-  if (voiceError) {
-    throw voiceError;
+  if (persistenceError) {
+    throw persistenceError;
   }
 
-  const { data: sale, error: saleError } = await supabase
-    .from("sales")
-    .insert({
-      shop_id: seller.shopId,
-      seller_id: seller.id,
-      voice_record_id: voiceRecord.id,
-      raw_text: parsedSale.raw_text,
-      cleaned_text: parsedSale.cleaned_text,
-      total_amount: totalAmount,
-      status: saleStatus
-    })
-    .select("id")
-    .single();
-
-  if (saleError) {
-    throw saleError;
+  const persisted = Array.isArray(persistedRows) ? persistedRows[0] : persistedRows;
+  if (!persisted?.sale_id || !persisted?.voice_record_id) {
+    throw new Error("Voice sale persistence returned no identifiers.");
   }
 
-  if (resolvedItems.length) {
-    const { error: itemsError } = await supabase.from("sale_items").insert(
-      resolvedItems.map((item) => ({
-        sale_id: sale.id,
-        ...item
-      }))
-    );
-
-    if (itemsError) {
-      throw itemsError;
-    }
-  }
+  const saleId = String(persisted.sale_id);
+  const voiceRecordId = String(persisted.voice_record_id);
 
   await writeAuditLog(env, {
     shopId: seller.shopId,
     sellerId: seller.id,
     action: "sale_items_created",
     details: {
-      sale_id: sale.id,
-      voice_record_id: voiceRecord.id,
+      sale_id: saleId,
+      voice_record_id: voiceRecordId,
       items_count: resolvedItems.length,
       item_statuses: resolvedItems.map((item) => item.status)
     }
@@ -275,16 +316,16 @@ export async function saveProcessedSale(params: {
     sellerId: seller.id,
     action: "sale.processed",
     details: {
-      sale_id: sale.id,
-      voice_record_id: voiceRecord.id,
+      sale_id: saleId,
+      voice_record_id: voiceRecordId,
       status: saleStatus,
       items_count: resolvedItems.length
     }
   });
 
   return {
-    saleId: sale.id as string,
-    voiceRecordId: voiceRecord.id as string,
+    saleId,
+    voiceRecordId,
     status: saleStatus,
     totalAmount
   };
@@ -315,7 +356,7 @@ export async function saveFailedVoiceRecord(params: {
     errorMessage
   } = params;
   const supabase = getSupabase(env);
-  const seller = await findOrCreateSeller(env, sellerTelegramId, sellerName);
+  const seller = await requireSeller(env, sellerTelegramId, sellerName);
 
   const { data, error } = await supabase
     .from("voice_records")
@@ -357,7 +398,7 @@ export async function writeProcessingAuditLog(params: {
   details: Record<string, unknown>;
 }) {
   const { env, sellerTelegramId, sellerName, action, details } = params;
-  const seller = await findOrCreateSeller(env, sellerTelegramId, sellerName);
+  const seller = await requireSeller(env, sellerTelegramId, sellerName);
 
   await writeAuditLog(env, {
     shopId: seller.shopId,
