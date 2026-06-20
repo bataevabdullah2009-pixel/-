@@ -1,17 +1,12 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-
-declare global {
-  interface Window {
-    Telegram?: {
-      WebApp?: {
-        initData?: string;
-        ready?: () => void;
-      };
-    };
-  }
-}
+import {
+  apiFetch,
+  getTelegramInitData,
+  initializeTelegramWebApp,
+  waitForTelegramWebApp
+} from "@/lib/telegram-api";
 
 type AuthState =
   | { status: "loading"; message: string }
@@ -34,31 +29,30 @@ export function TelegramAuthBootstrap({
   );
 
   useEffect(() => {
-    const webApp = window.Telegram?.WebApp;
-    const initData = webApp?.initData?.trim() ?? "";
-    webApp?.ready?.();
-
-    if (!initData) {
-      if (!hasSession && !demoMode) {
-        setState({
-          status: "error",
-          message: "Откройте Web App через кнопку в Telegram-боте."
-        });
-      }
-      return;
-    }
-
     const controller = new AbortController();
-    void fetch("/api/auth/telegram", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: {
-        "x-telegram-init-data": initData
-      },
-      signal: controller.signal
-    })
+    void waitForTelegramWebApp()
+      .then(async (webApp) => {
+        initializeTelegramWebApp(webApp);
+        const initData = getTelegramInitData();
+
+        if (!initData) {
+          if (!hasSession && !demoMode) {
+            setState({
+              status: "error",
+              message: "Откройте отчёт через кнопку в Telegram-боте"
+            });
+          }
+          return null;
+        }
+
+        return apiFetch("/api/auth/telegram", {
+          method: "POST",
+          signal: controller.signal
+        });
+      })
       .then(async (response) => {
-        const body = (await response.json().catch(() => null)) as { message?: string } | null;
+        if (!response) return;
+        const body = (await response.json().catch(() => null)) as { code?: string; message?: string } | null;
         if (!response.ok) {
           setState({
             status: "error",

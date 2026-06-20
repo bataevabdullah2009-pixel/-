@@ -1,5 +1,5 @@
 import type { DateRangePreset } from "@voice-sales-log/shared/types";
-import type { SearchParams } from "./records.types";
+import type { ReportFilters, SearchParams } from "./records.types";
 
 export function getStringParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
@@ -13,6 +13,14 @@ export function getPreset(value: string | string[] | undefined): DateRangePreset
   }
 
   return "today";
+}
+
+export function getReportFilters(params: SearchParams): ReportFilters {
+  const date = getStringParam(params.date);
+  return {
+    period: getPreset(params.period),
+    ...(date ? { date } : {})
+  };
 }
 
 export function formatCurrency(value: number) {

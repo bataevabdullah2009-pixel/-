@@ -17,9 +17,10 @@ const info = result.result ?? {};
 console.log(
   JSON.stringify(
     {
-      url: info.url ?? "",
+      current_webhook_url: info.url ?? "",
       pending_update_count: info.pending_update_count ?? 0,
-      last_error_message: info.last_error_message ?? null
+      last_error: info.last_error_message ?? null,
+      allowed_updates: info.allowed_updates ?? []
     },
     null,
     2

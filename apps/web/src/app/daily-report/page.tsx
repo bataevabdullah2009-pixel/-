@@ -8,7 +8,7 @@ import type { SaleItem } from "@voice-sales-log/shared/types";
 import {
   formatCurrency,
   formatQuantity,
-  getPreset,
+  getReportFilters,
   getStatusLabel,
   getStringParam
 } from "@/features/records/records.utils";
@@ -70,11 +70,11 @@ function SaleItemEditor({ item, returnTo }: { item: SaleItem; returnTo: string }
 
 export default async function DailyReportPage({ searchParams }: DailyReportPageProps) {
   const params = await searchParams;
-  const period = getPreset(params.period);
-  const date = getStringParam(params.date);
+  const filters = getReportFilters(params);
+  const { period, date } = filters;
   const mutation = getStringParam(params.mutation);
   const message = getStringParam(params.message);
-  const { range, summary, items, deletedItems, error } = await getReport({ period, date });
+  const { range, summary, items, deletedItems, error } = await getReport(filters);
   const returnQuery = new URLSearchParams({ period });
   if (date) returnQuery.set("date", date);
   const returnTo = `/daily-report?${returnQuery.toString()}#items`;

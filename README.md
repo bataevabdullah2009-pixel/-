@@ -61,6 +61,7 @@ Telegram voice
 | `TELEGRAM_BOT_TOKEN` | Токен бота; также используется для HMAC initData. |
 | `TELEGRAM_WEBHOOK_SECRET` | Secret header Telegram webhook. |
 | `NEXT_PUBLIC_APP_URL` | Публичный HTTPS URL Web App. |
+| `PUBLIC_WEBHOOK_URL` | Необязательная отдельная HTTPS база или полный URL webhook; иначе используется `NEXT_PUBLIC_APP_URL`. |
 | `SUPABASE_URL` | URL проекта Supabase. |
 | `SUPABASE_ANON_KEY` | Public key Supabase; не даёт анонимного чтения бизнес-таблиц. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Только server-side bot/Web App. |
@@ -105,7 +106,13 @@ npm run telegram:set-webhook
 npm run telegram:webhook-info
 ```
 
-Webhook endpoint: `/api/telegram/webhook`. Кнопка «Открыть отчёт» создаётся через Telegram `web_app`. Frontend вызывает `Telegram.WebApp.ready()` и передаёт `Telegram.WebApp.initData` в header `x-telegram-init-data` на `/api/auth/telegram`. Обычная URL-кнопка не используется.
+Webhook endpoint: `/api/telegram/webhook`. Inline-кнопка после `/start` и успешной продажи, а также нижняя menu button «Открыть отчёт» создаются через Telegram `web_app` и используют один `NEXT_PUBLIC_APP_URL`. Обычная URL-кнопка не используется.
+
+Next.js загружает официальный `telegram-web-app.js` до hydration. Client bootstrap ждёт `window.Telegram.WebApp`, вызывает `ready()` и `expand()`, а общий `apiFetch()` добавляет `Telegram.WebApp.initData` в header `x-telegram-init-data` каждого browser fetch. В development console выводятся только признаки наличия SDK, длина initData, platform и version; само initData не логируется.
+
+`POST /api/auth/telegram` валидирует HMAC и срок initData, находит активного owner/seller по Telegram id, проверяет существование магазина и устанавливает HttpOnly cookie. Server Components и Server Actions повторно валидируют cookie. `shop_id` всегда берётся из БД и не принимается из query, form или JSON клиента. Ошибки API имеют коды `TELEGRAM_INIT_DATA_MISSING`, `TELEGRAM_INIT_DATA_INVALID`, `SELLER_NOT_LINKED` и `SHOP_NOT_FOUND`.
+
+`telegram:webhook-info` показывает `current_webhook_url`, `pending_update_count`, `last_error` и `allowed_updates`. URL должен начинаться с `https://` и совпадать с текущим production-доменом; localhost, ngrok и старые preview-домены запрещены.
 
 До появления отдельной строки `owners` сервер сохраняет совместимость с существующим MVP: после проверки initData активная запись `sellers` с тем же Telegram id определяет тот же `shop_id`. Клиентский `shop_id` не принимается ни в одном варианте.
 

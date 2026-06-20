@@ -8,6 +8,11 @@ import {
   TelegramInitDataError,
   verifyTelegramInitData
 } from "./telegram-init-data";
+import {
+  resolveTelegramPrincipal,
+  TelegramPrincipalError,
+  type TelegramPrincipalRecord
+} from "./telegram-principal";
 
 export const TELEGRAM_INIT_DATA_COOKIE = "voice_sales_telegram_init_data";
 
@@ -18,16 +23,14 @@ export type OwnerContext = {
   demo: boolean;
 };
 
-type TelegramPrincipalRecord = {
-  id: unknown;
-  shop_id: unknown;
-  telegram_id: unknown;
-  is_active: unknown;
-};
-
 export class OwnerAccessError extends Error {
   constructor(
-    public readonly code: "not_authenticated" | "not_authorized" | "misconfigured",
+    public readonly code:
+      | "TELEGRAM_INIT_DATA_MISSING"
+      | "TELEGRAM_INIT_DATA_INVALID"
+      | "SELLER_NOT_LINKED"
+      | "SHOP_NOT_FOUND"
+      | "AUTH_MISCONFIGURED",
     message: string
   ) {
     super(message);
@@ -39,15 +42,6 @@ export function isDemoMode() {
   return process.env.DEMO_MODE === "true";
 }
 
-function ownerContextFromRecord(record: TelegramPrincipalRecord): OwnerContext {
-  return {
-    ownerId: String(record.id),
-    shopId: String(record.shop_id),
-    telegramId: Number(record.telegram_id),
-    demo: false
-  };
-}
-
 function isMissingOwnersTable(error: { code?: string; message?: string } | null) {
   return error?.code === "PGRST205";
 }
@@ -56,39 +50,52 @@ async function findActiveOwnerByTelegramId(telegramId: number): Promise<OwnerCon
   const admin = getSupabaseAdminClient();
 
   if (!admin) {
-    throw new OwnerAccessError("misconfigured", "Supabase admin client is not configured.");
+    throw new OwnerAccessError("AUTH_MISCONFIGURED", "Supabase admin client is not configured.");
   }
 
-  const { data, error } = await admin
-    .from("owners")
-    .select("id, shop_id, telegram_id, is_active")
-    .eq("telegram_id", telegramId)
-    .eq("is_active", true)
-    .maybeSingle();
+  try {
+    const principal = await resolveTelegramPrincipal(telegramId, {
+      async findOwner(id) {
+        const { data, error } = await admin
+          .from("owners")
+          .select("id, shop_id, telegram_id, is_active")
+          .eq("telegram_id", id)
+          .maybeSingle();
+        if (error && !isMissingOwnersTable(error)) throw error;
+        return (data as TelegramPrincipalRecord | null) ?? null;
+      },
+      async findSeller(id) {
+        const { data, error } = await admin
+          .from("sellers")
+          .select("id, shop_id, telegram_id, is_active")
+          .eq("telegram_id", id)
+          .maybeSingle();
+        if (error) throw error;
+        return (data as TelegramPrincipalRecord | null) ?? null;
+      },
+      async shopExists(shopId) {
+        const { data, error } = await admin
+          .from("shops")
+          .select("id")
+          .eq("id", shopId)
+          .maybeSingle();
+        if (error) throw error;
+        return Boolean(data);
+      }
+    });
 
-  if (error && !isMissingOwnersTable(error)) {
+    return {
+      ownerId: principal.principalId,
+      shopId: principal.shopId,
+      telegramId: principal.telegramId,
+      demo: false
+    };
+  } catch (error) {
+    if (error instanceof TelegramPrincipalError) {
+      throw new OwnerAccessError(error.code, error.message);
+    }
     throw error;
   }
-
-  if (data) {
-    return ownerContextFromRecord(data);
-  }
-
-  // Compatibility for the existing MVP data model: before the owners table was
-  // introduced, an active seller was the only Telegram-to-shop binding.
-  const { data: seller, error: sellerError } = await admin
-    .from("sellers")
-    .select("id, shop_id, telegram_id, is_active")
-    .eq("telegram_id", telegramId)
-    .eq("is_active", true)
-    .maybeSingle();
-
-  if (sellerError) throw sellerError;
-  if (!seller) {
-    throw new OwnerAccessError("not_authorized", "Ваш Telegram не привязан к магазину.");
-  }
-
-  return ownerContextFromRecord(seller);
 }
 
 async function requireDemoOwner(): Promise<OwnerContext> {
@@ -113,7 +120,7 @@ async function requireDemoOwner(): Promise<OwnerContext> {
 
   if (shopError) throw shopError;
   if (!shop) {
-    throw new OwnerAccessError("not_authorized", "Demo shop is not configured.");
+    throw new OwnerAccessError("SHOP_NOT_FOUND", "Demo shop is not configured.");
   }
 
   const { data: owner, error: ownerError } = await admin
@@ -126,7 +133,7 @@ async function requireDemoOwner(): Promise<OwnerContext> {
 
   if (ownerError) throw ownerError;
   if (!owner) {
-    throw new OwnerAccessError("not_authorized", "Demo owner is not configured.");
+    throw new OwnerAccessError("SELLER_NOT_LINKED", "Demo owner is not configured.");
   }
 
   return {
@@ -140,7 +147,7 @@ async function requireDemoOwner(): Promise<OwnerContext> {
 export async function authenticateOwner(initData: string): Promise<OwnerContext> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
-    throw new OwnerAccessError("misconfigured", "Telegram bot token is not configured.");
+    throw new OwnerAccessError("AUTH_MISCONFIGURED", "Telegram bot token is not configured.");
   }
 
   try {
@@ -149,7 +156,7 @@ export async function authenticateOwner(initData: string): Promise<OwnerContext>
   } catch (error) {
     if (error instanceof OwnerAccessError) throw error;
     if (error instanceof TelegramInitDataError) {
-      throw new OwnerAccessError("not_authenticated", error.message);
+      throw new OwnerAccessError(error.code, error.message);
     }
     throw error;
   }
@@ -172,13 +179,16 @@ export async function requireOwner(request?: Request): Promise<OwnerContext> {
     return requireDemoOwner();
   }
 
-  throw new OwnerAccessError("not_authenticated", "Open the Web App from Telegram.");
+  throw new OwnerAccessError(
+    "TELEGRAM_INIT_DATA_MISSING",
+    "Откройте отчёт через кнопку в Telegram-боте"
+  );
 }
 
 export function requireShopAccess(owner: OwnerContext, shopId: string) {
   try {
     return requireMatchingShop(owner.shopId, shopId);
   } catch {
-    throw new OwnerAccessError("not_authorized", "Owner cannot access this shop.");
+    throw new OwnerAccessError("SELLER_NOT_LINKED", "Owner cannot access this shop.");
   }
 }

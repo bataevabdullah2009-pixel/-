@@ -7,7 +7,7 @@ import {
   SellerAccessError
 } from "../apps/bot/src/services/records.service";
 import { parseSaleTranscript } from "../apps/bot/src/services/cleanup-text.service";
-import { createReportKeyboard } from "../apps/bot/src/services/telegram.service";
+import { createReportKeyboard, createReportMenuButton } from "../apps/bot/src/services/telegram.service";
 import { buildExcludedSaleItemPatch, buildManualSaleItemPatch, buildSalesReport } from "../packages/shared/utils/date-range";
 import type { SaleItem } from "../packages/shared/types";
 import {
@@ -152,8 +152,16 @@ describe("sales flow stabilization", () => {
 
   it("denies a production Web App API request without initData header", () => {
     expect(() => requireTelegramInitDataHeader(new Headers())).toThrow(
-      "Откройте Web App через кнопку в Telegram-боте."
+      "Откройте отчёт через кнопку в Telegram-боте"
     );
+  });
+
+  it("uses a Telegram Web App menu button for the persistent report action", () => {
+    expect(createReportMenuButton("https://voice-sales.example.com")).toEqual({
+      type: "web_app",
+      text: "Открыть отчёт",
+      web_app: { url: "https://voice-sales.example.com" }
+    });
   });
 
   it("creates a needs_review item when parsing produces no items", () => {

@@ -10,8 +10,16 @@ function getRequiredEnv(name: string) {
 
 const botToken = getRequiredEnv("TELEGRAM_BOT_TOKEN");
 const webhookSecret = getRequiredEnv("TELEGRAM_WEBHOOK_SECRET");
-const appUrl = getRequiredEnv("NEXT_PUBLIC_APP_URL").replace(/\/+$/, "");
-const webhookUrl = `${appUrl}/api/telegram/webhook`;
+const publicWebhookUrl = (
+  process.env.PUBLIC_WEBHOOK_URL?.trim() || getRequiredEnv("NEXT_PUBLIC_APP_URL")
+).replace(/\/+$/, "");
+const webhookUrl = publicWebhookUrl.endsWith("/api/telegram/webhook")
+  ? publicWebhookUrl
+  : `${publicWebhookUrl}/api/telegram/webhook`;
+
+if (new URL(webhookUrl).protocol !== "https:") {
+  throw new Error("Telegram webhook URL must use https://");
+}
 
 const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
   method: "POST",

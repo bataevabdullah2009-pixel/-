@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-06-20 — Telegram Mini App initData hotfix
+
+### Fixed
+
+- Все inline и нижняя menu button «Открыть отчёт» используют Telegram `web_app` и один HTTPS `NEXT_PUBLIC_APP_URL`.
+- Telegram SDK загружается до hydration; bootstrap ждёт WebApp object и вызывает `ready()`/`expand()`.
+- Добавлен общий browser `apiFetch` с обязательным `x-telegram-init-data` и безопасные dev diagnostics.
+- Auth API возвращает точные коды `TELEGRAM_INIT_DATA_MISSING`, `TELEGRAM_INIT_DATA_INVALID`, `SELLER_NOT_LINKED`, `SHOP_NOT_FOUND`.
+- Owner/seller lookup запрещает inactive seller, проверяет существование shop и никогда не принимает client `shop_id`.
+- `telegram:webhook-info` показывает URL, pending updates, last error и allowed updates; setWebhook поддерживает `PUBLIC_WEBHOOK_URL` и требует HTTPS.
+
+### Validation
+
+- `npm run test`: 55 тестов, 8 файлов.
+- `npm run lint`: без ошибок.
+- `npm run build`: успешно.
+- Local production smoke: SDK загружен, `ready()`/`expand()` вызваны; missing/invalid initData дают ожидаемые `401`; подписанный initData active seller даёт `200`, cookie и отчёт без auth error.
+- Production webhook: `https://web-n3ji.vercel.app/api/telegram/webhook`, pending `0`, last error `null`, allowed updates `message`.
+- Mobile Telegram E2E ожидает production deploy и остаётся release gate.
+
 ## 2026-06-20 — Telegram/Web App and voice regression hotfix
 
 ### Fixed

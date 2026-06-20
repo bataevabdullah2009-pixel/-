@@ -93,9 +93,15 @@ function logServerError(operation: string, error: unknown) {
 }
 
 function reportLoadMessage(error: unknown) {
-  return error instanceof OwnerAccessError && error.code === "not_authenticated"
-    ? "Откройте Web App через Telegram."
-    : "Не удалось загрузить отчёт.";
+  if (error instanceof OwnerAccessError) {
+    if (error.code === "SELLER_NOT_LINKED") return "Ваш Telegram не привязан к магазину";
+    if (error.code === "SHOP_NOT_FOUND") return "Магазин не найден";
+    if (error.code === "TELEGRAM_INIT_DATA_MISSING" || error.code === "TELEGRAM_INIT_DATA_INVALID") {
+      return "Откройте отчёт через кнопку в Telegram-боте";
+    }
+  }
+
+  return "Не удалось загрузить отчёт.";
 }
 
 async function createSignedAudioUrl(audioPath: string | null, fallbackUrl: string | null) {

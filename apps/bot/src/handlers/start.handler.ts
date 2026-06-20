@@ -1,6 +1,7 @@
 import type { Context, Telegraf } from "telegraf";
 import type { AppEnv } from "../config/env";
-import { createReportKeyboard } from "../services/telegram.service";
+import { createReportKeyboard, createReportMenuButton } from "../services/telegram.service";
+import { logger } from "../utils/logger";
 
 export function registerStartHandler(bot: Telegraf<Context>, env: AppEnv) {
   bot.start(async (ctx) => {
@@ -9,6 +10,12 @@ export function registerStartHandler(bot: Telegraf<Context>, env: AppEnv) {
     if (!telegramId) {
       await ctx.reply("Не удалось определить Telegram ID. Попробуйте ещё раз.");
       return;
+    }
+
+    try {
+      await ctx.setChatMenuButton(createReportMenuButton(env.NEXT_PUBLIC_APP_URL));
+    } catch (error) {
+      logger.warn("report_menu_button_setup_failed", { telegramId, error });
     }
 
     await ctx.reply(

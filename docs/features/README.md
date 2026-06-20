@@ -1,5 +1,7 @@
 # Функции
 
+Все функции панели владельца доступны только после Telegram Mini App auth и ограничены server-derived магазином.
+
 - [Обработка голоса](./voice-processing.md)
 - [Отчёт продаж](./sales-report.md)
 - [Журнал записей](./records-journal.md)

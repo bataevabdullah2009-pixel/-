@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import {
   authenticateOwner,
-  OwnerAccessError,
   TELEGRAM_INIT_DATA_COOKIE
 } from "@/lib/owner-auth";
 import { requireTelegramInitDataHeader } from "@/lib/telegram-init-data";
+import { describeTelegramAuthError } from "@/lib/telegram-auth-errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,18 +25,10 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     console.error("Telegram owner authentication failed", error);
-    const accessError = error instanceof OwnerAccessError ? error : null;
-    const status = accessError?.code === "not_authorized"
-      ? 403
-      : accessError?.code === "misconfigured"
-        ? 500
-        : 401;
-    const message = accessError?.code === "not_authorized"
-      ? "Ваш Telegram не привязан к магазину."
-      : accessError?.code === "misconfigured"
-        ? "Сервис авторизации временно не настроен."
-        : "Откройте Web App через кнопку в Telegram-боте.";
-
-    return NextResponse.json({ ok: false, message }, { status });
+    const details = describeTelegramAuthError(error);
+    return NextResponse.json(
+      { ok: false, code: details.code, message: details.message },
+      { status: details.status }
+    );
   }
 }

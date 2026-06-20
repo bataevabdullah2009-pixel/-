@@ -1,11 +1,11 @@
 # Стабилизация потока продаж — завершено 2026-06-20
 
-Исправлен regression после введения owner auth и RPC persistence без расширения продуктового scope.
+Исправлен regression после введения owner auth и RPC persistence без расширения продуктового scope. Первичная WebApp bootstrap реализация из этого этапа оставляла race загрузки Telegram SDK; окончательное исправление зафиксировано в [002-telegram-webapp-auth](./002-telegram-webapp-auth.md).
 
 Выполнено:
 
-- восстановлена Telegram Web App button и передача initData в header;
-- устранён преждевременный auth error на первом render;
+- восстановлена Telegram Web App button и первичная передача initData в header;
+- добавлен auth bootstrap; ожидание SDK и нижняя menu button завершены в плане 002;
 - сохранена server-derived shop isolation с совместимостью существующей seller-привязки;
 - добавлены детальные voice stage logs;
 - невалидный LLM result переводится в видимый `needs_review` item;

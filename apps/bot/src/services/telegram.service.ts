@@ -11,6 +11,14 @@ export function createReportKeyboard(appUrl: string) {
   ]);
 }
 
+export function createReportMenuButton(appUrl: string) {
+  return {
+    type: "web_app" as const,
+    text: "Открыть отчёт",
+    web_app: { url: appUrl }
+  };
+}
+
 function safeTelegramFileName(fileId: string) {
   return `${fileId.replace(/[^a-zA-Z0-9_-]/g, "_")}.ogg`;
 }

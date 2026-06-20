@@ -17,13 +17,13 @@ Telegram voice → webhook/polling → STT → LLM parser → validation → Sup
 
 От корня skill (`codex/skills/voice-sales-log`) прочитать по порядку:
 
-1. `../../../README.md`;
-2. `../../../docs/INDEX.md`;
-3. `../../../docs/specs/global.md`;
-4. `../../../docs/specs/technical/architecture.md`;
-5. `../../../docs/rules/README.md`;
-6. `../../../docs/specs/data/data-model.md`;
-7. `../../../docs/plans/active/001-stabilize-sales-flow/plan.md`, `checklist.md` и `acceptance.md`;
+1. `../../../AGENTS.md`;
+2. `../../../README.md`;
+3. `../../../docs/overview/README.md`;
+4. `../../../docs/specs/global.md`;
+5. `../../../docs/architecture/architecture.md`;
+6. все файлы в `../../../docs/plans/active/`;
+7. `../../../docs/rules/README.md`;
 8. этот `SKILL.md`.
 
 Затем прочитать профильную спецификацию и проверить Git-состояние. Не перезаписывать несвязанные изменения пользователя.
@@ -44,7 +44,7 @@ Telegram voice → webhook/polling → STT → LLM parser → validation → Sup
 
 ### Отчёт и Web App
 
-Прочитать `report-calculation.md`, `docs/features/mobile-web-app.md`, роли и active acceptance. Сохранять источник отчёта в активных допустимых `sale_items`, server actions для мутаций, пересчёт, аудит, soft delete и исходный диагностический след. Для UI проверять мобильный viewport и отсутствие overflow.
+Прочитать `report-calculation.md`, `auth-and-shop-isolation.md`, `telegram-webhook.md`, `docs/features/mobile-web-app.md` и роли. Кнопки отчёта должны быть только `web_app` и использовать один `NEXT_PUBLIC_APP_URL`. Browser fetch выполняется через общий `apiFetch`, который добавляет `x-telegram-init-data`; Server Components и Server Actions используют HttpOnly cookie с повторной HMAC-проверкой. Сохранять источник отчёта в активных допустимых `sale_items`, пересчёт, аудит, soft delete и исходный диагностический след. Для UI проверять мобильный viewport и отсутствие overflow.
 
 ### Документация и планы
 
