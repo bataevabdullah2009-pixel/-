@@ -1,9 +1,20 @@
 import { createHmac } from "node:crypto";
-import { describe, expect, it } from "vitest";
-import { buildVoiceSaleRpcPayload, resolveSellerAccess, SellerAccessError } from "../apps/bot/src/services/records.service";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  buildVoiceSaleRpcPayload,
+  ensureReviewableSaleItems,
+  resolveSellerAccess,
+  SellerAccessError
+} from "../apps/bot/src/services/records.service";
+import { parseSaleTranscript } from "../apps/bot/src/services/cleanup-text.service";
+import { createReportKeyboard } from "../apps/bot/src/services/telegram.service";
 import { buildExcludedSaleItemPatch, buildManualSaleItemPatch, buildSalesReport } from "../packages/shared/utils/date-range";
 import type { SaleItem } from "../packages/shared/types";
-import { requireMatchingShop, verifyTelegramInitData } from "../apps/web/src/lib/telegram-init-data";
+import {
+  requireMatchingShop,
+  requireTelegramInitDataHeader,
+  verifyTelegramInitData
+} from "../apps/web/src/lib/telegram-init-data";
 
 function item(overrides: Partial<SaleItem> = {}): SaleItem {
   return {
@@ -37,6 +48,8 @@ function signedInitData(botToken: string, telegramId: number, authDate: number) 
 }
 
 describe("sales flow stabilization", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   it("1. Voice sale saves with correct shop_id", () => {
     const payload = buildVoiceSaleRpcPayload({
       seller: { id: "seller-1", shopId: "shop-1" },
@@ -124,5 +137,66 @@ describe("sales flow stabilization", () => {
     const now = new Date("2026-06-20T12:00:00.000Z");
     const initData = signedInitData("123456:secret", 777, Math.floor(now.getTime() / 1000));
     expect(verifyTelegramInitData(initData, "123456:secret", { now }).user.id).toBe(777);
+  });
+
+  it("uses a Telegram Web App button for the report", () => {
+    const keyboard = createReportKeyboard("https://voice-sales.example.com");
+    const button = keyboard.reply_markup.inline_keyboard[0]?.[0];
+
+    expect(button).toMatchObject({
+      text: "Открыть отчёт",
+      web_app: { url: "https://voice-sales.example.com" }
+    });
+    expect(button).not.toHaveProperty("url");
+  });
+
+  it("denies a production Web App API request without initData header", () => {
+    expect(() => requireTelegramInitDataHeader(new Headers())).toThrow(
+      "Откройте Web App через кнопку в Telegram-боте."
+    );
+  });
+
+  it("creates a needs_review item when parsing produces no items", () => {
+    const items = ensureReviewableSaleItems({
+      items: [],
+      raw_text: "неразборчиво",
+      cleaned_text: "Неразборчиво.",
+      needs_review: true
+    });
+
+    expect(items).toEqual([expect.objectContaining({
+      product_name: "Неразборчиво.",
+      quantity: null,
+      price: null,
+      confidence: 0
+    })]);
+  });
+
+  it("turns invalid LLM JSON into manual review instead of failing the voice", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ choices: [{ message: { content: "not-json" } }] })
+    }));
+
+    const result = await parseSaleTranscript({
+      TELEGRAM_BOT_TOKEN: "token",
+      NEXT_PUBLIC_APP_URL: "https://voice-sales.example.com",
+      SUPABASE_URL: "https://project.supabase.co",
+      SUPABASE_ANON_KEY: "anon",
+      SUPABASE_SERVICE_ROLE_KEY: "service",
+      SUPABASE_STORAGE_BUCKET: "voice-records",
+      STT_API_KEY: "stt",
+      STT_API_URL: "https://stt.example.com",
+      STT_MODEL: "stt-model",
+      LLM_API_KEY: "llm",
+      LLM_API_URL: "https://llm.example.com",
+      LLM_MODEL: "llm-model",
+      DEMO_MODE: false,
+      DEFAULT_SHOP_NAME: "Демо-магазин"
+    }, "хлеб одна штука", "Хлеб, одна штука.");
+
+    expect(result.parsedSale.needs_review).toBe(true);
+    expect(result.parsedSale.items).toEqual([]);
+    expect(result.errorMessage).toContain("LLM parser fallback");
   });
 });

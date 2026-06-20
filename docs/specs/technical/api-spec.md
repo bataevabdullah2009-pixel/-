@@ -1,7 +1,7 @@
 # Серверный API
 
 - `POST /api/telegram/webhook` — вход Telegram updates с webhook secret.
-- `POST /api/auth/telegram` — валидация Mini App initData и установка HttpOnly cookie.
+- `POST /api/auth/telegram` — валидация Mini App initData из `x-telegram-init-data` и установка HttpOnly cookie.
 - `getReport(filters)` — отчёт активных позиций магазина владельца.
 - `getRecords(filters)` — журнал продаж магазина.
 - `getReviewItems(filters)` — позиции, требующие ручного действия.

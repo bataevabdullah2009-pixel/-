@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const envSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().trim().min(1),
+  NEXT_PUBLIC_APP_URL: z.string().trim().url(),
   SUPABASE_URL: z.string().trim().url(),
   SUPABASE_ANON_KEY: z.string().trim().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().trim().min(1),

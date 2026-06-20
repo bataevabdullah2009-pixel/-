@@ -1,8 +1,14 @@
-import { Telegraf } from "telegraf";
+import { Markup, Telegraf } from "telegraf";
 import type { AppEnv } from "../config/env";
 
 export function createTelegramBot(env: AppEnv) {
   return new Telegraf(env.TELEGRAM_BOT_TOKEN);
+}
+
+export function createReportKeyboard(appUrl: string) {
+  return Markup.inlineKeyboard([
+    Markup.button.webApp("Открыть отчёт", appUrl)
+  ]);
 }
 
 function safeTelegramFileName(fileId: string) {

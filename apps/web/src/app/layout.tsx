@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { TelegramAuthBootstrap } from "@/components/TelegramAuthBootstrap";
+import { isDemoMode, requireOwner } from "@/lib/owner-auth";
 import "../styles/globals.css";
 
 export const metadata: Metadata = {
@@ -10,25 +11,34 @@ export const metadata: Metadata = {
   description: "Простой журнал голосовых продаж и отчётов для магазина"
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  let hasSession = false;
+  try {
+    await requireOwner();
+    hasSession = true;
+  } catch {
+    // The client bootstrap validates fresh Telegram initData and reloads once.
+  }
+
   return (
     <html lang="ru">
       <body>
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
-        <TelegramAuthBootstrap />
-        <header className="appHeader">
-          <div>
-            <p className="eyebrow">voice-sales-log</p>
-            <h1>Голосовой журнал продаж</h1>
-          </div>
-          <nav className="desktopNav" aria-label="Основная навигация">
-            <Link href="/daily-report">Отчёт</Link>
-            <Link href="/records">Записи</Link>
-            <Link href="/sellers">Продавцы</Link>
-          </nav>
-        </header>
-        <main>{children}</main>
-        <MobileNavigation />
+        <TelegramAuthBootstrap hasSession={hasSession} demoMode={isDemoMode()}>
+          <header className="appHeader">
+            <div>
+              <p className="eyebrow">voice-sales-log</p>
+              <h1>Голосовой журнал продаж</h1>
+            </div>
+            <nav className="desktopNav" aria-label="Основная навигация">
+              <Link href="/daily-report">Отчёт</Link>
+              <Link href="/records">Записи</Link>
+              <Link href="/sellers">Продавцы</Link>
+            </nav>
+          </header>
+          <main>{children}</main>
+          <MobileNavigation />
+        </TelegramAuthBootstrap>
       </body>
     </html>
   );

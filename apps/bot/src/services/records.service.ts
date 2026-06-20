@@ -9,6 +9,7 @@ import {
 } from "@voice-sales-log/shared/utils/date-range";
 import type { ParsedSale, ParsedSaleItem, SaleItemStatus, VoiceRecordStatus } from "@voice-sales-log/shared/types";
 import type { AppEnv } from "../config/env";
+import { logger } from "../utils/logger";
 
 let client: SupabaseClient | null = null;
 
@@ -208,6 +209,26 @@ async function resolveSaleItem(env: AppEnv, shopId: string, item: ParsedSaleItem
 
 type ResolvedSaleItem = Awaited<ReturnType<typeof resolveSaleItem>>;
 
+export function ensureReviewableSaleItems(parsedSale: ParsedSale): ParsedSaleItem[] {
+  if (parsedSale.items.length) {
+    return parsedSale.items;
+  }
+
+  const fallbackName = (parsedSale.cleaned_text || parsedSale.raw_text)
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 120) || "Нераспознанный товар";
+
+  return [{
+    product_name: fallbackName,
+    quantity: null,
+    unit: "шт",
+    price: null,
+    total: null,
+    confidence: 0
+  }];
+}
+
 export function buildVoiceSaleRpcPayload(params: {
   seller: SellerContext;
   telegramMessageId: string;
@@ -237,10 +258,83 @@ export function buildVoiceSaleRpcPayload(params: {
   };
 }
 
+type VoiceSaleRpcPayload = ReturnType<typeof buildVoiceSaleRpcPayload>;
+
+function isMissingSaveVoiceSaleRpc(error: { code?: string; message?: string }) {
+  return error.code === "PGRST202";
+}
+
+async function persistVoiceSaleDirectly(supabase: SupabaseClient, payload: VoiceSaleRpcPayload) {
+  const { data: voiceRecord, error: voiceError } = await supabase
+    .from("voice_records")
+    .insert({
+      shop_id: payload.p_shop_id,
+      seller_id: payload.p_seller_id,
+      telegram_message_id: payload.p_telegram_message_id,
+      audio_path: payload.p_audio_path,
+      audio_url: payload.p_audio_url,
+      raw_text: payload.p_raw_text,
+      cleaned_text: payload.p_cleaned_text,
+      parser_json: payload.p_parser_json,
+      status: payload.p_status,
+      error_message: payload.p_error_message
+    })
+    .select("id")
+    .single();
+
+  if (voiceError) throw voiceError;
+
+  const { data: sale, error: saleError } = await supabase
+    .from("sales")
+    .insert({
+      shop_id: payload.p_shop_id,
+      seller_id: payload.p_seller_id,
+      voice_record_id: voiceRecord.id,
+      raw_text: payload.p_raw_text,
+      cleaned_text: payload.p_cleaned_text,
+      total_amount: payload.p_total_amount,
+      status: payload.p_status
+    })
+    .select("id")
+    .single();
+
+  if (saleError) {
+    await supabase.from("voice_records").delete().eq("id", voiceRecord.id);
+    throw saleError;
+  }
+
+  const items = payload.p_items as ResolvedSaleItem[];
+  const { error: itemsError } = await supabase.from("sale_items").insert(
+    items.map((item) => ({ sale_id: sale.id, ...item }))
+  );
+
+  if (itemsError) {
+    await supabase.from("sales").delete().eq("id", sale.id);
+    await supabase.from("voice_records").delete().eq("id", voiceRecord.id);
+    throw itemsError;
+  }
+
+  return { voice_record_id: voiceRecord.id, sale_id: sale.id };
+}
+
+async function persistVoiceSale(supabase: SupabaseClient, payload: VoiceSaleRpcPayload) {
+  const { data: persistedRows, error } = await supabase.rpc("save_voice_sale", payload);
+
+  if (!error) {
+    return Array.isArray(persistedRows) ? persistedRows[0] : persistedRows;
+  }
+
+  if (!isMissingSaveVoiceSaleRpc(error)) {
+    throw error;
+  }
+
+  logger.warn("save_voice_sale_rpc_missing", { code: error.code });
+  return persistVoiceSaleDirectly(supabase, payload);
+}
+
 export async function saveProcessedSale(params: {
   env: AppEnv;
-  sellerTelegramId: number;
-  sellerName: string | null;
+  seller: SellerContext;
   telegramMessageId: string;
   audioPath: string | null;
   audioUrl: string | null;
@@ -251,8 +345,7 @@ export async function saveProcessedSale(params: {
 }) {
   const {
     env,
-    sellerTelegramId,
-    sellerName,
+    seller,
     telegramMessageId,
     audioPath,
     audioUrl,
@@ -262,8 +355,8 @@ export async function saveProcessedSale(params: {
     errorMessage
   } = params;
   const supabase = getSupabase(env);
-  const seller = await requireSeller(env, sellerTelegramId, sellerName);
-  const resolvedItems = await Promise.all(parsedSale.items.map((item) => resolveSaleItem(env, seller.shopId, item)));
+  const sourceItems = ensureReviewableSaleItems(parsedSale);
+  const resolvedItems = await Promise.all(sourceItems.map((item) => resolveSaleItem(env, seller.shopId, item)));
   const saleStatus = resolveSaleStatus(resolvedItems, parsedSale.needs_review);
   const totalAmount = Number(
     resolvedItems
@@ -285,13 +378,7 @@ export async function saveProcessedSale(params: {
     totalAmount,
     resolvedItems
   });
-  const { data: persistedRows, error: persistenceError } = await supabase.rpc("save_voice_sale", rpcPayload);
-
-  if (persistenceError) {
-    throw persistenceError;
-  }
-
-  const persisted = Array.isArray(persistedRows) ? persistedRows[0] : persistedRows;
+  const persisted = await persistVoiceSale(supabase, rpcPayload);
   if (!persisted?.sale_id || !persisted?.voice_record_id) {
     throw new Error("Voice sale persistence returned no identifiers.");
   }
@@ -299,42 +386,43 @@ export async function saveProcessedSale(params: {
   const saleId = String(persisted.sale_id);
   const voiceRecordId = String(persisted.voice_record_id);
 
-  await writeAuditLog(env, {
-    shopId: seller.shopId,
-    sellerId: seller.id,
-    action: "sale_items_created",
-    details: {
-      sale_id: saleId,
-      voice_record_id: voiceRecordId,
-      items_count: resolvedItems.length,
-      item_statuses: resolvedItems.map((item) => item.status)
-    }
-  });
-
-  await writeAuditLog(env, {
-    shopId: seller.shopId,
-    sellerId: seller.id,
-    action: "sale.processed",
-    details: {
-      sale_id: saleId,
-      voice_record_id: voiceRecordId,
-      status: saleStatus,
-      items_count: resolvedItems.length
-    }
-  });
+  await Promise.all([
+    tryWriteAuditLog(env, {
+      shopId: seller.shopId,
+      sellerId: seller.id,
+      action: "sale_items_created",
+      details: {
+        sale_id: saleId,
+        voice_record_id: voiceRecordId,
+        items_count: resolvedItems.length,
+        item_statuses: resolvedItems.map((item) => item.status)
+      }
+    }),
+    tryWriteAuditLog(env, {
+      shopId: seller.shopId,
+      sellerId: seller.id,
+      action: "sale.processed",
+      details: {
+        sale_id: saleId,
+        voice_record_id: voiceRecordId,
+        status: saleStatus,
+        items_count: resolvedItems.length
+      }
+    })
+  ]);
 
   return {
     saleId,
     voiceRecordId,
     status: saleStatus,
-    totalAmount
+    totalAmount,
+    itemCount: resolvedItems.length
   };
 }
 
 export async function saveFailedVoiceRecord(params: {
   env: AppEnv;
-  sellerTelegramId: number;
-  sellerName: string | null;
+  seller: SellerContext;
   telegramMessageId: string;
   audioPath?: string | null;
   audioUrl?: string | null;
@@ -345,8 +433,7 @@ export async function saveFailedVoiceRecord(params: {
 }) {
   const {
     env,
-    sellerTelegramId,
-    sellerName,
+    seller,
     telegramMessageId,
     audioPath,
     audioUrl,
@@ -356,7 +443,6 @@ export async function saveFailedVoiceRecord(params: {
     errorMessage
   } = params;
   const supabase = getSupabase(env);
-  const seller = await requireSeller(env, sellerTelegramId, sellerName);
 
   const { data, error } = await supabase
     .from("voice_records")
@@ -379,7 +465,7 @@ export async function saveFailedVoiceRecord(params: {
     throw error;
   }
 
-  await writeAuditLog(env, {
+  await tryWriteAuditLog(env, {
     shopId: seller.shopId,
     sellerId: seller.id,
     action: "voice.failed",
@@ -388,6 +474,17 @@ export async function saveFailedVoiceRecord(params: {
       error: errorMessage
     }
   });
+}
+
+async function tryWriteAuditLog(
+  env: AppEnv,
+  params: Parameters<typeof writeAuditLog>[1]
+) {
+  try {
+    await writeAuditLog(env, params);
+  } catch (error) {
+    logger.warn("audit_log_failed", { action: params.action, error });
+  }
 }
 
 export async function writeProcessingAuditLog(params: {

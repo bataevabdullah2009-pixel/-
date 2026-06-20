@@ -1,7 +1,16 @@
-# Telegram webhook
+# Telegram webhook и Web App
 
-Endpoint: `POST /api/telegram/webhook`.
+Webhook: `POST https://<domain>/api/telegram/webhook`. Запрос допускается только при constant-time совпадении `x-telegram-bot-api-secret-token` с `TELEGRAM_WEBHOOK_SECRET`.
 
-Запрос принимается только при совпадении `x-telegram-bot-api-secret-token` с `TELEGRAM_WEBHOOK_SECRET`. Сравнение выполняется constant-time. Обработка делегируется существующему bot pipeline; секреты и содержимое аудио не возвращаются клиенту.
+Настройка и проверка:
 
-Настройка: `npm run telegram:set-webhook`. Диагностика: `npm run telegram:webhook-info`.
+```bash
+npm run telegram:set-webhook
+npm run telegram:webhook-info
+```
+
+`NEXT_PUBLIC_APP_URL` задаёт одновременно текущий HTTPS Web App URL и базу webhook URL. Скрипт `setWebhook` передаёт `secret_token` и `/api/telegram/webhook`.
+
+Бот показывает отчёт через `Markup.button.webApp('Открыть отчёт', NEXT_PUBLIC_APP_URL)`. Обычная `url`-кнопка запрещена, потому что при ней Telegram не формирует Web App initData. Frontend вызывает `ready()` и отправляет initData в `x-telegram-init-data`.
+
+Voice webhook возвращает Telegram технический `{ ok }`, а полный результат pipeline сообщает пользователю бот. Ошибки пишутся как `voice_failed` с этапом; токены и ключи редактируются логгером.

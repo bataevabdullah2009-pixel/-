@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { RefreshButton } from "@/components/RefreshButton";
 import { getReport } from "@/features/records/records.api";
 import type { SearchParams } from "@/features/records/records.types";
+import type { SaleItem } from "@voice-sales-log/shared/types";
 import {
   formatCurrency,
   formatQuantity,
@@ -24,6 +25,49 @@ type DailyReportPageProps = {
   searchParams: Promise<SearchParams>;
 };
 
+function SaleItemEditor({ item, returnTo }: { item: SaleItem; returnTo: string }) {
+  return (
+    <article className={`itemEditorCard ${item.status !== "processed" ? "itemEditorCardAttention" : ""}`}>
+      <div className="itemEditorHeader">
+        <div>
+          <strong>{item.product_name || "Без названия"}</strong>
+          <span>{item.total === null ? "Не входит в выручку" : formatCurrency(item.total)}</span>
+        </div>
+        <span className={`status status-${item.status}`}>{getStatusLabel(item.status)}</span>
+      </div>
+
+      <form action={updateSaleItemAction} className="itemEditForm">
+        <input type="hidden" name="itemId" value={item.id} />
+        <input type="hidden" name="returnTo" value={returnTo} />
+        <label className="productField">
+          <span>Товар</span>
+          <input name="productName" type="text" defaultValue={item.product_name} required />
+        </label>
+        <label>
+          <span>Количество</span>
+          <input name="quantity" type="number" min="0.001" step="0.001" defaultValue={item.quantity} required />
+        </label>
+        <label>
+          <span>Цена, ₽</span>
+          <input name="price" type="number" min="0.01" step="0.01" defaultValue={item.price ?? ""} required />
+        </label>
+        <button type="submit" className="saveButton">Сохранить</button>
+      </form>
+
+      <form action={excludeSaleItemAction} className="deleteItemForm">
+        <input type="hidden" name="itemId" value={item.id} />
+        <input type="hidden" name="returnTo" value={returnTo} />
+        <ConfirmSubmitButton
+          className="textDangerButton"
+          confirmMessage={`Исключить «${item.product_name}» из количества и выручки? Позицию можно будет восстановить.`}
+        >
+          Исключить из отчёта
+        </ConfirmSubmitButton>
+      </form>
+    </article>
+  );
+}
+
 export default async function DailyReportPage({ searchParams }: DailyReportPageProps) {
   const params = await searchParams;
   const period = getPreset(params.period);
@@ -35,6 +79,8 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
   if (date) returnQuery.set("date", date);
   const returnTo = `/daily-report?${returnQuery.toString()}#items`;
   const isSingleDay = period === "today" || period === "yesterday" || period === "custom";
+  const reviewItems = items.filter((item) => item.status === "needs_review" || item.status === "needs_price");
+  const processedItems = items.filter((item) => item.status === "processed");
 
   return (
     <section className="pageStack">
@@ -153,47 +199,23 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
         </div>
 
         {items.length ? (
-          <div className="itemEditorList">
-            {items.map((item) => (
-              <article className={`itemEditorCard ${item.status !== "processed" ? "itemEditorCardAttention" : ""}`} key={item.id}>
-                <div className="itemEditorHeader">
-                  <div>
-                    <strong>{item.product_name || "Без названия"}</strong>
-                    <span>{item.total === null ? "Не входит в выручку" : formatCurrency(item.total)}</span>
-                  </div>
-                  <span className={`status status-${item.status}`}>{getStatusLabel(item.status)}</span>
+          <div className="itemEditorGroups">
+            {reviewItems.length ? (
+              <section className="itemEditorGroup" aria-labelledby="review-items-heading">
+                <h4 id="review-items-heading">Нужно проверить</h4>
+                <div className="itemEditorList">
+                  {reviewItems.map((item) => <SaleItemEditor item={item} returnTo={returnTo} key={item.id} />)}
                 </div>
-
-                <form action={updateSaleItemAction} className="itemEditForm">
-                  <input type="hidden" name="itemId" value={item.id} />
-                  <input type="hidden" name="returnTo" value={returnTo} />
-                  <label className="productField">
-                    <span>Товар</span>
-                    <input name="productName" type="text" defaultValue={item.product_name} required />
-                  </label>
-                  <label>
-                    <span>Количество</span>
-                    <input name="quantity" type="number" min="0.001" step="0.001" defaultValue={item.quantity} required />
-                  </label>
-                  <label>
-                    <span>Цена, ₽</span>
-                    <input name="price" type="number" min="0.01" step="0.01" defaultValue={item.price ?? ""} required />
-                  </label>
-                  <button type="submit" className="saveButton">Сохранить</button>
-                </form>
-
-                <form action={excludeSaleItemAction} className="deleteItemForm">
-                  <input type="hidden" name="itemId" value={item.id} />
-                  <input type="hidden" name="returnTo" value={returnTo} />
-                  <ConfirmSubmitButton
-                    className="textDangerButton"
-                    confirmMessage={`Исключить «${item.product_name}» из количества и выручки? Позицию можно будет восстановить.`}
-                  >
-                    Исключить из отчёта
-                  </ConfirmSubmitButton>
-                </form>
-              </article>
-            ))}
+              </section>
+            ) : null}
+            {processedItems.length ? (
+              <section className="itemEditorGroup" aria-labelledby="processed-items-heading">
+                <h4 id="processed-items-heading">Обработанные товары</h4>
+                <div className="itemEditorList">
+                  {processedItems.map((item) => <SaleItemEditor item={item} returnTo={returnTo} key={item.id} />)}
+                </div>
+              </section>
+            ) : null}
           </div>
         ) : (
           <p className="mutedText">Активных товаров за выбранный период нет.</p>

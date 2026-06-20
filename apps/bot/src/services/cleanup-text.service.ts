@@ -27,35 +27,52 @@ export async function cleanupTranscript(env: AppEnv, rawText: string) {
     return "";
   }
 
-  const response = await fetch(env.LLM_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.LLM_API_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: env.LLM_MODEL,
-      messages: [
-        {
-          role: "system",
-          content:
-            "Ты очищаешь русский текст голосовой продажи. Исправь пунктуацию и регистр. Не добавляй товары, цены, количество или аналитику."
-        },
-        {
-          role: "user",
-          content: rawText
-        }
-      ],
-      temperature: 0
-    })
-  });
+  try {
+    const response = await fetch(env.LLM_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.LLM_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: env.LLM_MODEL,
+        messages: [
+          {
+            role: "system",
+            content:
+              "Ты очищаешь русский текст голосовой продажи. Исправь пунктуацию и регистр. Не добавляй товары, цены, количество или аналитику."
+          },
+          {
+            role: "user",
+            content: rawText
+          }
+        ],
+        temperature: 0
+      })
+    });
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return simpleCleanup(rawText);
+    }
+
+    const data = (await response.json()) as ChatCompletionResponse;
+    return data.choices?.[0]?.message?.content?.trim() || simpleCleanup(rawText);
+  } catch {
     return simpleCleanup(rawText);
   }
+}
 
-  const data = (await response.json()) as ChatCompletionResponse;
-  return data.choices?.[0]?.message?.content?.trim() || simpleCleanup(rawText);
+export function buildNeedsReviewParseResult(rawText: string, cleanedText: string, errorMessage: string) {
+  return {
+    parsedSale: {
+      items: [],
+      raw_text: rawText,
+      cleaned_text: cleanedText,
+      needs_review: true
+    } satisfies ParsedSale,
+    parserJson: null,
+    errorMessage
+  };
 }
 
 export async function parseSaleTranscript(
@@ -64,19 +81,11 @@ export async function parseSaleTranscript(
   cleanedText: string
 ): Promise<{ parsedSale: ParsedSale; parserJson: unknown | null; errorMessage: string | null }> {
   if (!rawText.trim()) {
-    return {
-      parsedSale: {
-        items: [],
-        raw_text: rawText,
-        cleaned_text: cleanedText,
-        needs_review: true
-      },
-      parserJson: null,
-      errorMessage: "STT returned an empty transcript."
-    };
+    return buildNeedsReviewParseResult(rawText, cleanedText, "STT returned an empty transcript.");
   }
 
-  const response = await fetch(env.LLM_API_URL, {
+  try {
+    const response = await fetch(env.LLM_API_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${env.LLM_API_KEY}`,
@@ -107,34 +116,33 @@ export async function parseSaleTranscript(
       temperature: 0,
       response_format: { type: "json_object" }
     })
-  });
+    });
 
-  if (!response.ok) {
+    if (!response.ok) {
+      return buildNeedsReviewParseResult(
+        rawText,
+        cleanedText,
+        `LLM parser request failed with status ${response.status}.`
+      );
+    }
+
+    const data = (await response.json()) as ChatCompletionResponse;
+    const content = data.choices?.[0]?.message?.content;
+
+    if (!content) {
+      return buildNeedsReviewParseResult(rawText, cleanedText, "LLM parser returned an empty response.");
+    }
+
+    const parserJson: unknown = JSON.parse(content.trim());
+    const parsed = parsedSaleSchema.parse(parserJson);
+
     return {
-      parsedSale: {
-        items: [],
-        raw_text: rawText,
-        cleaned_text: cleanedText,
-        needs_review: true
-      },
-      parserJson: null,
-      errorMessage: `LLM parser request failed with status ${response.status}.`
+      parsedSale: enforceTranscriptEvidence(parsed, rawText, cleanedText),
+      parserJson,
+      errorMessage: null
     };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown LLM parser error.";
+    return buildNeedsReviewParseResult(rawText, cleanedText, `LLM parser fallback: ${message}`);
   }
-
-  const data = (await response.json()) as ChatCompletionResponse;
-  const content = data.choices?.[0]?.message?.content;
-
-  if (!content) {
-    throw new Error("LLM parser returned empty response.");
-  }
-
-  const parserJson: unknown = JSON.parse(content.trim());
-  const parsed = parsedSaleSchema.parse(parserJson);
-
-  return {
-    parsedSale: enforceTranscriptEvidence(parsed, rawText, cleanedText),
-    parserJson,
-    errorMessage: null
-  };
 }

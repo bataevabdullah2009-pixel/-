@@ -2,7 +2,12 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { getSupabaseAdminClient } from "./supabase";
-import { requireMatchingShop, TelegramInitDataError, verifyTelegramInitData } from "./telegram-init-data";
+import {
+  readTelegramInitDataHeader,
+  requireMatchingShop,
+  TelegramInitDataError,
+  verifyTelegramInitData
+} from "./telegram-init-data";
 
 export const TELEGRAM_INIT_DATA_COOKIE = "voice_sales_telegram_init_data";
 
@@ -11,6 +16,13 @@ export type OwnerContext = {
   shopId: string;
   telegramId: number;
   demo: boolean;
+};
+
+type TelegramPrincipalRecord = {
+  id: unknown;
+  shop_id: unknown;
+  telegram_id: unknown;
+  is_active: unknown;
 };
 
 export class OwnerAccessError extends Error {
@@ -27,6 +39,19 @@ export function isDemoMode() {
   return process.env.DEMO_MODE === "true";
 }
 
+function ownerContextFromRecord(record: TelegramPrincipalRecord): OwnerContext {
+  return {
+    ownerId: String(record.id),
+    shopId: String(record.shop_id),
+    telegramId: Number(record.telegram_id),
+    demo: false
+  };
+}
+
+function isMissingOwnersTable(error: { code?: string; message?: string } | null) {
+  return error?.code === "PGRST205";
+}
+
 async function findActiveOwnerByTelegramId(telegramId: number): Promise<OwnerContext> {
   const admin = getSupabaseAdminClient();
 
@@ -41,20 +66,29 @@ async function findActiveOwnerByTelegramId(telegramId: number): Promise<OwnerCon
     .eq("is_active", true)
     .maybeSingle();
 
-  if (error) {
+  if (error && !isMissingOwnersTable(error)) {
     throw error;
   }
 
-  if (!data) {
-    throw new OwnerAccessError("not_authorized", "Telegram user is not an active shop owner.");
+  if (data) {
+    return ownerContextFromRecord(data);
   }
 
-  return {
-    ownerId: String(data.id),
-    shopId: String(data.shop_id),
-    telegramId: Number(data.telegram_id),
-    demo: false
-  };
+  // Compatibility for the existing MVP data model: before the owners table was
+  // introduced, an active seller was the only Telegram-to-shop binding.
+  const { data: seller, error: sellerError } = await admin
+    .from("sellers")
+    .select("id, shop_id, telegram_id, is_active")
+    .eq("telegram_id", telegramId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (sellerError) throw sellerError;
+  if (!seller) {
+    throw new OwnerAccessError("not_authorized", "Ваш Telegram не привязан к магазину.");
+  }
+
+  return ownerContextFromRecord(seller);
 }
 
 async function requireDemoOwner(): Promise<OwnerContext> {
@@ -121,7 +155,12 @@ export async function authenticateOwner(initData: string): Promise<OwnerContext>
   }
 }
 
-export async function requireOwner(): Promise<OwnerContext> {
+export async function requireOwner(request?: Request): Promise<OwnerContext> {
+  const headerInitData = request ? readTelegramInitDataHeader(request.headers) : "";
+  if (headerInitData) {
+    return authenticateOwner(headerInitData);
+  }
+
   const cookieStore = await cookies();
   const initData = cookieStore.get(TELEGRAM_INIT_DATA_COOKIE)?.value;
 

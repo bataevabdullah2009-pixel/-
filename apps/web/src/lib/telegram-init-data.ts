@@ -22,6 +22,18 @@ export function requireMatchingShop(ownerShopId: string, targetShopId: string) {
   return ownerShopId;
 }
 
+export function readTelegramInitDataHeader(headers: Pick<Headers, "get">) {
+  return headers.get("x-telegram-init-data")?.trim() ?? "";
+}
+
+export function requireTelegramInitDataHeader(headers: Pick<Headers, "get">) {
+  const initData = readTelegramInitDataHeader(headers);
+  if (!initData) {
+    throw new TelegramInitDataError("Откройте Web App через кнопку в Telegram-боте.");
+  }
+  return initData;
+}
+
 export function verifyTelegramInitData(
   initData: string,
   botToken: string,
