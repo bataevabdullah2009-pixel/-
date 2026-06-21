@@ -29,6 +29,7 @@ Voice Sales Log — реальный MVP-продукт: голосовой жу
 - Отчёт учитывает только `status = processed` и `deleted_at is null`.
 - Исключение позиции выполняется только через soft delete.
 - Кнопка отчёта в Telegram создаётся только как `web_app`, не как обычная URL-кнопка.
+- `NEXT_PUBLIC_APP_URL` обязан быть каноническим production HTTPS URL; localhost, ngrok, deployment preview и git-branch Vercel URL запрещены.
 - Web App передаёт `Telegram.WebApp.initData` в `x-telegram-init-data`; production fallback без initData запрещён.
 - Сбой Storage или невалидный LLM JSON не должен скрывать распознанную продажу: создаётся `needs_review`.
 - Каждый voice request логирует именованные этапы и `voice_failed` с полем `stage`.

@@ -4,8 +4,7 @@
 
 Ближайший эксплуатационный backlog:
 
-- после production deploy выполнить mobile Telegram smoke run: `/start` → «Открыть отчёт» → голос «Сникерс, 4 штуки по 100 рублей» → продажа 400 ₽ → вкладки «Отчёт», «Записи», «Продавцы»;
-- подтвердить актуальное значение Sensitive `NEXT_PUBLIC_APP_URL` в Vercel Dashboard;
+- после нового production deployment выполнить mobile Telegram smoke run и подтвердить initData: `/start` → «Открыть отчёт» → голос «Сникерс, 4 штуки по 100 рублей» → продажа 400 ₽ → вкладки «Отчёт», «Записи», «Продавцы»; URL-конфигурация и webhook уже сверяются автоматически;
 - применить/сверить целевые Supabase migrations и выполнить database advisors;
 - настроить резервное восстановление и мониторинг внешних интеграций;
 - добавить CI для `npm run test`, `npm run lint` и `npm run build`.

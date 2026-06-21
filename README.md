@@ -112,7 +112,7 @@ Next.js загружает официальный `telegram-web-app.js` до hyd
 
 `POST /api/auth/telegram` валидирует HMAC и срок initData, находит активного owner/seller по Telegram id, проверяет существование магазина и устанавливает HttpOnly cookie. Server Components и Server Actions повторно валидируют cookie. `shop_id` всегда берётся из БД и не принимается из query, form или JSON клиента. Ошибки API имеют коды `TELEGRAM_INIT_DATA_MISSING`, `TELEGRAM_INIT_DATA_INVALID`, `SELLER_NOT_LINKED` и `SHOP_NOT_FOUND`.
 
-`telegram:webhook-info` показывает `current_webhook_url`, `pending_update_count`, `last_error` и `allowed_updates`. URL должен начинаться с `https://` и совпадать с текущим production-доменом; localhost, ngrok и старые preview-домены запрещены.
+`telegram:webhook-info` показывает `current_webhook_url`, `pending_update_count`, `last_error`, `allowed_updates`, настроенный Web App URL, ожидаемый webhook URL и результат их сравнения. Команда завершается ошибкой, если webhook не совпадает с конфигурацией. `NEXT_PUBLIC_APP_URL` должен быть каноническим production HTTPS-доменом; localhost, ngrok, deployment preview и git-branch Vercel URL запрещены.
 
 До появления отдельной строки `owners` сервер сохраняет совместимость с существующим MVP: после проверки initData активная запись `sellers` с тем же Telegram id определяет тот же `shop_id`. Клиентский `shop_id` не принимается ни в одном варианте.
 

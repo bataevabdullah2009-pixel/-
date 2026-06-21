@@ -7,6 +7,7 @@ Voice Sales Log обслуживает несколько магазинов с 
 - продавец определяется по `Telegram user id`, должен быть активен и иметь `shop_id`;
 - владелец определяется по валидному Telegram Mini App `initData` и активной записи `owners`; на время migration rollout поддерживается существующая активная `sellers` Telegram-to-shop привязка;
 - все создаваемые ботом кнопки отчёта, включая нижнюю menu button, имеют тип `web_app` и один `NEXT_PUBLIC_APP_URL`;
+- `NEXT_PUBLIC_APP_URL` является каноническим production HTTPS URL; временные local/ngrok/Vercel preview URL не допускаются;
 - browser fetch использует общий `apiFetch` и header `x-telegram-init-data`; Telegram SDK вызывается через `ready()` и `expand()`;
 - сервер различает отсутствие/невалидность initData, отсутствие Telegram-привязки и отсутствие магазина стабильными кодами API;
 - `shop_id` никогда не принимается от клиента;

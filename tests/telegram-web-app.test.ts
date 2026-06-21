@@ -17,6 +17,10 @@ import {
   getTelegramInitData,
   initializeTelegramWebApp
 } from "../apps/web/src/lib/telegram-api";
+import {
+  buildTelegramWebhookUrl,
+  parseTelegramPublicUrl
+} from "../packages/shared/utils/telegram-url";
 
 function signedInitData(botToken: string, telegramId: number, authDate: number) {
   const params = new URLSearchParams({
@@ -167,5 +171,32 @@ describe("Telegram Mini App authentication", () => {
 
     expect(filters).toEqual({ period: "today", date: "2026-06-20" });
     expect(filters).not.toHaveProperty("shop_id");
+  });
+
+  it("accepts only a canonical HTTPS Web App URL", () => {
+    expect(parseTelegramPublicUrl(
+      "https://web-n3ji.vercel.app",
+      "NEXT_PUBLIC_APP_URL"
+    ).hostname).toBe("web-n3ji.vercel.app");
+
+    for (const invalidUrl of [
+      "",
+      "http://web-n3ji.vercel.app",
+      "https://localhost:3000",
+      "https://voice-sales.ngrok.app",
+      "https://web-n3ji-5jo7bcdzx-team.vercel.app",
+      "https://web-n3ji-git-main-team.vercel.app"
+    ]) {
+      expect(() => parseTelegramPublicUrl(invalidUrl, "NEXT_PUBLIC_APP_URL")).toThrow();
+    }
+  });
+
+  it("builds one expected webhook URL from the Web App configuration", () => {
+    expect(buildTelegramWebhookUrl("https://web-n3ji.vercel.app"))
+      .toBe("https://web-n3ji.vercel.app/api/telegram/webhook");
+    expect(buildTelegramWebhookUrl(
+      "https://web-n3ji.vercel.app",
+      "https://hooks.example.com/api/telegram/webhook"
+    )).toBe("https://hooks.example.com/api/telegram/webhook");
   });
 });

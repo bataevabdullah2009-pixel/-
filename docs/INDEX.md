@@ -9,7 +9,7 @@ Voice Sales Log — MVP-продукт для магазина. Продавец
 - [Спецификации](./specs/README.md)
 - [Функции продукта](./features/README.md)
 - [Инженерные правила](./rules/README.md)
-- [Завершённый WebApp auth hotfix](./plans/completed/002-telegram-webapp-auth.md)
+- [Завершённый WebApp URL guard](./plans/completed/003-production-webapp-url-guard.md)
 - [Roadmap](./roadmap/roadmap.md)
 
 Каноническими считаются документы из `docs/specs`. При расхождении с реализацией код и документация изменяются в одном коммите.

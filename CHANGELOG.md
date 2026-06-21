@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-06-21 — Production Web App URL guard
+
+### Fixed
+
+- Production и Preview `NEXT_PUBLIC_APP_URL` обновлены на канонический `https://web-n3ji.vercel.app` через Vercel CLI.
+- Общая URL-валидация запрещает пустой URL, HTTP, localhost, ngrok, Vercel deployment preview и git-branch alias.
+- Bot env, `telegram:set-webhook` и `telegram:webhook-info` используют одну и ту же проверку публичного URL.
+- `telegram:webhook-info` сравнивает текущий Telegram webhook с ожидаемым URL и возвращает ненулевой exit code при расхождении.
+
+### Validation
+
+- `npm run test`: 57 tests, 8 files.
+- `npm run lint`: без ошибок.
+- `npm run build`: успешно.
+- Webhook: `https://web-n3ji.vercel.app/api/telegram/webhook`, pending `0`, last error `null`, allowed updates `message`, config match `true`.
+- Mobile Telegram E2E остаётся внешним release gate; его результат не подменён локальной проверкой.
+
 ## 2026-06-20 — Telegram Mini App initData hotfix
 
 ### Fixed

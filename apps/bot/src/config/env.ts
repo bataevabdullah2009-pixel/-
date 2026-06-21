@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { isTelegramPublicUrl } from "@voice-sales-log/shared/utils/telegram-url";
 
 const envSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string().trim().min(1),
-  NEXT_PUBLIC_APP_URL: z.string().trim().url().refine(
-    (value) => new URL(value).protocol === "https:",
-    "NEXT_PUBLIC_APP_URL must use https://"
+  NEXT_PUBLIC_APP_URL: z.string().trim().refine(
+    isTelegramPublicUrl,
+    "NEXT_PUBLIC_APP_URL must use the canonical production HTTPS URL"
   ),
   SUPABASE_URL: z.string().trim().url(),
   SUPABASE_ANON_KEY: z.string().trim().min(1),

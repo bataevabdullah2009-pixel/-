@@ -32,7 +32,7 @@ Telegram voice → webhook/polling → STT → LLM parser → validation → Sup
 
 ### Telegram webhook или bot
 
-Прочитать `telegram-webhook.md`, `api-spec.md`, `deployment-vercel.md` и `auth-and-shop-isolation.md`. Сохранять `POST /api/telegram/webhook`, Node.js runtime, секретный заголовок, безопасное сравнение и общий `processTelegramUpdate`. Polling разрешён только локально.
+Прочитать `telegram-webhook.md`, `api-spec.md`, `deployment-vercel.md` и `auth-and-shop-isolation.md`. Сохранять `POST /api/telegram/webhook`, Node.js runtime, секретный заголовок, безопасное сравнение и общий `processTelegramUpdate`. Polling разрешён только локально. Перед release запускать `telegram:webhook-info` и требовать `webhook_matches_expected=true`; Web App button не может использовать local/ngrok/Vercel preview URL.
 
 ### Voice, STT или LLM parser
 
