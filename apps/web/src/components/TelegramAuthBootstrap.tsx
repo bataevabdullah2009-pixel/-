@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import {
   apiFetch,
   getTelegramInitData,
@@ -22,13 +23,17 @@ export function TelegramAuthBootstrap({
   hasSession: boolean;
   demoMode: boolean;
 }) {
+  const pathname = usePathname();
+  const isDebugRoute = pathname === "/debug-telegram";
   const [state, setState] = useState<AuthState>(
-    hasSession || demoMode
+    hasSession || demoMode || isDebugRoute
       ? { status: "ready", message: "" }
       : { status: "loading", message: "Проверяем доступ к магазину…" }
   );
 
   useEffect(() => {
+    if (isDebugRoute) return;
+
     const controller = new AbortController();
     void waitForTelegramWebApp()
       .then(async (webApp) => {
@@ -71,9 +76,9 @@ export function TelegramAuthBootstrap({
       });
 
     return () => controller.abort();
-  }, [demoMode, hasSession]);
+  }, [demoMode, hasSession, isDebugRoute]);
 
-  if (state.status === "ready") return children;
+  if (isDebugRoute || state.status === "ready") return children;
 
   return (
     <main className="authGate">

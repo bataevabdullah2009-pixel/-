@@ -1,6 +1,10 @@
 import type { Context, Telegraf } from "telegraf";
 import type { AppEnv } from "../config/env";
-import { createReportKeyboard, createReportMenuButton } from "../services/telegram.service";
+import {
+  createReportKeyboard,
+  createReportMenuButton,
+  createReportReplyKeyboard
+} from "../services/telegram.service";
 import { logger } from "../utils/logger";
 
 export function registerStartHandler(bot: Telegraf<Context>, env: AppEnv) {
@@ -19,7 +23,11 @@ export function registerStartHandler(bot: Telegraf<Context>, env: AppEnv) {
     }
 
     await ctx.reply(
-      "Здравствуйте! Откройте отчёт или отправьте голосовое с продажей: товар, количество и цену.",
+      "Здравствуйте! Отправьте голосовое с продажей: товар, количество и цену.",
+      createReportReplyKeyboard(env.NEXT_PUBLIC_APP_URL)
+    );
+    await ctx.reply(
+      "Откройте отчёт новой кнопкой ниже. Если доступ не подтверждается, запустите безопасную диагностику Telegram.",
       createReportKeyboard(env.NEXT_PUBLIC_APP_URL)
     );
   });

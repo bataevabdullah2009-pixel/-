@@ -4,7 +4,7 @@
 
 Выполнено:
 
-- Production и Preview env обновлены на `https://web-n3ji.vercel.app`;
+- Production и Preview env были обновлены на канонический production alias;
 - bot env, setWebhook и webhook-info используют общую URL-валидацию;
 - запрещены HTTP, localhost, ngrok, deployment preview и git-branch Vercel URL;
 - webhook-info сравнивает фактический и ожидаемый webhook URL;

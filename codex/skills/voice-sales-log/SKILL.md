@@ -44,7 +44,7 @@ Telegram voice → webhook/polling → STT → LLM parser → validation → Sup
 
 ### Отчёт и Web App
 
-Прочитать `report-calculation.md`, `auth-and-shop-isolation.md`, `telegram-webhook.md`, `docs/features/mobile-web-app.md` и роли. Кнопки отчёта должны быть только `web_app` и использовать один `NEXT_PUBLIC_APP_URL`. Browser fetch выполняется через общий `apiFetch`, который добавляет `x-telegram-init-data`; Server Components и Server Actions используют HttpOnly cookie с повторной HMAC-проверкой. Сохранять источник отчёта в активных допустимых `sale_items`, пересчёт, аудит, soft delete и исходный диагностический след. Для UI проверять мобильный viewport и отсутствие overflow.
+Прочитать `report-calculation.md`, `auth-and-shop-isolation.md`, `telegram-webhook.md`, `docs/features/mobile-web-app.md` и роли. Reply, inline и menu buttons отчёта должны быть только `web_app` и использовать один `NEXT_PUBLIC_APP_URL`. Первый document request нельзя перенаправлять до Telegram bootstrap. Browser fetch выполняется через общий `apiFetch`, который добавляет `x-telegram-init-data`; Server Components и Server Actions используют HttpOnly cookie с повторной HMAC-проверкой. `/debug-telegram` не выводит initData или user payload. Каждая новая voice-продажа должна попасть в «Нужно проверить»; сохранение и подтверждение являются отдельными действиями. Сохранять источник отчёта в активных подтверждённых `sale_items`, пересчёт, аудит, soft delete и исходный диагностический след. Для UI проверять мобильный viewport и отсутствие overflow.
 
 ### Документация и планы
 
@@ -63,6 +63,7 @@ Telegram voice → webhook/polling → STT → LLM parser → validation → Sup
 - Не передавать `SUPABASE_SERVICE_ROLE_KEY` клиенту.
 - Не физически удалять голос, аудио или продажу при исключении позиции.
 - Не доверять `shop_id` клиента как авторизации.
+- Не показывать пользователю internal enum `processed`, `needs_review`, `pending` или `failed`.
 - Не заявлять идемпотентность, транзакционность, monitoring, backup или CI до их реализации и проверки.
 
 ## Завершить работу

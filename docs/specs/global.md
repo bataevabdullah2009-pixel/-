@@ -6,14 +6,17 @@ Voice Sales Log обслуживает несколько магазинов с 
 
 - продавец определяется по `Telegram user id`, должен быть активен и иметь `shop_id`;
 - владелец определяется по валидному Telegram Mini App `initData` и активной записи `owners`; на время migration rollout поддерживается существующая активная `sellers` Telegram-to-shop привязка;
-- все создаваемые ботом кнопки отчёта, включая нижнюю menu button, имеют тип `web_app` и один `NEXT_PUBLIC_APP_URL`;
+- все создаваемые ботом reply, inline и menu buttons отчёта имеют тип `web_app` и один `NEXT_PUBLIC_APP_URL`; `/start` всегда отправляет новые кнопки;
 - `NEXT_PUBLIC_APP_URL` является каноническим production HTTPS URL; временные local/ngrok/Vercel preview URL не допускаются;
-- browser fetch использует общий `apiFetch` и header `x-telegram-init-data`; Telegram SDK вызывается через `ready()` и `expand()`;
+- корневой Web App URL не выполняет server redirect до Telegram bootstrap;
+- явный browser API fetch использует общий `apiFetch` и header `x-telegram-init-data`; Telegram SDK вызывается после hydration через `ready()` и `expand()`;
+- `/debug-telegram` выводит только безопасные признаки SDK/initData и доступен через Web App button бота;
 - сервер различает отсутствие/невалидность initData, отсутствие Telegram-привязки и отсутствие магазина стабильными кодами API;
 - `shop_id` никогда не принимается от клиента;
 - привилегированный Supabase key доступен только серверному коду;
 - голосовая продажа сохраняется через `save_voice_sale`; при временном отсутствии RPC используется server-side совместимый insert с компенсирующей очисткой;
-- отчёт суммирует только `processed` и `deleted_at is null`;
+- каждая новая voice-продажа сохраняется для обязательной проверки; сохранение правок не является подтверждением;
+- отчёт суммирует только подтверждённые `processed` и `deleted_at is null`;
 - ручное исключение является soft delete;
 - технические детали ошибок логируются на сервере и не показываются пользователю.
 

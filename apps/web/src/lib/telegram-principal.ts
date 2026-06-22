@@ -13,7 +13,7 @@ export type TelegramPrincipalLookup = {
 
 export class TelegramPrincipalError extends Error {
   constructor(
-    public readonly code: "SELLER_NOT_LINKED" | "SHOP_NOT_FOUND",
+    public readonly code: "SELLER_NOT_LINKED" | "SELLER_INACTIVE" | "SHOP_NOT_FOUND",
     message: string
   ) {
     super(message);
@@ -26,10 +26,18 @@ export async function resolveTelegramPrincipal(
   lookup: TelegramPrincipalLookup
 ) {
   const owner = await lookup.findOwner(telegramId);
-  const seller = owner?.is_active === true ? null : await lookup.findSeller(telegramId);
-  const principal = owner?.is_active === true
+  if (owner && owner.is_active !== true) {
+    throw new TelegramPrincipalError("SELLER_INACTIVE", "Доступ к магазину отключён");
+  }
+
+  const seller = owner ? null : await lookup.findSeller(telegramId);
+  if (seller && seller.is_active !== true) {
+    throw new TelegramPrincipalError("SELLER_INACTIVE", "Доступ к магазину отключён");
+  }
+
+  const principal = owner
     ? { record: owner, role: "owner" as const }
-    : seller?.is_active === true
+    : seller
       ? { record: seller, role: "seller" as const }
       : null;
 

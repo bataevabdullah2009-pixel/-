@@ -4,6 +4,7 @@ export type TelegramAuthErrorCode =
   | "TELEGRAM_INIT_DATA_MISSING"
   | "TELEGRAM_INIT_DATA_INVALID"
   | "SELLER_NOT_LINKED"
+  | "SELLER_INACTIVE"
   | "SHOP_NOT_FOUND"
   | "AUTH_MISCONFIGURED"
   | "AUTH_FAILED";
@@ -23,6 +24,8 @@ export function describeTelegramAuthError(error: unknown) {
       return { status: 401, code, message: "Откройте отчёт через кнопку в Telegram-боте" };
     case "SELLER_NOT_LINKED":
       return { status: 403, code, message: "Ваш Telegram не привязан к магазину" };
+    case "SELLER_INACTIVE":
+      return { status: 403, code, message: "Доступ к магазину отключён" };
     case "SHOP_NOT_FOUND":
       return { status: 403, code, message: "Магазин не найден" };
     case "AUTH_MISCONFIGURED":

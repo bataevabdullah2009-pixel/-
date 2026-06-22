@@ -6,9 +6,18 @@ export function createTelegramBot(env: AppEnv) {
 }
 
 export function createReportKeyboard(appUrl: string) {
+  const debugUrl = new URL("/debug-telegram", appUrl).toString();
+
   return Markup.inlineKeyboard([
-    Markup.button.webApp("Открыть отчёт", appUrl)
+    [Markup.button.webApp("Открыть отчёт", appUrl)],
+    [Markup.button.webApp("Диагностика Telegram", debugUrl)]
   ]);
+}
+
+export function createReportReplyKeyboard(appUrl: string) {
+  return Markup.keyboard([
+    [Markup.button.webApp("Открыть отчёт", appUrl)]
+  ]).resize();
 }
 
 export function createReportMenuButton(appUrl: string) {
@@ -17,6 +26,14 @@ export function createReportMenuButton(appUrl: string) {
     text: "Открыть отчёт",
     web_app: { url: appUrl }
   };
+}
+
+export function createVoiceSaleUserMessage(recognizedText: string, needsAttention: boolean) {
+  const statusMessage = needsAttention
+    ? "⚠️ Запись сохранена, но нужно проверить товары и цены."
+    : "✅ Запись сохранена. Проверьте товары и цены в отчёте.";
+
+  return `${statusMessage}\n\nРаспознано: ${recognizedText}`;
 }
 
 function safeTelegramFileName(fileId: string) {

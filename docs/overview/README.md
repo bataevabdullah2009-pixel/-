@@ -4,4 +4,4 @@
 
 Границы MVP: голосовая фиксация продаж, ручное исправление, исключение ошибочных позиций, журнал, продавцы и отчёт владельца. CRM, склад, касса, оплата и клиентская база не входят в продукт.
 
-Telegram Mini App открывается только кнопками `web_app` с каноническим production HTTPS URL. Browser bootstrap получает подписанный `initData`, сервер определяет owner/seller и магазин, после чего отчёт, записи и продавцы работают только в server-derived `shop_id`. Команда `telegram:webhook-info` проверяет совпадение настроенного Web App URL и фактического webhook.
+Telegram Mini App открывается только кнопками `web_app` с каноническим production HTTPS URL. Корневой URL не выполняет ранний server redirect; browser bootstrap получает подписанный `initData`, сервер определяет активного owner/seller и магазин, после чего отчёт, записи и продавцы работают только в server-derived `shop_id`. Каждая voice-продажа требует проверки и подтверждения перед включением в выручку. `/debug-telegram` безопасно показывает наличие SDK и длину initData без payload.

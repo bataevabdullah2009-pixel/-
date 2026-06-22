@@ -1,10 +1,10 @@
 # Roadmap
 
-Текущий этап — production-oriented MVP голосового журнала продаж: voice pipeline, Telegram Mini App auth, server-derived shop isolation, отчёт, журнал, продавцы и ручная коррекция.
+Текущий этап — production-oriented MVP голосового журнала продаж: voice pipeline, Telegram Mini App auth, server-derived shop isolation, обязательная проверка/подтверждение, отчёт, журнал и продавцы.
 
 Ближайший эксплуатационный backlog:
 
-- после нового production deployment выполнить mobile Telegram smoke run и подтвердить initData: `/start` → «Открыть отчёт» → голос «Сникерс, 4 штуки по 100 рублей» → продажа 400 ₽ → вкладки «Отчёт», «Записи», «Продавцы»; URL-конфигурация и webhook уже сверяются автоматически;
+- после нового production deployment выполнить mobile Telegram smoke run: `/start` → новая «Диагностика Telegram» (`hasTelegram=true`, `hasWebApp=true`, `initDataLength>0`) → «Открыть отчёт» → голос «Сникерс, 4 штуки по 100 рублей» → «Нужно проверить» → изменить поля → сохранить → подтвердить → выручка 400 ₽;
 - применить/сверить целевые Supabase migrations и выполнить database advisors;
 - настроить резервное восстановление и мониторинг внешних интеграций;
 - добавить CI для `npm run test`, `npm run lint` и `npm run build`.

@@ -39,15 +39,15 @@ export function formatQuantity(value: number) {
 
 export function getStatusLabel(status: string) {
   const labels: Record<string, string> = {
-    pending: "В обработке",
-    processed: "Готово",
-    needs_review: "Проверить",
-    failed: "Ошибка",
-    needs_price: "Нужна цена",
+    pending: "Обрабатывается",
+    processed: "Подтверждено",
+    needs_review: "Нужно проверить",
+    failed: "Требует повторной обработки",
+    needs_price: "Нужно проверить цену",
     excluded: "Исключено"
   };
 
-  return labels[status] ?? status;
+  return labels[status] ?? "Нужно проверить";
 }
 
 export function buildHref(basePath: string, params: SearchParams, updates: Record<string, string | undefined>) {

@@ -1,10 +1,41 @@
 # Changelog
 
+## 2026-06-22 — Telegram initData и обязательное подтверждение продаж
+
+### Fixed
+
+- Удалён server redirect `/ → /daily-report`, который выполнялся до Telegram SDK и мог терять WebApp launch-параметры.
+- `/start` теперь отправляет новые reply и inline `web_app` buttons, задаёт `MenuButtonWebApp` и даёт безопасную кнопку `/debug-telegram`; после voice бот снова отправляет inline Web App button.
+- Telegram bootstrap выполняется только после client render, ждёт SDK до 10 секунд и вызывает `ready()`/`expand()` до проверки initData.
+- Добавлены безопасные WebApp diagnostics и server logs без initData payload и токенов.
+- Auth различает `TELEGRAM_INIT_DATA_MISSING`, `TELEGRAM_INIT_DATA_INVALID`, `SELLER_NOT_LINKED`, `SELLER_INACTIVE` и `SHOP_NOT_FOUND`; `shop_id` остаётся server-derived.
+- Бот больше не показывает raw `processed`/`needs_review`/`pending`/`failed`.
+
+### Review workflow
+
+- Каждая новая voice-продажа сохраняется в «Нужно проверить» и не входит в выручку автоматически.
+- Сохранение товара, количества и цены оставляет позицию в review state; отдельное подтверждение переводит её в UI-состояние «Подтверждено».
+- После подтверждения всех активных позиций связанные sale/voice record становятся подтверждёнными, а выручка пересчитывается.
+- Исключение и reset продолжают использовать существующий soft delete `deleted_at`; новая migration не потребовалась.
+
+### Documentation
+
+- Актуализированы README, AGENTS, overview, architecture, product/technical/data specs, features, rules, plans, roadmap и repository skill.
+- Удалены конкретные устаревшие deployment URL; учебных/кураторских формулировок и старых local tunnel URL не осталось.
+
+### Validation
+
+- `npm run lint`: без ошибок.
+- `npm run test`: 61 тест, 8 файлов.
+- `npm run build`: успешно; route `/debug-telegram` включён в production build.
+- Локальный HTTP smoke: `/` возвращает `200` без redirect, `/debug-telegram` возвращает `200`.
+- Штатные browser automation runtimes в текущем окружении недоступны; реальный mobile Telegram E2E остаётся release gate.
+
 ## 2026-06-21 — Production Web App URL guard
 
 ### Fixed
 
-- Production и Preview `NEXT_PUBLIC_APP_URL` обновлены на канонический `https://web-n3ji.vercel.app` через Vercel CLI.
+- Production и Preview `NEXT_PUBLIC_APP_URL` обновлены на канонический production alias через Vercel CLI.
 - Общая URL-валидация запрещает пустой URL, HTTP, localhost, ngrok, Vercel deployment preview и git-branch alias.
 - Bot env, `telegram:set-webhook` и `telegram:webhook-info` используют одну и ту же проверку публичного URL.
 - `telegram:webhook-info` сравнивает текущий Telegram webhook с ожидаемым URL и возвращает ненулевой exit code при расхождении.
@@ -14,7 +45,7 @@
 - `npm run test`: 57 tests, 8 files.
 - `npm run lint`: без ошибок.
 - `npm run build`: успешно.
-- Webhook: `https://web-n3ji.vercel.app/api/telegram/webhook`, pending `0`, last error `null`, allowed updates `message`, config match `true`.
+- Webhook на каноническом production origin: pending `0`, last error `null`, allowed updates `message`, config match `true`.
 - Mobile Telegram E2E остаётся внешним release gate; его результат не подменён локальной проверкой.
 
 ## 2026-06-20 — Telegram Mini App initData hotfix
@@ -34,7 +65,7 @@
 - `npm run lint`: без ошибок.
 - `npm run build`: успешно.
 - Local production smoke: SDK загружен, `ready()`/`expand()` вызваны; missing/invalid initData дают ожидаемые `401`; подписанный initData active seller даёт `200`, cookie и отчёт без auth error.
-- Production webhook: `https://web-n3ji.vercel.app/api/telegram/webhook`, pending `0`, last error `null`, allowed updates `message`.
+- Production webhook на каноническом origin: pending `0`, last error `null`, allowed updates `message`.
 - Mobile Telegram E2E ожидает production deploy и остаётся release gate.
 
 ## 2026-06-20 — Telegram/Web App and voice regression hotfix

@@ -13,7 +13,11 @@ import {
   writeProcessingAuditLog
 } from "../services/records.service";
 import { uploadVoiceAudio } from "../services/storage.service";
-import { createReportKeyboard, downloadTelegramVoice } from "../services/telegram.service";
+import {
+  createReportKeyboard,
+  createVoiceSaleUserMessage,
+  downloadTelegramVoice
+} from "../services/telegram.service";
 import { transcribeAudio } from "../services/transcription.service";
 import { logger, redactSensitiveText } from "../utils/logger";
 
@@ -173,7 +177,7 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
       stage = "telegram_reply";
       const responseText = parsedSale.cleaned_text || "Текст требует ручной проверки.";
       await ctx.reply(
-        `✅ Запись сохранена:\n${responseText}\n\nСтатус: ${result.status}`,
+        createVoiceSaleUserMessage(responseText, result.needsAttention),
         createReportKeyboard(env.NEXT_PUBLIC_APP_URL)
       );
     } catch (error) {

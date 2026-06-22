@@ -2,7 +2,9 @@
 
 export type TelegramWebApp = {
   initData?: string;
-  initDataUnsafe?: unknown;
+  initDataUnsafe?: {
+    user?: { id?: number };
+  };
   platform?: string;
   version?: string;
   ready?: () => void;
@@ -53,7 +55,16 @@ export function initializeTelegramWebApp(webApp = getTelegramWebApp()) {
   return webApp;
 }
 
-export async function waitForTelegramWebApp(timeoutMs = 3000) {
+async function waitForClientReady() {
+  if (typeof document === "undefined" || document.readyState !== "loading") return;
+
+  await new Promise<void>((resolve) => {
+    document.addEventListener("DOMContentLoaded", () => resolve(), { once: true });
+  });
+}
+
+export async function waitForTelegramWebApp(timeoutMs = 10000) {
+  await waitForClientReady();
   const startedAt = Date.now();
 
   while (Date.now() - startedAt < timeoutMs) {

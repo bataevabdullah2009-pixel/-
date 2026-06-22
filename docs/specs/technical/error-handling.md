@@ -7,8 +7,11 @@
 - «Не удалось исключить товар из отчёта.»
 - «Откройте отчёт через кнопку в Telegram-боте» (`TELEGRAM_INIT_DATA_MISSING` или `TELEGRAM_INIT_DATA_INVALID`);
 - «Ваш Telegram не привязан к магазину» (`SELLER_NOT_LINKED`);
+- «Доступ к магазину отключён» (`SELLER_INACTIVE`);
 - «Магазин не найден» (`SHOP_NOT_FOUND`).
 
 Ошибка доступа продавца обрабатывается отдельно и не создаёт `voice_records`, `sales` или `sale_items`.
 
 Voice runtime пишет `voice_failed` с точным `stage`; сбой Storage, parser fallback или post-commit audit log логируется отдельно и не маскируется общим сообщением.
+
+После успешного voice pipeline бот не показывает internal enum. Обычный ответ: «Запись сохранена. Проверьте товары и цены в отчёте»; при неполных данных — «Запись сохранена, но нужно проверить товары и цены».

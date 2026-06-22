@@ -7,8 +7,16 @@ import {
   calculateItemTotal,
   normalizeSaleItemFields
 } from "../packages/shared/utils/date-range";
+import { getStatusLabel } from "../apps/web/src/features/records/records.utils";
 
 describe("sales report", () => {
+  it("never exposes raw technical statuses to users", () => {
+    expect(getStatusLabel("processed")).toBe("Подтверждено");
+    expect(getStatusLabel("needs_review")).toBe("Нужно проверить");
+    expect(getStatusLabel("failed")).toBe("Требует повторной обработки");
+    expect(getStatusLabel("unexpected_internal_status")).toBe("Нужно проверить");
+  });
+
   it("normalizes bread quantity and unit from parsed text", () => {
     const item = normalizeSaleItemFields({
       product_name: "Хлеб",

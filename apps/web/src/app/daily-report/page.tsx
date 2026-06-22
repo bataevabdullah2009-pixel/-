@@ -13,6 +13,7 @@ import {
   getStringParam
 } from "@/features/records/records.utils";
 import {
+  confirmSaleItemAction,
   excludeSaleItemAction,
   resetDayRevenueAction,
   restoreSaleItemAction,
@@ -54,6 +55,14 @@ function SaleItemEditor({ item, returnTo }: { item: SaleItem; returnTo: string }
         <button type="submit" className="saveButton">Сохранить</button>
       </form>
 
+      {item.status !== "processed" ? (
+        <form action={confirmSaleItemAction} className="confirmItemForm">
+          <input type="hidden" name="itemId" value={item.id} />
+          <input type="hidden" name="returnTo" value={returnTo} />
+          <button type="submit" className="confirmButton">Подтвердить позицию</button>
+        </form>
+      ) : null}
+
       <form action={excludeSaleItemAction} className="deleteItemForm">
         <input type="hidden" name="itemId" value={item.id} />
         <input type="hidden" name="returnTo" value={returnTo} />
@@ -88,7 +97,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
         <div>
           <p className="eyebrow">Сводка магазина</p>
           <h2>Продажи и выручка</h2>
-          <p className="pageLead">Проверьте распознанные товары, исправьте цену или исключите ошибочную позицию.</p>
+          <p className="pageLead">Каждую голосовую продажу нужно проверить и подтвердить. В выручку входят только подтверждённые позиции.</p>
         </div>
       </div>
 
@@ -194,7 +203,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
             <h3>Записанные товары</h3>
           </div>
           <span className={summary.reviewItems.length ? "attentionPill" : "clearPill"}>
-            {summary.reviewItems.length ? `Проверить: ${summary.reviewItems.length}` : "Всё проверено"}
+            {summary.reviewItems.length ? `Нужно проверить: ${summary.reviewItems.length}` : "Всё проверено"}
           </span>
         </div>
 
@@ -210,7 +219,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
             ) : null}
             {processedItems.length ? (
               <section className="itemEditorGroup" aria-labelledby="processed-items-heading">
-                <h4 id="processed-items-heading">Обработанные товары</h4>
+                <h4 id="processed-items-heading">Подтверждённые продажи</h4>
                 <div className="itemEditorList">
                   {processedItems.map((item) => <SaleItemEditor item={item} returnTo={returnTo} key={item.id} />)}
                 </div>

@@ -510,6 +510,21 @@ th {
   min-width: 112px;
 }
 
+.confirmItemForm {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.confirmButton {
+  border-color: #1f8b68;
+  background: #1f8b68;
+}
+
+.confirmButton:hover {
+  background: #176f53;
+}
+
 .deleteItemForm {
   display: flex;
   justify-content: flex-end;
@@ -524,6 +539,34 @@ th {
   cursor: pointer;
   font-weight: 750;
   list-style: none;
+}
+
+.telegramDebugGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.telegramDebugGrid > div {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 14px;
+}
+
+.telegramDebugGrid dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.telegramDebugGrid dd {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--accent-strong);
+  font-family: "Cascadia Mono", "SFMono-Regular", monospace;
+  font-weight: 700;
 }
 
 .deletedItemsPanel summary::-webkit-details-marker {
@@ -784,6 +827,10 @@ th {
 }
 
 @media (max-width: 760px) {
+  .telegramDebugGrid {
+    grid-template-columns: 1fr;
+  }
+
   body {
     padding-bottom: calc(70px + env(safe-area-inset-bottom, 0px));
   }

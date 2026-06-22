@@ -95,6 +95,7 @@ function logServerError(operation: string, error: unknown) {
 function reportLoadMessage(error: unknown) {
   if (error instanceof OwnerAccessError) {
     if (error.code === "SELLER_NOT_LINKED") return "Ваш Telegram не привязан к магазину";
+    if (error.code === "SELLER_INACTIVE") return "Доступ к магазину отключён";
     if (error.code === "SHOP_NOT_FOUND") return "Магазин не найден";
     if (error.code === "TELEGRAM_INIT_DATA_MISSING" || error.code === "TELEGRAM_INIT_DATA_INVALID") {
       return "Откройте отчёт через кнопку в Telegram-боте";
@@ -387,7 +388,7 @@ async function recalculateSale(admin: AdminClient, saleId: string, shopId: strin
       .reduce((sum: number, item: any) => sum + Number(item.total), 0)
       .toFixed(2)
   );
-  const saleStatus = activeItems.every((item: any) => item.status === "processed")
+  const saleStatus = activeItems.length > 0 && activeItems.every((item: any) => item.status === "processed")
     ? "processed"
     : "needs_review";
 
@@ -517,7 +518,7 @@ export async function updateSaleItem(params: {
       unit,
       price: patch.price,
       total: patch.total,
-      status: patch.status,
+      status: "needs_review",
       confidence: patch.confidence,
       updated_at: updatedAt
     })
@@ -555,7 +556,7 @@ export async function updateSaleItem(params: {
       unit,
       price: patch.price,
       total: patch.total,
-      status: patch.status
+      status: "needs_review"
     }
   });
 
@@ -565,8 +566,91 @@ export async function updateSaleItem(params: {
 
   return {
     ok: true,
-    message: "Позиция обновлена."
+    message: "Изменения сохранены. Теперь подтвердите позицию."
   };
+}
+
+export async function confirmSaleItem(itemId: string): Promise<MutationResult> {
+  const owner = await requireOwner();
+  const admin = getSupabaseAdminClient();
+
+  if (!admin) {
+    return { ok: false, message: "Не удалось подтвердить позицию." };
+  }
+
+  const { data: item, error: itemError } = await admin
+    .from("sale_items")
+    .select("id, sale_id, product_name, quantity, unit, price, total, status, deleted_at")
+    .eq("id", itemId)
+    .single();
+
+  if (itemError) {
+    return { ok: false, message: itemError.message };
+  }
+
+  if (item.deleted_at) {
+    return { ok: false, message: "Сначала восстановите исключённую позицию." };
+  }
+
+  if (item.status === "processed") {
+    return { ok: true, message: "Позиция уже подтверждена." };
+  }
+
+  const quantity = Number(item.quantity);
+  const price = item.price === null ? Number.NaN : Number(item.price);
+  const patch = buildManualSaleItemPatch({
+    productName: String(item.product_name),
+    quantity,
+    unit: item.unit,
+    price
+  });
+
+  if (!patch.normalized_product_name || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(price) || price <= 0) {
+    return { ok: false, message: "Перед подтверждением укажите товар, количество и цену." };
+  }
+
+  const context = await getSaleContext(admin, item.sale_id, owner.shopId);
+  if (!context.data) {
+    return { ok: false, message: context.error ?? "Продажа не найдена." };
+  }
+
+  requireShopAccess(owner, String(context.data.shop_id));
+  const updatedAt = new Date().toISOString();
+  const { error } = await admin
+    .from("sale_items")
+    .update({
+      product_name: patch.product_name,
+      quantity: patch.quantity,
+      unit: patch.unit,
+      price: patch.price,
+      total: patch.total,
+      status: "processed",
+      confidence: 1,
+      updated_at: updatedAt
+    })
+    .eq("id", itemId)
+    .is("deleted_at", null);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  const recalculation = await recalculateSale(admin, item.sale_id, owner.shopId);
+  if (!recalculation.ok) {
+    return recalculation;
+  }
+
+  const auditError = await writeAuditLog(admin, context.data, "sale_item_confirmed", {
+    item_id: item.id,
+    product_name: patch.product_name,
+    quantity: patch.quantity,
+    price: patch.price,
+    total: patch.total
+  });
+
+  return auditError
+    ? { ok: false, message: `Позиция подтверждена, но audit log не записан: ${auditError}` }
+    : { ok: true, message: "Позиция подтверждена и учтена в выручке." };
 }
 
 export async function excludeSaleItem(itemId: string): Promise<MutationResult> {

@@ -5,6 +5,7 @@ Voice Sales Log — монорепозиторий реального MVP: Teleg
 ```text
 Telegram web_app button
   → telegram-web-app.js
+  → first page without server redirect
   → Telegram.WebApp.initData
   → apiFetch(x-telegram-init-data)
   → HMAC validation with TELEGRAM_BOT_TOKEN
@@ -14,8 +15,8 @@ Telegram web_app button
   → report / records / sellers / mutations
 ```
 
-Первичный browser fetch проходит через `apps/web/src/lib/telegram-api.ts`. После `POST /api/auth/telegram` сервер хранит initData в HttpOnly cookie и повторно валидирует его для Server Components и Server Actions. Клиентский `shop_id` не является частью доверенного контракта.
+Первичный browser fetch проходит через `apps/web/src/lib/telegram-api.ts`. После `POST /api/auth/telegram` сервер хранит initData в HttpOnly cookie и повторно валидирует его для Server Components и Server Actions. `/debug-telegram` обходится без бизнес-данных и показывает только безопасную диагностику. Клиентский `shop_id` не является частью доверенного контракта.
 
-Публичный Telegram URL проходит общую проверку в `packages/shared/utils/telegram-url.ts`. Bot runtime, setWebhook и webhook diagnostics отклоняют HTTP, локальные, ngrok и временные Vercel URL до отправки кнопки пользователю.
+Публичный Telegram URL проходит общую проверку в `packages/shared/utils/telegram-url.ts`. Bot runtime, setWebhook и webhook diagnostics отклоняют непубличные и временные URL до отправки кнопки пользователю.
 
 Подробности: [technical architecture](../specs/technical/architecture.md), [auth and shop isolation](../specs/technical/auth-and-shop-isolation.md), [Telegram webhook](../specs/technical/telegram-webhook.md).

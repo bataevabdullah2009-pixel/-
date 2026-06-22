@@ -169,18 +169,6 @@ async function findDefaultProductPrice(env: AppEnv, shopId: string, productName:
   };
 }
 
-function resolveSaleStatus(items: Array<{ status: SaleItemStatus }>, parserNeedsReview: boolean): VoiceRecordStatus {
-  if (!items.length) {
-    return "needs_review";
-  }
-
-  if (parserNeedsReview || items.some((item) => item.status !== "processed")) {
-    return "needs_review";
-  }
-
-  return "processed";
-}
-
 async function resolveSaleItem(env: AppEnv, shopId: string, item: ParsedSaleItem) {
   const normalized = normalizeSaleItemFields(item);
   const product = await findDefaultProductPrice(env, shopId, normalized.product_name);
@@ -227,6 +215,13 @@ export function ensureReviewableSaleItems(parsedSale: ParsedSale): ParsedSaleIte
     total: null,
     confidence: 0
   }];
+}
+
+export function markSaleItemsForRequiredReview(items: ResolvedSaleItem[]) {
+  return items.map((item) => ({
+    ...item,
+    status: item.status === "needs_price" ? "needs_price" as const : "needs_review" as const
+  }));
 }
 
 export function buildVoiceSaleRpcPayload(params: {
@@ -332,7 +327,7 @@ async function persistVoiceSale(supabase: SupabaseClient, payload: VoiceSaleRpcP
   return persistVoiceSaleDirectly(supabase, payload);
 }
 
-export async function saveProcessedSale(params: {
+export async function saveVoiceSaleForReview(params: {
   env: AppEnv;
   seller: SellerContext;
   telegramMessageId: string;
@@ -357,13 +352,10 @@ export async function saveProcessedSale(params: {
   const supabase = getSupabase(env);
   const sourceItems = ensureReviewableSaleItems(parsedSale);
   const resolvedItems = await Promise.all(sourceItems.map((item) => resolveSaleItem(env, seller.shopId, item)));
-  const saleStatus = resolveSaleStatus(resolvedItems, parsedSale.needs_review);
-  const totalAmount = Number(
-    resolvedItems
-      .filter((item) => item.status === "processed" && item.total !== null)
-      .reduce((sum, item) => sum + Number(item.total), 0)
-      .toFixed(2)
-  );
+  const needsAttention = parsedSale.needs_review || resolvedItems.some((item) => item.status !== "processed");
+  const reviewItems = markSaleItemsForRequiredReview(resolvedItems);
+  const saleStatus: VoiceRecordStatus = "needs_review";
+  const totalAmount = 0;
 
   const rpcPayload = buildVoiceSaleRpcPayload({
     seller,
@@ -376,7 +368,7 @@ export async function saveProcessedSale(params: {
     errorMessage: errorMessage ?? null,
     saleStatus,
     totalAmount,
-    resolvedItems
+    resolvedItems: reviewItems
   });
   const persisted = await persistVoiceSale(supabase, rpcPayload);
   if (!persisted?.sale_id || !persisted?.voice_record_id) {
@@ -395,18 +387,18 @@ export async function saveProcessedSale(params: {
         sale_id: saleId,
         voice_record_id: voiceRecordId,
         items_count: resolvedItems.length,
-        item_statuses: resolvedItems.map((item) => item.status)
+        item_statuses: reviewItems.map((item) => item.status)
       }
     }),
     tryWriteAuditLog(env, {
       shopId: seller.shopId,
       sellerId: seller.id,
-      action: "sale.processed",
+      action: "sale.review_required",
       details: {
         sale_id: saleId,
         voice_record_id: voiceRecordId,
         status: saleStatus,
-        items_count: resolvedItems.length
+        items_count: reviewItems.length
       }
     })
   ]);
@@ -416,9 +408,12 @@ export async function saveProcessedSale(params: {
     voiceRecordId,
     status: saleStatus,
     totalAmount,
-    itemCount: resolvedItems.length
+    itemCount: reviewItems.length,
+    needsAttention
   };
 }
+
+export const saveProcessedSale = saveVoiceSaleForReview;
 
 export async function saveFailedVoiceRecord(params: {
   env: AppEnv;

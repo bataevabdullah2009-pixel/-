@@ -29,6 +29,7 @@ export class OwnerAccessError extends Error {
       | "TELEGRAM_INIT_DATA_MISSING"
       | "TELEGRAM_INIT_DATA_INVALID"
       | "SELLER_NOT_LINKED"
+      | "SELLER_INACTIVE"
       | "SHOP_NOT_FOUND"
       | "AUTH_MISCONFIGURED",
     message: string
@@ -146,19 +147,35 @@ async function requireDemoOwner(): Promise<OwnerContext> {
 
 export async function authenticateOwner(initData: string): Promise<OwnerContext> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  let telegramUserId: number | null = null;
+  let sellerFound = false;
+  let shopId: string | null = null;
+
   if (!botToken) {
     throw new OwnerAccessError("AUTH_MISCONFIGURED", "Telegram bot token is not configured.");
   }
 
   try {
     const { user } = verifyTelegramInitData(initData, botToken);
-    return await findActiveOwnerByTelegramId(user.id);
+    telegramUserId = user.id;
+    const owner = await findActiveOwnerByTelegramId(user.id);
+    sellerFound = true;
+    shopId = owner.shopId;
+    return owner;
   } catch (error) {
     if (error instanceof OwnerAccessError) throw error;
     if (error instanceof TelegramInitDataError) {
       throw new OwnerAccessError(error.code, error.message);
     }
     throw error;
+  } finally {
+    console.info("webapp auth", {
+      hasInitData: Boolean(initData),
+      initDataLength: initData.length,
+      hasTelegramUser: Boolean(telegramUserId),
+      sellerFound,
+      shopId
+    });
   }
 }
 

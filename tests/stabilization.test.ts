@@ -3,11 +3,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildVoiceSaleRpcPayload,
   ensureReviewableSaleItems,
+  markSaleItemsForRequiredReview,
   resolveSellerAccess,
   SellerAccessError
 } from "../apps/bot/src/services/records.service";
 import { parseSaleTranscript } from "../apps/bot/src/services/cleanup-text.service";
-import { createReportKeyboard, createReportMenuButton } from "../apps/bot/src/services/telegram.service";
+import {
+  createReportKeyboard,
+  createReportMenuButton,
+  createReportReplyKeyboard,
+  createVoiceSaleUserMessage
+} from "../apps/bot/src/services/telegram.service";
 import { buildExcludedSaleItemPatch, buildManualSaleItemPatch, buildSalesReport } from "../packages/shared/utils/date-range";
 import type { SaleItem } from "../packages/shared/types";
 import {
@@ -148,6 +154,21 @@ describe("sales flow stabilization", () => {
       web_app: { url: "https://voice-sales.example.com" }
     });
     expect(button).not.toHaveProperty("url");
+    expect(keyboard.reply_markup.inline_keyboard[1]?.[0]).toMatchObject({
+      text: "Диагностика Telegram",
+      web_app: { url: "https://voice-sales.example.com/debug-telegram" }
+    });
+  });
+
+  it("uses a Telegram Web App reply button for persistent access", () => {
+    const keyboard = createReportReplyKeyboard("https://voice-sales.example.com");
+    const button = keyboard.reply_markup.keyboard[0]?.[0];
+
+    expect(button).toMatchObject({
+      text: "Открыть отчёт",
+      web_app: { url: "https://voice-sales.example.com" }
+    });
+    expect(button).not.toHaveProperty("url");
   });
 
   it("denies a production Web App API request without initData header", () => {
@@ -164,6 +185,17 @@ describe("sales flow stabilization", () => {
     });
   });
 
+  it("never shows raw pipeline statuses after a voice sale", () => {
+    const normal = createVoiceSaleUserMessage("Сникерс, 4 штуки по 100 рублей", false);
+    const warning = createVoiceSaleUserMessage("Сникерс", true);
+
+    expect(normal).toContain("Запись сохранена. Проверьте товары и цены в отчёте.");
+    expect(warning).toContain("нужно проверить товары и цены");
+    for (const message of [normal, warning]) {
+      expect(message).not.toMatch(/processed|needs_review|pending|failed/);
+    }
+  });
+
   it("creates a needs_review item when parsing produces no items", () => {
     const items = ensureReviewableSaleItems({
       items: [],
@@ -178,6 +210,33 @@ describe("sales flow stabilization", () => {
       price: null,
       confidence: 0
     })]);
+  });
+
+  it("requires review for every newly recognized sale item", () => {
+    const items = markSaleItemsForRequiredReview([
+      {
+        product_id: null,
+        product_name: "Сникерс",
+        quantity: 4,
+        unit: "шт",
+        price: 100,
+        total: 400,
+        confidence: 0.98,
+        status: "processed"
+      },
+      {
+        product_id: null,
+        product_name: "Чай",
+        quantity: 1,
+        unit: "шт",
+        price: null,
+        total: null,
+        confidence: 0.9,
+        status: "needs_price"
+      }
+    ]);
+
+    expect(items.map((item) => item.status)).toEqual(["needs_review", "needs_price"]);
   });
 
   it("turns invalid LLM JSON into manual review instead of failing the voice", async () => {

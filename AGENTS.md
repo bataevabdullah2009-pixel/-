@@ -26,11 +26,13 @@ Voice Sales Log — реальный MVP-продукт: голосовой жу
 - `shop_id` нельзя принимать от клиента. Он определяется только на сервере после валидации Telegram initData и чтения owner/seller из БД.
 - `SUPABASE_SERVICE_ROLE_KEY` используется только сервером и никогда не передаётся клиенту.
 - Unknown seller не сохраняется в случайный магазин при `DEMO_MODE=false`.
-- Отчёт учитывает только `status = processed` и `deleted_at is null`.
+- Каждая новая voice-продажа сохраняется для обязательной ручной проверки. В UI `needs_review`/`needs_price` показываются как «Нужно проверить», а `processed` — как «Подтверждено».
+- Отчёт учитывает только подтверждённые позиции: `status = processed` и `deleted_at is null`.
 - Исключение позиции выполняется только через soft delete.
 - Кнопка отчёта в Telegram создаётся только как `web_app`, не как обычная URL-кнопка.
 - `NEXT_PUBLIC_APP_URL` обязан быть каноническим production HTTPS URL; localhost, ngrok, deployment preview и git-branch Vercel URL запрещены.
 - Web App передаёт `Telegram.WebApp.initData` в `x-telegram-init-data`; production fallback без initData запрещён.
+- Корневой Web App URL не должен выполнять server redirect до инициализации Telegram SDK: launch-параметры Telegram должны сохраниться на первой странице.
 - Сбой Storage или невалидный LLM JSON не должен скрывать распознанную продажу: создаётся `needs_review`.
 - Каждый voice request логирует именованные этапы и `voice_failed` с полем `stage`.
 

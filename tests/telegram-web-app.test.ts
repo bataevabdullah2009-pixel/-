@@ -153,7 +153,7 @@ describe("Telegram Mini App authentication", () => {
         telegram_id: 777,
         is_active: false
       })
-    }))).rejects.toMatchObject({ code: "SELLER_NOT_LINKED" });
+    }))).rejects.toMatchObject({ code: "SELLER_INACTIVE" });
   });
 
   it("missing shop is denied with SHOP_NOT_FOUND", async () => {
