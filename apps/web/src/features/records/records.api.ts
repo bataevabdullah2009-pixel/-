@@ -89,6 +89,11 @@ function escapeLike(value: string) {
 }
 
 function logServerError(operation: string, error: unknown) {
+  if (error instanceof OwnerAccessError && error.code !== "AUTH_MISCONFIGURED") {
+    console.info(`[records] ${operation} access pending`, { code: error.code });
+    return;
+  }
+
   console.error(`[records] ${operation} failed`, error);
 }
 

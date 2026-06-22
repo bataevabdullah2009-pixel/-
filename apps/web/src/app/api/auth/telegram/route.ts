@@ -37,8 +37,15 @@ export async function POST(request: Request) {
     });
     return response;
   } catch (error) {
-    console.error("Telegram owner authentication failed", error);
     const details = describeTelegramAuthError(error);
+    if (details.status >= 500) {
+      console.error("Telegram owner authentication failed", error);
+    } else {
+      console.info("webapp auth rejected", {
+        status: details.status,
+        code: details.code
+      });
+    }
     return NextResponse.json(
       { ok: false, code: details.code, message: details.message },
       { status: details.status }

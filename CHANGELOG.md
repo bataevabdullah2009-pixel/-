@@ -8,6 +8,7 @@
 - `/start` теперь отправляет новые reply и inline `web_app` buttons, задаёт `MenuButtonWebApp` и даёт безопасную кнопку `/debug-telegram`; после voice бот снова отправляет inline Web App button.
 - Telegram bootstrap выполняется только после client render, ждёт SDK до 10 секунд и вызывает `ready()`/`expand()` до проверки initData.
 - Добавлены безопасные WebApp diagnostics и server logs без initData payload и токенов.
+- Ожидаемые 401/403 Telegram bootstrap больше не загрязняют Vercel error-level logs.
 - Auth различает `TELEGRAM_INIT_DATA_MISSING`, `TELEGRAM_INIT_DATA_INVALID`, `SELLER_NOT_LINKED`, `SELLER_INACTIVE` и `SHOP_NOT_FOUND`; `shop_id` остаётся server-derived.
 - Бот больше не показывает raw `processed`/`needs_review`/`pending`/`failed`.
 

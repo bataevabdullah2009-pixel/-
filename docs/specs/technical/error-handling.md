@@ -15,3 +15,5 @@
 Voice runtime пишет `voice_failed` с точным `stage`; сбой Storage, parser fallback или post-commit audit log логируется отдельно и не маскируется общим сообщением.
 
 После успешного voice pipeline бот не показывает internal enum. Обычный ответ: «Запись сохранена. Проверьте товары и цены в отчёте»; при неполных данных — «Запись сохранена, но нужно проверить товары и цены».
+
+Ожидаемые auth 401/403 и первый Server Component render до Telegram bootstrap логируются на уровне `info` с кодом, но без payload. Только неожиданные server failures остаются на уровне `error`.
