@@ -1,7 +1,19 @@
-# Модель данных
+# Data Model
 
-`shops` является корнем tenant boundary. `owners`, `sellers`, `products`, `voice_records` и `sales` содержат `shop_id`. `sale_items` связаны с магазином через `sales`. `audit_logs` фиксируют магазин и, когда применимо, продавца.
+Одна Telegram voice запись создаёт:
 
-Telegram auth не меняет schema: сервер читает `telegram_id`, `is_active` и `shop_id` из `owners`/`sellers`, затем подтверждает строку в `shops`. Client `shop_id` не записывается и не используется для выбора tenant.
+- `voice_records` — исходный/очищенный текст, parser JSON, статус pipeline, аудио metadata;
+- `sales` — агрегат продажи, seller/shop, total amount;
+- один или несколько `sale_items` — товарные позиции.
 
-Одна Telegram voice запись создаёт один `voice_records`, один `sales` и минимум один `sale_items`: пустой parser result материализуется как `needs_review`. Все новые voice items сохраняются как `needs_review` либо `needs_price`, а `sales`/`voice_records` — как `needs_review`. После подтверждения всех активных позиций связанные `sales` и `voice_records` переходят во внутренний `processed`. Целевой путь использует PostgreSQL-функцию `save_voice_sale`; совместимый server-side fallback удаляет уже созданные строки при ошибке последующей вставки.
+`sale_items.status`:
+
+- `processed` — позиция готова и входит в отчёт;
+- `needs_review` — позицию нужно проверить;
+- `needs_price` — legacy состояние старых строк, в UI равно «Нужно проверить»;
+- `failed` — технически неудачная позиция, в UI равно «Нужно проверить»;
+- `excluded` — soft-deleted позиция.
+
+Новая voice-позиция становится `processed`, если товар осмысленный, количество и цена распознаны, `confidence >= 0.80`. Иначе она сохраняется как `needs_review`.
+
+`sales.total_amount` равен сумме активных `processed` items. `sales.status = processed`, если все активные items processed; иначе `needs_review`.

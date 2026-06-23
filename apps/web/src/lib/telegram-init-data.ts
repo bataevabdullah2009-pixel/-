@@ -34,7 +34,7 @@ export function requireTelegramInitDataHeader(headers: Pick<Headers, "get">) {
   if (!initData) {
     throw new TelegramInitDataError(
       "TELEGRAM_INIT_DATA_MISSING",
-      "Откройте отчёт через кнопку в Telegram-боте"
+      "Telegram initData is missing."
     );
   }
   return initData;

@@ -1,11 +1,21 @@
-# Жизненный цикл статусов
+# Status Lifecycle
 
-- `processed`: позиция вручную подтверждена и может входить в отчёт; в UI называется «Подтверждено».
-- `needs_price`: товар и количество известны, цена отсутствует.
-- `needs_review`: низкая уверенность, отсутствующее количество, неинформативное имя, пустой/невалидный LLM result либо неоднозначный transcript.
-- `failed`: pipeline завершился до возможности сохранить редактируемую позицию.
-- `excluded`: позиция исключена владельцем или reset дня.
+## Voice item
 
-Даже при высоком confidence распознанная voice-позиция сначала сохраняется как `needs_review`. Если цены нет, сохраняется `needs_price`. Если STT дал текст, но LLM недоступен или вернул невалидный JSON, создаётся fallback-позиция `needs_review` с `quantity = 1`, `price = null`, `total = null`, `confidence = 0`. Все эти состояния видны как «Нужно проверить» и не входят в выручку.
+```text
+recognized complete + confidence >= 0.80 -> processed
+missing product/quantity/price or low confidence -> needs_review
+user excludes -> excluded + deleted_at
+user restores -> previous status or needs_review
+user saves valid fields -> processed
+```
 
-Ручное сохранение пересчитывает `total = quantity × price`, ставит `confidence = 1`, обновляет `updated_at`, но оставляет `needs_review`. Отдельное подтверждение устанавливает `processed`; `sales` и `voice_records` становятся `processed`, когда подтверждены все активные позиции. Исключение устанавливает `excluded`, `deleted_at = now()`, `deleted_reason = excluded_by_owner`, `updated_at = now()` и сохраняет предыдущий status для восстановления.
+## Sale and voice record
+
+`processed`: все активные позиции готовы.
+
+`needs_review`: хотя бы одна активная позиция требует проверки.
+
+`failed`: pipeline завершился технической ошибкой до сохранения продажи.
+
+Пользователь видит не enum, а labels «Готово», «Нужно проверить», «Исключено».

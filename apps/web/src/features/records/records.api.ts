@@ -99,12 +99,12 @@ function logServerError(operation: string, error: unknown) {
 
 function reportLoadMessage(error: unknown) {
   if (error instanceof OwnerAccessError) {
+    if (error.code === "TELEGRAM_INIT_DATA_MISSING" || error.code === "TELEGRAM_INIT_DATA_INVALID") {
+      return null;
+    }
     if (error.code === "SELLER_NOT_LINKED") return "Ваш Telegram не привязан к магазину";
     if (error.code === "SELLER_INACTIVE") return "Доступ к магазину отключён";
     if (error.code === "SHOP_NOT_FOUND") return "Магазин не найден";
-    if (error.code === "TELEGRAM_INIT_DATA_MISSING" || error.code === "TELEGRAM_INIT_DATA_INVALID") {
-      return "Откройте отчёт через кнопку в Telegram-боте";
-    }
   }
 
   return "Не удалось загрузить отчёт.";
@@ -523,7 +523,7 @@ export async function updateSaleItem(params: {
       unit,
       price: patch.price,
       total: patch.total,
-      status: "needs_review",
+      status: patch.status,
       confidence: patch.confidence,
       updated_at: updatedAt
     })
@@ -561,7 +561,7 @@ export async function updateSaleItem(params: {
       unit,
       price: patch.price,
       total: patch.total,
-      status: "needs_review"
+      status: patch.status
     }
   });
 
@@ -571,7 +571,7 @@ export async function updateSaleItem(params: {
 
   return {
     ok: true,
-    message: "Изменения сохранены. Теперь подтвердите позицию."
+    message: "Изменения сохранены. Позиция учтена в отчёте."
   };
 }
 

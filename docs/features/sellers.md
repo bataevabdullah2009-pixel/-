@@ -1,5 +1,7 @@
-# Продавцы
+# Sellers
 
-Список продавцов строится только для `owner.shop_id`. Бот принимает продажи только от `sellers.is_active = true`. Добавление production-продавца выполняется владельцем или оператором через защищённый процесс управления данными; команда `/start` не назначает случайный магазин.
+Страница продавцов показывает active/inactive sellers текущего server-derived магазина.
 
-Неактивный seller не получает доступ к Mini App через rollout fallback и получает `SELLER_INACTIVE`. Если связанный `shop_id` не существует, сервер возвращает `SHOP_NOT_FOUND` и не выбирает другой магазин.
+Telegram bot создаёт seller только в разрешённых сценариях. При `DEMO_MODE=false` unknown seller не создаётся автоматически и получает сообщение о непривязанном Telegram.
+
+Fallback Web App использует `DEFAULT_SELLER_ID` только как server-side context, не как client input.

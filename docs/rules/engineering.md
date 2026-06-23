@@ -1,3 +1,9 @@
-# Инженерная работа
+# Engineering Rules
 
-Изменения должны быть минимальными и сохранять Telegram bot, webhook, STT, LLM parser, Supabase и mobile UI. Новые бизнес-модули не добавляются в задачах стабилизации. Internal enum нельзя показывать пользователю. Обязательны regression tests, lint, TypeScript/Next.js build и синхронизация документации.
+- Сначала читать локальные specs и текущий diff.
+- Не переписывать несвязанные изменения.
+- Для shared logic добавлять focused regression tests.
+- Все Mini App browser requests идут через `apiFetch()`.
+- Все Web App server reads/mutations идут через `resolveRequestContext()` / `requireOwner()`.
+- После кода обновить README, specs/features/rules, plans, roadmap и changelog.
+- Перед финалом запускать `npm run lint`, `npm run test`, `npm run build` или честно указать, что команда не запускалась/упала.

@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import {
-  authenticateOwner,
+  resolveRequestContext,
   TELEGRAM_INIT_DATA_COOKIE
 } from "@/lib/owner-auth";
 import {
-  readTelegramInitDataHeader,
-  requireTelegramInitDataHeader
+  readTelegramInitDataHeader
 } from "@/lib/telegram-init-data";
 import { describeTelegramAuthError } from "@/lib/telegram-auth-errors";
 
@@ -15,26 +14,18 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
   try {
     const receivedInitData = readTelegramInitDataHeader(request.headers);
-    if (!receivedInitData) {
-      console.info("webapp auth", {
-        hasInitData: false,
-        initDataLength: 0,
-        hasTelegramUser: false,
-        sellerFound: false,
-        shopId: null
+    const context = await resolveRequestContext(request);
+
+    const response = NextResponse.json({ ok: true, mode: context.mode });
+    if (context.mode === "telegram" && receivedInitData) {
+      response.cookies.set(TELEGRAM_INIT_DATA_COOKIE, receivedInitData, {
+        httpOnly: true,
+        sameSite: "strict",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 24 * 60 * 60
       });
     }
-    const initData = requireTelegramInitDataHeader(request.headers);
-    await authenticateOwner(initData);
-
-    const response = NextResponse.json({ ok: true });
-    response.cookies.set(TELEGRAM_INIT_DATA_COOKIE, initData, {
-      httpOnly: true,
-      sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 24 * 60 * 60
-    });
     return response;
   } catch (error) {
     const details = describeTelegramAuthError(error);

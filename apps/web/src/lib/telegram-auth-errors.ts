@@ -19,9 +19,9 @@ export function describeTelegramAuthError(error: unknown) {
 
   switch (code) {
     case "TELEGRAM_INIT_DATA_MISSING":
-      return { status: 401, code, message: "Откройте отчёт через кнопку в Telegram-боте" };
+      return { status: 401, code, message: "Telegram initData отсутствует, а fallback mode выключен." };
     case "TELEGRAM_INIT_DATA_INVALID":
-      return { status: 401, code, message: "Откройте отчёт через кнопку в Telegram-боте" };
+      return { status: 401, code, message: "Не удалось подтвердить Telegram Web App." };
     case "SELLER_NOT_LINKED":
       return { status: 403, code, message: "Ваш Telegram не привязан к магазину" };
     case "SELLER_INACTIVE":

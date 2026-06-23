@@ -21,6 +21,7 @@ export type OwnerContext = {
   shopId: string;
   telegramId: number;
   demo: boolean;
+  mode: "telegram" | "fallback" | "demo";
 };
 
 export class OwnerAccessError extends Error {
@@ -41,6 +42,42 @@ export class OwnerAccessError extends Error {
 
 export function isDemoMode() {
   return process.env.DEMO_MODE === "true";
+}
+
+export function isWebAppFallbackAllowed() {
+  return process.env.ALLOW_WEBAPP_FALLBACK === "true";
+}
+
+function readRequiredFallbackEnv() {
+  const defaultShopId = process.env.DEFAULT_SHOP_ID?.trim() ?? "";
+  const defaultSellerId = process.env.DEFAULT_SELLER_ID?.trim() ?? "";
+
+  console.info("webapp auth", {
+    mode: "fallback",
+    hasDefaultShop: Boolean(defaultShopId),
+    hasDefaultSeller: Boolean(defaultSellerId)
+  });
+
+  if (!defaultShopId || !defaultSellerId) {
+    throw new OwnerAccessError(
+      "AUTH_MISCONFIGURED",
+      "Web App fallback mode is enabled but DEFAULT_SHOP_ID or DEFAULT_SELLER_ID is missing."
+    );
+  }
+
+  return { defaultShopId, defaultSellerId };
+}
+
+function resolveFallbackContext(): OwnerContext {
+  const { defaultShopId, defaultSellerId } = readRequiredFallbackEnv();
+
+  return {
+    ownerId: defaultSellerId,
+    shopId: defaultShopId,
+    telegramId: 0,
+    demo: false,
+    mode: "fallback"
+  };
 }
 
 function isMissingOwnersTable(error: { code?: string; message?: string } | null) {
@@ -89,7 +126,8 @@ async function findActiveOwnerByTelegramId(telegramId: number): Promise<OwnerCon
       ownerId: principal.principalId,
       shopId: principal.shopId,
       telegramId: principal.telegramId,
-      demo: false
+      demo: false,
+      mode: "telegram"
     };
   } catch (error) {
     if (error instanceof TelegramPrincipalError) {
@@ -103,13 +141,13 @@ async function requireDemoOwner(): Promise<OwnerContext> {
   const admin = getSupabaseAdminClient();
 
   if (!admin) {
-    return { ownerId: "demo-owner", shopId: "demo-shop", telegramId: 0, demo: true };
+    return { ownerId: "demo-owner", shopId: "demo-shop", telegramId: 0, demo: true, mode: "demo" };
   }
 
   const configuredTelegramId = Number(process.env.DEMO_OWNER_TELEGRAM_ID);
   if (Number.isSafeInteger(configuredTelegramId) && configuredTelegramId > 0) {
     const owner = await findActiveOwnerByTelegramId(configuredTelegramId);
-    return { ...owner, demo: true };
+    return { ...owner, demo: true, mode: "demo" };
   }
 
   const shopName = process.env.DEFAULT_SHOP_NAME || "Демо-магазин";
@@ -141,7 +179,8 @@ async function requireDemoOwner(): Promise<OwnerContext> {
     ownerId: String(owner.id),
     shopId: String(owner.shop_id),
     telegramId: Number(owner.telegram_id),
-    demo: true
+    demo: true,
+    mode: "demo"
   };
 }
 
@@ -174,15 +213,20 @@ export async function authenticateOwner(initData: string): Promise<OwnerContext>
       initDataLength: initData.length,
       hasTelegramUser: Boolean(telegramUserId),
       sellerFound,
-      shopId
+      shopId,
+      mode: "telegram"
     });
   }
 }
 
-export async function requireOwner(request?: Request): Promise<OwnerContext> {
+export async function resolveRequestContext(request?: Request): Promise<OwnerContext> {
   const headerInitData = request ? readTelegramInitDataHeader(request.headers) : "";
   if (headerInitData) {
     return authenticateOwner(headerInitData);
+  }
+
+  if (request && isWebAppFallbackAllowed()) {
+    return resolveFallbackContext();
   }
 
   const cookieStore = await cookies();
@@ -192,15 +236,21 @@ export async function requireOwner(request?: Request): Promise<OwnerContext> {
     return authenticateOwner(initData);
   }
 
+  if (isWebAppFallbackAllowed()) {
+    return resolveFallbackContext();
+  }
+
   if (isDemoMode()) {
     return requireDemoOwner();
   }
 
   throw new OwnerAccessError(
     "TELEGRAM_INIT_DATA_MISSING",
-    "Откройте отчёт через кнопку в Telegram-боте"
+    "Telegram initData is missing and Web App fallback mode is disabled."
   );
 }
+
+export const requireOwner = resolveRequestContext;
 
 export function requireShopAccess(owner: OwnerContext, shopId: string) {
   try {

@@ -1,12 +1,24 @@
 # Roadmap
 
-Текущий этап — production-oriented MVP голосового журнала продаж: voice pipeline, Telegram Mini App auth, server-derived shop isolation, обязательная проверка/подтверждение, отчёт, журнал и продавцы.
+## Сейчас
 
-Ближайший эксплуатационный backlog:
+Production-oriented MVP голосового журнала продаж:
 
-- после нового production deployment выполнить mobile Telegram smoke run: `/start` → новая «Диагностика Telegram» (`hasTelegram=true`, `hasWebApp=true`, `initDataLength>0`) → «Открыть отчёт» → голос «Сникерс, 4 штуки по 100 рублей» → «Нужно проверить» → изменить поля → сохранить → подтвердить → выручка 400 ₽;
-- применить/сверить целевые Supabase migrations и выполнить database advisors;
-- настроить резервное восстановление и мониторинг внешних интеграций;
-- добавить CI для `npm run test`, `npm run lint` и `npm run build`.
+- Telegram bot принимает voice;
+- STT/LLM parser извлекает товар, количество и цену;
+- уверенные позиции сразу входят в отчёт;
+- спорные позиции идут в «Нужно проверить»;
+- Mini App работает в Telegram и browser fallback modes;
+- есть отчёт, записи, продавцы, корректировка, исключение и восстановление товаров.
 
-CRM, склад, касса, оплаты и клиентская база не входят в roadmap текущего продукта.
+## Backlog
+
+- Production smoke: прямой Vercel fallback open, Telegram button open, два voice сценария, item save/exclude/restore.
+- Наблюдаемость webhook/STT/LLM latency и ошибок.
+- Улучшение parser prompts на реальных записях.
+- Удобное управление sellers/owners в панели.
+- E2E browser checks для основных Mini App flows.
+
+## Не входит в MVP
+
+CRM, склад, касса, онлайн-оплата и клиентская база.

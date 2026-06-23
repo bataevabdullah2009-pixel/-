@@ -29,12 +29,40 @@ export class TelegramApiError extends Error {
   }
 }
 
+export type AppAuthContext = {
+  mode: "telegram" | "fallback";
+  initData?: string;
+  hasTelegram: boolean;
+  hasWebApp: boolean;
+};
+
 export function getTelegramWebApp() {
   return typeof window === "undefined" ? undefined : window.Telegram?.WebApp;
 }
 
 export function getTelegramInitData() {
   return getTelegramWebApp()?.initData?.trim() ?? "";
+}
+
+export function getAppAuthContext(): AppAuthContext {
+  const hasTelegram = typeof window !== "undefined" && Boolean(window.Telegram);
+  const webApp = getTelegramWebApp();
+  const initData = webApp?.initData?.trim() ?? "";
+
+  if (initData.length > 0) {
+    return {
+      mode: "telegram",
+      initData,
+      hasTelegram,
+      hasWebApp: Boolean(webApp)
+    };
+  }
+
+  return {
+    mode: "fallback",
+    hasTelegram,
+    hasWebApp: Boolean(webApp)
+  };
 }
 
 export function initializeTelegramWebApp(webApp = getTelegramWebApp()) {
@@ -77,16 +105,13 @@ export async function waitForTelegramWebApp(timeoutMs = 10000) {
 }
 
 export async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}) {
-  const initData = getTelegramInitData();
-  if (!initData) {
-    throw new TelegramApiError(
-      "TELEGRAM_INIT_DATA_MISSING",
-      "Откройте отчёт через кнопку в Telegram-боте"
-    );
-  }
+  const context = getAppAuthContext();
 
   const headers = new Headers(init.headers);
-  headers.set("x-telegram-init-data", initData);
+  headers.set("x-app-mode", context.mode);
+  if (context.initData) {
+    headers.set("x-telegram-init-data", context.initData);
+  }
 
   return fetch(input, {
     ...init,

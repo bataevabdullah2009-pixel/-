@@ -1,15 +1,25 @@
 # Документация Voice Sales Log
 
-Voice Sales Log — MVP-продукт для магазина. Продавец отправляет голосовое сообщение в Telegram, система преобразует речь в структурированные позиции продаж, сохраняет их в Supabase и показывает владельцу отчёт по выручке.
+Voice Sales Log — MVP для малого бизнеса: Telegram voice превращается в структурированные продажи, Supabase хранит данные, а Web App показывает отчёт, записи, продавцов и корректировку товаров.
 
 ## Карта
 
 - [Обзор](./overview/README.md)
+- [Продукт](./overview/product.md)
 - [Архитектура](./architecture/architecture.md)
-- [Спецификации](./specs/README.md)
-- [Функции продукта](./features/README.md)
-- [Инженерные правила](./rules/README.md)
-- [Завершённый Telegram WebApp и review workflow](./plans/completed/004-telegram-review-workflow.md)
+- [Глобальная спецификация](./specs/global.md)
+- [Технические спецификации](./specs/README.md)
+- [Функции](./features/README.md)
+- [Правила](./rules/README.md)
+- [Планы](./plans/README.md)
 - [Roadmap](./roadmap/roadmap.md)
+- [Changelog](../CHANGELOG.md)
 
-Каноническими считаются документы из `docs/specs`. При расхождении с реализацией код и документация изменяются в одном коммите.
+## Актуальные инварианты
+
+- Web App работает в Telegram mode и browser fallback mode.
+- `shop_id` не принимается от клиента.
+- Уверенные voice-позиции сразу входят в отчёт.
+- Спорные позиции идут в «Нужно проверить».
+- Исключение товара выполняется через soft delete.
+- После изменения кода документация, планы и changelog обновляются в том же коммите.

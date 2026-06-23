@@ -14,6 +14,7 @@ import {
 import { getReportFilters } from "../apps/web/src/features/records/records.utils";
 import {
   apiFetch,
+  getAppAuthContext,
   getTelegramInitData,
   initializeTelegramWebApp
 } from "../apps/web/src/lib/telegram-api";
@@ -80,7 +81,7 @@ describe("Telegram Mini App authentication", () => {
     expect(expand).toHaveBeenCalledOnce();
   });
 
-  it("apiFetch always sends x-telegram-init-data", async () => {
+  it("apiFetch sends telegram initData and app mode when Telegram provides it", async () => {
     vi.stubGlobal("window", { Telegram: { WebApp: { initData: "signed-data" } } });
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
     vi.stubGlobal("fetch", fetchMock);
@@ -88,11 +89,30 @@ describe("Telegram Mini App authentication", () => {
     await apiFetch("/api/report", { headers: { accept: "application/json" } });
 
     const headers = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    expect(headers.get("x-app-mode")).toBe("telegram");
     expect(headers.get("x-telegram-init-data")).toBe("signed-data");
     expect(headers.get("accept")).toBe("application/json");
   });
 
-  it("API without initData maps to 401 TELEGRAM_INIT_DATA_MISSING", () => {
+  it("apiFetch uses fallback mode without blocking when initData is absent", async () => {
+    vi.stubGlobal("window", {});
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(getAppAuthContext()).toMatchObject({
+      mode: "fallback",
+      hasTelegram: false,
+      hasWebApp: false
+    });
+
+    await apiFetch("/api/report");
+
+    const headers = new Headers(fetchMock.mock.calls[0]?.[1]?.headers);
+    expect(headers.get("x-app-mode")).toBe("fallback");
+    expect(headers.has("x-telegram-init-data")).toBe(false);
+  });
+
+  it("API without initData maps to a non-blocking 401 when fallback is disabled", () => {
     let error: unknown;
     try {
       requireTelegramInitDataHeader(new Headers());
@@ -103,7 +123,7 @@ describe("Telegram Mini App authentication", () => {
     expect(describeTelegramAuthError(error)).toEqual({
       status: 401,
       code: "TELEGRAM_INIT_DATA_MISSING",
-      message: "Откройте отчёт через кнопку в Telegram-боте"
+      message: "Telegram initData отсутствует, а fallback mode выключен."
     });
   });
 

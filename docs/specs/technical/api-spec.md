@@ -1,25 +1,14 @@
-# Серверный API
+# API Spec
 
-- `POST /api/telegram/webhook` — вход Telegram updates с webhook secret.
-- `POST /api/auth/telegram` — валидация Mini App initData из `x-telegram-init-data`, owner/seller/shop lookup и установка HttpOnly cookie.
-- `getReport(filters)` — отчёт активных позиций магазина владельца.
-- `getRecords(filters)` — журнал продаж магазина.
-- `getReviewItems(filters)` — позиции, требующие ручного действия.
-- `getSellers()` — продавцы магазина.
-- `updateSaleItem(input)` — ручная правка и пересчёт.
-- `confirmSaleItem(id)` — отдельное подтверждение сохранённой позиции; запись становится подтверждённой после подтверждения всех активных позиций.
-- `excludeSaleItem(id)` — soft delete позиции.
-- `restoreSaleItem(id)` — восстановление позиции.
-- `resetDay(range)` — soft delete активных позиций одного дня и одного магазина.
+- `POST /api/telegram/webhook` — Telegram updates. Проверяет `x-telegram-bot-api-secret-token`, затем вызывает общий bot update processor.
+- `POST /api/auth/telegram` — Web App bootstrap. Использует `resolveRequestContext(request)`.
 
-Ни одна функция не принимает `shop_id` от клиента.
+`/api/auth/telegram` responses:
 
-Все явные browser `fetch` проходят через `apiFetch()` и получают header `x-telegram-init-data`. В текущем приложении browser API endpoint только `POST /api/auth/telegram`; отчёт, записи и продавцы рендерятся Server Components, а save/confirm/exclude/restore/reset выполняются Server Actions: они не доверяют browser-параметрам и повторно валидируют HttpOnly initData cookie. Клиентских `shop_id` нет.
+- `200 { ok: true, mode: "telegram" }` — initData валиден, cookie установлена.
+- `200 { ok: true, mode: "fallback" }` — initData нет, server fallback разрешён.
+- `401` — нет initData и fallback выключен либо initData невалиден.
+- `403` — Telegram user не привязан, отключён или магазин не найден.
+- `500` — ошибка конфигурации или сервера.
 
-Auth errors:
-
-- `401 TELEGRAM_INIT_DATA_MISSING`;
-- `401 TELEGRAM_INIT_DATA_INVALID`;
-- `403 SELLER_NOT_LINKED`;
-- `403 SELLER_INACTIVE`;
-- `403 SHOP_NOT_FOUND`.
+Бизнес-данные Web App читаются через Server Components и изменяются Server Actions.

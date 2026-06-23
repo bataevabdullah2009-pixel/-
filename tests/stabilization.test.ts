@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildVoiceSaleRpcPayload,
   ensureReviewableSaleItems,
-  markSaleItemsForRequiredReview,
   resolveSellerAccess,
   SellerAccessError
 } from "../apps/bot/src/services/records.service";
@@ -171,9 +170,9 @@ describe("sales flow stabilization", () => {
     expect(button).not.toHaveProperty("url");
   });
 
-  it("denies a production Web App API request without initData header", () => {
+  it("does not use the old Telegram-only blocking message for missing initData", () => {
     expect(() => requireTelegramInitDataHeader(new Headers())).toThrow(
-      "Откройте отчёт через кнопку в Telegram-боте"
+      "Telegram initData is missing."
     );
   });
 
@@ -189,8 +188,10 @@ describe("sales flow stabilization", () => {
     const normal = createVoiceSaleUserMessage("Сникерс, 4 штуки по 100 рублей", false);
     const warning = createVoiceSaleUserMessage("Сникерс", true);
 
-    expect(normal).toContain("Запись сохранена. Проверьте товары и цены в отчёте.");
-    expect(warning).toContain("нужно проверить товары и цены");
+    expect(normal).toContain("✅ Запись сохранена: Сникерс, 4 штуки по 100 рублей");
+    expect(normal).not.toContain("Проверьте");
+    expect(warning).toContain("⚠️ Запись сохранена, но нужно проверить товары и цены.");
+    expect(warning).toContain("Распознано: Сникерс");
     for (const message of [normal, warning]) {
       expect(message).not.toMatch(/processed|needs_review|pending|failed/);
     }
@@ -212,9 +213,24 @@ describe("sales flow stabilization", () => {
     })]);
   });
 
-  it("requires review for every newly recognized sale item", () => {
-    const items = markSaleItemsForRequiredReview([
-      {
+  it("does not force complete recognized sale items into review", () => {
+    const payload = buildVoiceSaleRpcPayload({
+      seller: { id: "seller-1", shopId: "shop-1" },
+      telegramMessageId: "43",
+      audioPath: null,
+      audioUrl: null,
+      rawText: "Сникерс 4 штуки по 100 рублей",
+      parsedSale: {
+        items: [],
+        raw_text: "Сникерс 4 штуки по 100 рублей",
+        cleaned_text: "Сникерс, 4 штуки по 100 рублей.",
+        needs_review: false
+      },
+      parserJson: null,
+      errorMessage: null,
+      saleStatus: "processed",
+      totalAmount: 400,
+      resolvedItems: [{
         product_id: null,
         product_name: "Сникерс",
         quantity: 4,
@@ -223,20 +239,11 @@ describe("sales flow stabilization", () => {
         total: 400,
         confidence: 0.98,
         status: "processed"
-      },
-      {
-        product_id: null,
-        product_name: "Чай",
-        quantity: 1,
-        unit: "шт",
-        price: null,
-        total: null,
-        confidence: 0.9,
-        status: "needs_price"
-      }
-    ]);
+      }]
+    });
 
-    expect(items.map((item) => item.status)).toEqual(["needs_review", "needs_price"]);
+    expect(payload.p_status).toBe("processed");
+    expect(payload.p_items).toEqual([expect.objectContaining({ status: "processed", total: 400 })]);
   });
 
   it("turns invalid LLM JSON into manual review instead of failing the voice", async () => {

@@ -39,11 +39,11 @@ export function formatQuantity(value: number) {
 
 export function getStatusLabel(status: string) {
   const labels: Record<string, string> = {
-    pending: "Обрабатывается",
-    processed: "Подтверждено",
+    pending: "Нужно проверить",
+    processed: "Готово",
     needs_review: "Нужно проверить",
-    failed: "Требует повторной обработки",
-    needs_price: "Нужно проверить цену",
+    failed: "Нужно проверить",
+    needs_price: "Нужно проверить",
     excluded: "Исключено"
   };
 

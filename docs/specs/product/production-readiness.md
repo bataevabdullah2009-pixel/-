@@ -1,5 +1,27 @@
-# Готовность к эксплуатации
+# Production Readiness
 
-Реализовано: reply/inline/menu `web_app` buttons, новая кнопка `/start`, safe debug button, отсутствие раннего root redirect, официальный Telegram SDK, ожидание WebApp object, `ready()`/`expand()`, общий initData API helper, точные auth error codes включая `SELLER_INACTIVE`, безопасные auth logs, server-derived shop isolation, webhook secret, server-only service role, RLS без анонимного чтения, RPC persistence с rollout fallback, обязательная проверка каждой продажи, отдельное подтверждение, soft delete, stage logging, русские статусы и regression tests.
+Реализовано:
 
-Перед запуском конкретного окружения необходимо применить миграции, создать магазины, владельцев и продавцов, настроить Telegram webhook, Vercel env и приватный Storage bucket. Реальный mobile Telegram smoke run после production deploy должен проверить `/debug-telegram`, запись 400 ₽, правку, подтверждение и исключение. Наблюдаемость внешних сервисов и резервное восстановление остаются эксплуатационными задачами.
+- Telegram reply/inline/menu `web_app` buttons;
+- безопасная `/debug-telegram` страница;
+- отсутствие раннего root redirect;
+- client `getAppAuthContext()` и общий `apiFetch()`;
+- server `resolveRequestContext()` с Telegram и fallback modes;
+- server-derived shop isolation;
+- service role только на сервере;
+- RPC persistence с server fallback insert;
+- автоматический `processed` для уверенных voice-позиций;
+- review только для реальных проблем распознавания;
+- soft delete, restore и reset day;
+- русские UI labels без internal enum;
+- regression tests.
+
+Release gate:
+
+- `npm run lint`;
+- `npm run test`;
+- `npm run build`;
+- прямое открытие Web App в fallback mode;
+- открытие через Telegram кнопку;
+- два voice smoke сценария: готовая продажа и неполная продажа;
+- ручное save/exclude/restore с пересчётом отчёта.

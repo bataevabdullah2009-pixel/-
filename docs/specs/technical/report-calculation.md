@@ -1,15 +1,13 @@
-# Расчёт отчёта
+# Report Calculation
 
-В выручку и количество входит только позиция, для которой одновременно выполняется:
+Отчёт строится по `sale_items`, связанным с продажами выбранного `shop_id` и периода.
 
-```sql
-sale_items.status = 'processed'
-and sale_items.deleted_at is null
-and sales.shop_id = <server-derived owner shop_id>
-```
+В выручку и количество входят только позиции:
 
-Период применяется к `sales.created_at`. Выручка — сумма `sale_items.total`, количество — сумма `quantity`; группировка выполняется по product id либо нормализованному имени.
+- `status = processed`;
+- `deleted_at is null`;
+- `price` и `total` не null.
 
-Каждая новая voice-позиция начинает в `needs_review` либо `needs_price` и не входит в итог. Сохранение изменённых полей сохраняет review state; отдельное подтверждение переводит позицию в `processed`, который UI показывает как «Подтверждено». `excluded` и строки с `deleted_at` доступны только в блоке исключённых товаров.
+`needs_review`, legacy `needs_price`, `failed` и soft-deleted позиции не входят в итог. Review-позиции показываются отдельно в блоке «Нужно проверить». Исключённые позиции показываются в отдельном expandable блоке и могут быть восстановлены.
 
-Ошибка Telegram auth не преобразуется в пустой успешный отчёт: UI показывает понятное сообщение. После save/confirm/exclude/restore/reset Server Action пересчитывает `sales.total_amount` и status, вызывает revalidation и выполняет клиентскую RSC-навигацию без полной перезагрузки документа.
+После save/confirm/exclude/restore/reset сервер пересчитывает `sales.total_amount` и `sales.status`, затем инвалидирует `/daily-report` и `/records`.

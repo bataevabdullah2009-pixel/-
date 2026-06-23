@@ -238,12 +238,14 @@ export function resolveSaleItemStatus(params: {
   total: number | null;
   confidence: number;
 }): SaleItemStatus {
-  if (!isMeaningfulProductName(params.productName) || params.quantityWasMissing || params.confidence < 0.75) {
+  if (
+    !isMeaningfulProductName(params.productName) ||
+    params.quantityWasMissing ||
+    params.price === null ||
+    params.total === null ||
+    params.confidence < 0.8
+  ) {
     return "needs_review";
-  }
-
-  if (params.price === null || params.total === null) {
-    return "needs_price";
   }
 
   return "processed";
@@ -340,7 +342,7 @@ export function buildSalesReport(items: SaleItem[]): ReportSummary {
       item.product_id &&
       item.price !== null &&
       item.total !== null &&
-      item.confidence >= 0.75
+      item.confidence >= 0.8
     ) {
       productKeyByName.set(normalizeProductName(item.product_name), `product:${item.product_id}`);
     }

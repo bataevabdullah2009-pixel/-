@@ -11,9 +11,10 @@ import { getStatusLabel } from "../apps/web/src/features/records/records.utils";
 
 describe("sales report", () => {
   it("never exposes raw technical statuses to users", () => {
-    expect(getStatusLabel("processed")).toBe("Подтверждено");
+    expect(getStatusLabel("processed")).toBe("Готово");
     expect(getStatusLabel("needs_review")).toBe("Нужно проверить");
-    expect(getStatusLabel("failed")).toBe("Требует повторной обработки");
+    expect(getStatusLabel("failed")).toBe("Нужно проверить");
+    expect(getStatusLabel("needs_price")).toBe("Нужно проверить");
     expect(getStatusLabel("unexpected_internal_status")).toBe("Нужно проверить");
   });
 
@@ -101,7 +102,7 @@ describe("sales report", () => {
       confidence: 0.9
     });
 
-    expect(normalized.status).toBe("needs_price");
+    expect(normalized.status).toBe("needs_review");
 
     const items: SaleItem[] = [
       {
@@ -113,7 +114,7 @@ describe("sales report", () => {
         price: null,
         total: null,
         confidence: 0.9,
-        status: "needs_price",
+        status: "needs_review",
         created_at: "2026-06-16T10:00:00.000Z"
       }
     ];

@@ -1,8 +1,10 @@
 # Спецификации
 
-- [Глобальные правила](./global.md)
-- [Продукт](./product/roles-and-access.md)
-- [Техническая реализация](./technical/architecture.md)
-- [Данные](./data/data-model.md)
+Канонические спецификации описывают текущее состояние MVP:
 
-Спецификации описывают фактическое поведение текущего MVP: Telegram WebApp auth без раннего redirect, server-derived shop isolation и обязательное подтверждение каждой voice-продажи. Новая бизнес-функция требует отдельного согласованного плана.
+- [global](./global.md)
+- [technical](./technical/architecture.md)
+- [product](./product/seller-voice-flow.md)
+- [data](./data/data-model.md)
+
+Главные правила: Telegram и fallback auth поддерживаются явно, `shop_id` не принимается от клиента, уверенные voice-продажи сразу входят в отчёт, спорные позиции уходят в «Нужно проверить».

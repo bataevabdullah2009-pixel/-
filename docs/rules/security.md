@@ -1,3 +1,8 @@
-# Безопасность
+# Security Rules
 
-`shop_id` определяется только сервером. Telegram initData считается недоверенным до HMAC и age validation. Любой явный browser API fetch проходит через `apiFetch` с `x-telegram-init-data`; Server Components и Server Actions повторно валидируют HttpOnly initData cookie. Service role key не имеет `NEXT_PUBLIC_` и используется только server-only модулями. Webhook требует отдельный secret token. Debug UI и `webapp auth` logs не содержат initData, токенов или user payload. Технические ошибки и stack trace не отображаются пользователю.
+- Не логировать Telegram initData payload, bot token, service role key, STT/LLM keys.
+- Fallback logs содержат только `mode`, `hasDefaultShop`, `hasDefaultSeller`.
+- Не доверять client `shop_id`, seller id или owner id.
+- Route handlers повторно проверяют auth; UI не является границей безопасности.
+- RLS остаётся включённым; бизнес-доступ выполняется server-side service role кодом с явным shop filter.
+- Telegram webhook secret сравнивается constant-time.

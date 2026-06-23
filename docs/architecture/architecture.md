@@ -1,22 +1,40 @@
 # Архитектура Voice Sales Log
 
-Voice Sales Log — монорепозиторий реального MVP: Telegram bot принимает голосовые продажи, STT/LLM формирует позиции, Supabase хранит данные, а Next.js Mini App показывает владельцу отчёт.
-
 ```text
-Telegram web_app button
-  → telegram-web-app.js
-  → first page without server redirect
-  → Telegram.WebApp.initData
-  → apiFetch(x-telegram-init-data)
-  → HMAC validation with TELEGRAM_BOT_TOKEN
-  → active owner/seller lookup
-  → shop existence check
-  → server-derived shop_id
-  → report / records / sellers / mutations
+Telegram voice
+  -> bot webhook / process-update
+  -> audio preparation
+  -> STT
+  -> LLM parser + evidence rules
+  -> Supabase save_voice_sale or server fallback insert
+  -> Next.js App Router Web App
+  -> report / records / sellers / item mutations
 ```
 
-Первичный browser fetch проходит через `apps/web/src/lib/telegram-api.ts`. После `POST /api/auth/telegram` сервер хранит initData в HttpOnly cookie и повторно валидирует его для Server Components и Server Actions. `/debug-telegram` обходится без бизнес-данных и показывает только безопасную диагностику. Клиентский `shop_id` не является частью доверенного контракта.
+## Web App auth
 
-Публичный Telegram URL проходит общую проверку в `packages/shared/utils/telegram-url.ts`. Bot runtime, setWebhook и webhook diagnostics отклоняют непубличные и временные URL до отправки кнопки пользователю.
+```text
+Telegram mode:
+  telegram-web-app.js
+  -> window.Telegram.WebApp.initData
+  -> apiFetch(x-app-mode=telegram, x-telegram-init-data)
+  -> resolveRequestContext()
+  -> HMAC validation
+  -> owner/seller lookup
+  -> server-derived shop_id
 
-Подробности: [technical architecture](../specs/technical/architecture.md), [auth and shop isolation](../specs/technical/auth-and-shop-isolation.md), [Telegram webhook](../specs/technical/telegram-webhook.md).
+Browser fallback mode:
+  no initData
+  -> apiFetch(x-app-mode=fallback)
+  -> resolveRequestContext()
+  -> ALLOW_WEBAPP_FALLBACK=true
+  -> DEFAULT_SHOP_ID / DEFAULT_SELLER_ID from server env
+```
+
+`shop_id` не является частью доверенного client contract. Отчёт, записи, продавцы и Server Actions используют только server-derived context.
+
+## Data flow
+
+`sales.total_amount` и отчёт считаются по активным `sale_items.status = processed` и `deleted_at is null`. `needs_review` и legacy `needs_price` выводятся в блок «Нужно проверить». Исключение позиции — это `deleted_at = now()`, восстановление — `deleted_at = null`.
+
+Подробности: [technical architecture](../specs/technical/architecture.md), [auth and shop isolation](../specs/technical/auth-and-shop-isolation.md), [report calculation](../specs/technical/report-calculation.md).

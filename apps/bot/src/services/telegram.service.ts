@@ -29,11 +29,11 @@ export function createReportMenuButton(appUrl: string) {
 }
 
 export function createVoiceSaleUserMessage(recognizedText: string, needsAttention: boolean) {
-  const statusMessage = needsAttention
-    ? "⚠️ Запись сохранена, но нужно проверить товары и цены."
-    : "✅ Запись сохранена. Проверьте товары и цены в отчёте.";
+  if (needsAttention) {
+    return `⚠️ Запись сохранена, но нужно проверить товары и цены.\nРаспознано: ${recognizedText}`;
+  }
 
-  return `${statusMessage}\n\nРаспознано: ${recognizedText}`;
+  return `✅ Запись сохранена: ${recognizedText}`;
 }
 
 function safeTelegramFileName(fileId: string) {

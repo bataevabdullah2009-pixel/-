@@ -1,10 +1,10 @@
 # Функции
 
-Все функции панели доступны только после Telegram Mini App auth и ограничены server-derived магазином. Каждая новая voice-продажа проходит обязательную проверку и отдельное подтверждение.
+Функции панели доступны через Telegram Mini App и browser fallback mode. Данные ограничены server-derived магазином.
 
-- [Обработка голоса](./voice-processing.md)
-- [Отчёт продаж](./sales-report.md)
-- [Журнал записей](./records-journal.md)
-- [Ручное исправление](./manual-review.md)
-- [Продавцы](./sellers.md)
-- [Мобильный Web App](./mobile-web-app.md)
+- [Voice processing](./voice-processing.md)
+- [Sales report](./sales-report.md)
+- [Manual review](./manual-review.md)
+- [Records journal](./records-journal.md)
+- [Sellers](./sellers.md)
+- [Mobile Web App](./mobile-web-app.md)

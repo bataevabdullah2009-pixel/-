@@ -1,14 +1,14 @@
-# Схема базы данных
+# Database Schema
 
-- `shops`: магазины.
-- `owners`: владельцы с `shop_id`, `telegram_id`, `is_active`.
-- `sellers`: продавцы с `shop_id`, `telegram_id`, `is_active`.
-- `products`: справочник известных товаров магазина и цена по умолчанию.
-- `voice_records`: аудио, STT/LLM diagnostics и статус обработки.
-- `sales`: заголовок продажи, магазин, продавец и итог.
-- `sale_items`: позиции продажи, цена, количество, статус и soft-delete metadata.
-- `audit_logs`: журнал серверных изменений.
+Основные таблицы: `shops`, `owners`, `sellers`, `products`, `voice_records`, `sales`, `sale_items`, `audit_logs`.
 
-`sale_items.deleted_at` и `deleted_reason` nullable. `updated_at` имеет `not null default now()`. Допустимые внутренние статусы позиции: `processed`, `needs_price`, `needs_review`, `failed`, `excluded`. Новая voice-позиция всегда сохраняется как `needs_review` либо `needs_price`; `processed` означает ручное подтверждение и показывается как «Подтверждено».
+`sale_items` содержит:
 
-Принадлежность позиции магазину определяется только связью `sale_items.sale_id → sales.id → sales.shop_id`; отдельный `sale_items.shop_id` не используется.
+- `product_name`, `quantity`, `unit`, `price`, `total`, `confidence`;
+- `status`: `processed`, `needs_review`, legacy `needs_price`, `failed`, `excluded`;
+- soft delete поля `deleted_at`, `deleted_reason`, `deleted_previous_status`;
+- `updated_at`.
+
+Новые voice-позиции получают `processed`, если полные и уверенные, иначе `needs_review`. Legacy `needs_price` поддерживается для старых строк, но UI показывает его как «Нужно проверить».
+
+`save_voice_sale` проверяет, что seller активен и принадлежит `shop_id`, затем создаёт `voice_records`, `sales` и `sale_items`.

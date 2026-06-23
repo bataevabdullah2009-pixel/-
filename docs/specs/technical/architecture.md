@@ -1,9 +1,12 @@
-# Архитектура
+# Техническая архитектура
 
-Монорепозиторий содержит Telegram-бот (`apps/bot`), Next.js App Router Web App (`apps/web`), общие типы и правила (`packages/shared`) и Supabase migrations.
+Монорепозиторий использует npm workspaces:
 
-Бот использует Telegram webhook или long polling, STT provider, LLM provider и серверный Supabase client. Reply, inline и menu buttons отчёта создаются как `web_app`; debug button открывает `/debug-telegram`. Next.js подключает официальный Telegram SDK через `next/script` с `beforeInteractive`; корневая страница не перенаправляет запрос до bootstrap, client component после hydration ждёт `window.Telegram.WebApp`, вызывает `ready()`/`expand()` и передаёт initData через общий `apiFetch`.
+- `apps/bot` — Telegraf bot, webhook processing, STT/LLM pipeline.
+- `apps/web` — Next.js App Router Web App и route handlers.
+- `packages/shared` — типы, Zod schemas, parser evidence rules, date/report utilities.
+- `supabase/migrations` — Postgres schema, RLS/grants, soft delete, `save_voice_sale`.
 
-`POST /api/auth/telegram` получает `x-telegram-init-data`, проверяет HMAC и срок, находит owner/seller, отдельно отклоняет inactive binding и проверяет существование shop. Сервер хранит исходный initData в HttpOnly cookie и заново валидирует его при каждом Server Component/Server Action чтении или изменении. Новые voice items сохраняются как review-required; `processed` появляется только после отдельного подтверждения.
+Клиентский Web App вызывает `getAppAuthContext()` и `apiFetch()`. Серверный Web App использует `resolveRequestContext()`. Явные Mini App API routes не должны иметь отдельную auth-логику.
 
-Данные магазина связываются через `sales.shop_id`; `sale_items` наследуют принадлежность через `sale_id`. Клиентский `shop_id` не существует в API-контракте.
+Voice sale сохраняется через RPC `save_voice_sale`; если RPC отсутствует во время rollout, server-side fallback insert создаёт voice record, sale и sale_items с компенсирующей очисткой при ошибке.

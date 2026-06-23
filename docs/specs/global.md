@@ -1,23 +1,21 @@
 # Глобальная спецификация
 
-Voice Sales Log обслуживает несколько магазинов с жёсткой изоляцией данных.
+Voice Sales Log обслуживает несколько магазинов с изоляцией данных по server-derived `shop_id`.
 
-Обязательные инварианты:
+## Инварианты
 
-- продавец определяется по `Telegram user id`, должен быть активен и иметь `shop_id`;
-- владелец определяется по валидному Telegram Mini App `initData` и активной записи `owners`; на время migration rollout поддерживается существующая активная `sellers` Telegram-to-shop привязка;
-- все создаваемые ботом reply, inline и menu buttons отчёта имеют тип `web_app` и один `NEXT_PUBLIC_APP_URL`; `/start` всегда отправляет новые кнопки;
-- `NEXT_PUBLIC_APP_URL` является каноническим production HTTPS URL; временные local/ngrok/Vercel preview URL не допускаются;
-- корневой Web App URL не выполняет server redirect до Telegram bootstrap;
-- явный browser API fetch использует общий `apiFetch` и header `x-telegram-init-data`; Telegram SDK вызывается после hydration через `ready()` и `expand()`;
-- `/debug-telegram` выводит только безопасные признаки SDK/initData и доступен через Web App button бота;
-- сервер различает отсутствие/невалидность initData, отсутствие Telegram-привязки и отсутствие магазина стабильными кодами API;
-- `shop_id` никогда не принимается от клиента;
-- привилегированный Supabase key доступен только серверному коду;
-- голосовая продажа сохраняется через `save_voice_sale`; при временном отсутствии RPC используется server-side совместимый insert с компенсирующей очисткой;
-- каждая новая voice-продажа сохраняется для обязательной проверки; сохранение правок не является подтверждением;
-- отчёт суммирует только подтверждённые `processed` и `deleted_at is null`;
-- ручное исключение является soft delete;
-- технические детали ошибок логируются на сервере и не показываются пользователю.
+- Продавец определяется по Telegram user id и активной записи `sellers`.
+- Владелец/пользователь Web App определяется через валидный Telegram Mini App initData либо через server-side fallback.
+- Browser fallback разрешён только при `ALLOW_WEBAPP_FALLBACK=true`.
+- `DEFAULT_SHOP_ID` и `DEFAULT_SELLER_ID` читаются только сервером.
+- Клиент никогда не передаёт доверенный `shop_id`.
+- Browser API вызовы идут через `apiFetch()` и отправляют `x-app-mode`; Telegram mode также отправляет `x-telegram-init-data`.
+- Server Components и Server Actions используют `resolveRequestContext()` / `requireOwner()`.
+- Уверенная voice-позиция: товар есть, `quantity > 0`, `price > 0`, `confidence >= 0.80`.
+- Уверенная позиция получает `processed` и входит в отчёт.
+- Неполные или сомнительные позиции получают `needs_review` и видны в «Нужно проверить».
+- Отчёт суммирует только `processed` и `deleted_at is null`.
+- Исключение позиции — soft delete.
+- Технические ошибки логируются на сервере; UI не показывает internal enum.
 
-За пределами продукта: CRM, складской учёт, касса, платежи и база клиентов.
+За пределами продукта: CRM, складской учёт, касса, платежи и клиентская база.

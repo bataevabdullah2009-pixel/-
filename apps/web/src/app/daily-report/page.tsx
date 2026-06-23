@@ -97,7 +97,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
         <div>
           <p className="eyebrow">Сводка магазина</p>
           <h2>Продажи и выручка</h2>
-          <p className="pageLead">Каждую голосовую продажу нужно проверить и подтвердить. В выручку входят только подтверждённые позиции.</p>
+          <p className="pageLead">Готовые распознанные продажи сразу входят в выручку. Неполные или сомнительные позиции остаются в блоке «Нужно проверить».</p>
         </div>
       </div>
 
@@ -193,7 +193,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
           </div>
         </>
       ) : (
-        <EmptyState title="Нет активных продаж" description="Отправьте голосовое боту или восстановите исключённые позиции ниже." />
+        <EmptyState title="Нет активных продаж за выбранный период" description="Отправьте голосовое боту или восстановите исключённые позиции ниже." />
       )}
 
       <section className="itemManager" id="items">
@@ -219,7 +219,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
             ) : null}
             {processedItems.length ? (
               <section className="itemEditorGroup" aria-labelledby="processed-items-heading">
-                <h4 id="processed-items-heading">Подтверждённые продажи</h4>
+                <h4 id="processed-items-heading">Готовые продажи</h4>
                 <div className="itemEditorList">
                   {processedItems.map((item) => <SaleItemEditor item={item} returnTo={returnTo} key={item.id} />)}
                 </div>

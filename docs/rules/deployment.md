@@ -1,3 +1,15 @@
-# Развёртывание
+# Deployment Rules
 
-Миграции применяются до выкладки кода, который читает новые колонки. В окружении явно задаётся `DEMO_MODE=false` для production. После deploy сверяются обязательные env, webhook secret, owner/seller bindings, shop isolation, `/debug-telegram`, новая `/start` button и отсутствие service role key в клиентских assets. Реальный Telegram smoke run нельзя заменять локальным HTTP check.
+Migrations применяются до выкладки кода. Production env должен явно задавать Supabase, Telegram, STT/LLM и Web App URL.
+
+Для browser fallback:
+
+```text
+ALLOW_WEBAPP_FALLBACK=true
+DEFAULT_SHOP_ID=<shop uuid>
+DEFAULT_SELLER_ID=<seller uuid>
+```
+
+После deploy проверяются webhook secret, owner/seller bindings, shop isolation, `/debug-telegram`, Telegram `web_app` кнопка и отсутствие service role key в client assets.
+
+Реальный Telegram smoke run нельзя заменять локальным build.

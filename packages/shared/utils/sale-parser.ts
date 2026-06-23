@@ -152,7 +152,12 @@ export function enforceTranscriptEvidence(parsedSale: ParsedSale, rawText: strin
   const needsReview =
     parsedSale.needs_review ||
     items.length === 0 ||
-    items.some((item) => !item.product_name.trim() || item.quantity === null || item.confidence < 0.75);
+    items.some((item) =>
+      !item.product_name.trim() ||
+      item.quantity === null ||
+      item.price === null ||
+      item.confidence < 0.8
+    );
 
   return {
     items,

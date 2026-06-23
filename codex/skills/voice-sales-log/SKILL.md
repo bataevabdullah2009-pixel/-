@@ -1,75 +1,67 @@
 ---
 name: voice-sales-log
-description: Безопасно изменять и документировать репозиторий voice-sales-log. Использовать для задач Telegram webhook и bot, голосового STT/LLM-конвейера, Supabase, отчётов, Web App, тестов, спецификаций, планов и production release.
+description: Безопасно изменять и документировать репозиторий voice-sales-log: Telegram bot, voice STT/LLM pipeline, Supabase, отчёты, Mini App, fallback mode, тесты, спецификации, планы и release readiness.
 ---
 
-# Voice sales log
+# Voice Sales Log
 
-Сохранять основной путь проекта:
+Сохранять основной путь продукта:
 
 ```text
-Telegram voice → webhook/polling → STT → LLM parser → validation → Supabase → report
+Telegram voice -> STT -> LLM parser -> evidence rules -> Supabase -> report
 ```
 
-Не расширять продукт до CRM, склада, кассы, фискализации или онлайн-оплаты.
+Не расширять MVP до CRM, склада, кассы, оплат или клиентской базы.
 
 ## Прочитать перед изменением
 
-От корня skill (`codex/skills/voice-sales-log`) прочитать по порядку:
+1. `../../../AGENTS.md`
+2. `../../../README.md`
+3. `../../../docs/overview/README.md`
+4. `../../../docs/specs/global.md`
+5. `../../../docs/architecture/architecture.md`
+6. Все файлы в `../../../docs/plans/active/`
+7. `../../../docs/rules/README.md`
+8. Этот `SKILL.md`
 
-1. `../../../AGENTS.md`;
-2. `../../../README.md`;
-3. `../../../docs/overview/README.md`;
-4. `../../../docs/specs/global.md`;
-5. `../../../docs/architecture/architecture.md`;
-6. все файлы в `../../../docs/plans/active/`;
-7. `../../../docs/rules/README.md`;
-8. этот `SKILL.md`.
+Затем прочитать профильные specs/features/rules и последний релевантный completed plan.
 
-Затем прочитать профильную спецификацию и проверить Git-состояние. Не перезаписывать несвязанные изменения пользователя.
+## Workflow rules
 
-## Выбрать workflow
+### Telegram bot/webhook
 
-### Telegram webhook или bot
+Сохранять `POST /api/telegram/webhook`, Node.js runtime, secret header, constant-time compare и общий `processTelegramUpdate`. Кнопки отчёта — только `web_app`.
 
-Прочитать `telegram-webhook.md`, `api-spec.md`, `deployment-vercel.md` и `auth-and-shop-isolation.md`. Сохранять `POST /api/telegram/webhook`, Node.js runtime, секретный заголовок, безопасное сравнение и общий `processTelegramUpdate`. Polling разрешён только локально. Перед release запускать `telegram:webhook-info` и требовать `webhook_matches_expected=true`; Web App button не может использовать local/ngrok/Vercel preview URL.
+### Web App
 
-### Voice, STT или LLM parser
+Web App поддерживает:
 
-Прочитать `docs/features/voice-processing.md`, `docs/rules/ai.md` и `status-lifecycle.md`. Не придумывать значения. Сохранять строгий JSON/Zod, сверку с расшифровкой, порядок позиций, confidence и расчёт итогов приложением. Любое изменение parser требует регрессионных тестов.
+- Telegram mode с `window.Telegram.WebApp.initData`;
+- browser fallback mode при `ALLOW_WEBAPP_FALLBACK=true`;
+- error mode только для реальных ошибок сервера/БД/конфигурации.
 
-### Supabase и данные
+Client fetch выполняется через `apiFetch()`, который отправляет `x-app-mode` и, при наличии, `x-telegram-init-data`. Server-side доступ выполняется через `resolveRequestContext()` / `requireOwner()`. `shop_id` нельзя принимать от клиента.
 
-Прочитать schema/data specs, все миграции и `auth-and-shop-isolation.md`. Создавать новую миграцию для каждого изменения schema. Не переписывать применённые миграции. Держать service role только на сервере. Не выдавать demo mode за production-безопасность.
+### Voice pipeline
 
-### Отчёт и Web App
+Не ломать STT/LLM flow. Уверенная позиция (`product_name`, `quantity > 0`, `price > 0`, `confidence >= 0.80`) сохраняется как `processed` и сразу входит в отчёт. Неполные, низкоуверенные или странные позиции сохраняются как `needs_review`. Невалидный LLM JSON создаёт fallback review item.
 
-Прочитать `report-calculation.md`, `auth-and-shop-isolation.md`, `telegram-webhook.md`, `docs/features/mobile-web-app.md` и роли. Reply, inline и menu buttons отчёта должны быть только `web_app` и использовать один `NEXT_PUBLIC_APP_URL`. Первый document request нельзя перенаправлять до Telegram bootstrap. Browser fetch выполняется через общий `apiFetch`, который добавляет `x-telegram-init-data`; Server Components и Server Actions используют HttpOnly cookie с повторной HMAC-проверкой. `/debug-telegram` не выводит initData или user payload. Каждая новая voice-продажа должна попасть в «Нужно проверить»; сохранение и подтверждение являются отдельными действиями. Сохранять источник отчёта в активных подтверждённых `sale_items`, пересчёт, аудит, soft delete и исходный диагностический след. Для UI проверять мобильный viewport и отсутствие overflow.
+### Data
 
-### Документация и планы
+Service role только server-side. Исключение товара — soft delete через `deleted_at`; восстановление очищает `deleted_at`. Отчёт считает только active `processed`.
 
-Использовать `docs/INDEX.md` как единственную глобальную карту. Не дублировать спецификации. Одновременно оставлять не более одного плана в `docs/plans/active`; завершённые результаты фиксировать в `CHANGELOG.md` и Git history. Задачу вне MVP не реализовывать без отдельного согласованного плана.
+### Documentation
 
-### Release и production-readiness
+После каждого изменения кода обновить docs/specs/features/rules, `CHANGELOG.md`, plans и roadmap. Удалять или переписывать устаревшие формулировки. В финальном ответе перечислять изменённые документы.
 
-Локальная готовность не равна production readiness. Для release подтверждать фактические Vercel, Telegram и Supabase шаги, использовать `production-readiness.md` и профильные technical specs; внешний smoke run не заменять локальной сборкой.
+## Finish
 
-## Непереговорные ограничения
+Перед финалом выполнить:
 
-- Не менять webhook без доказанной причины.
-- Не менять LLM parser без тестов.
-- Не менять schema без migration.
-- Не читать и не выводить `.env.local` без необходимости; никогда не коммитить его.
-- Не передавать `SUPABASE_SERVICE_ROLE_KEY` клиенту.
-- Не физически удалять голос, аудио или продажу при исключении позиции.
-- Не доверять `shop_id` клиента как авторизации.
-- Не показывать пользователю internal enum `processed`, `needs_review`, `pending` или `failed`.
-- Не заявлять идемпотентность, транзакционность, monitoring, backup или CI до их реализации и проверки.
+```bash
+npm run lint
+npm run test
+npm run build
+```
 
-## Завершить работу
-
-1. Обновить профильные specs, features/rules и `CHANGELOG.md`.
-2. Обновить единственный активный plan; завершённую работу перенести в `completed`.
-3. Проверить внутренние ссылки, пустые каталоги и отсутствие устаревших путей.
-4. Выполнить `npm run lint`, `npm run test`, `npm run build`.
-5. Для UI выполнить browser check; для интеграций перечислить фактически проверенные и непроверенные внешние шаги.
+Если команды не запускались, упали или внешние Telegram/Vercel smoke checks недоступны, сказать это прямо.

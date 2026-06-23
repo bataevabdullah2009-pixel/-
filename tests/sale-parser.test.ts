@@ -43,7 +43,7 @@ describe("sale parser evidence rules", () => {
       unit: "шт",
       price: null,
       total: null,
-      status: "needs_price"
+      status: "needs_review"
     });
   });
 
