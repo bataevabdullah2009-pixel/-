@@ -10,6 +10,30 @@ export type TelegramAuthErrorCode =
   | "AUTH_FAILED";
 
 type CodedError = Error & { code?: TelegramAuthErrorCode };
+type ReasonedError = CodedError & { reason?: string };
+
+export function getTelegramAuthErrorReason(error: unknown) {
+  const reason = (error as ReasonedError)?.reason;
+  if (reason) return reason;
+
+  const code = (error as CodedError)?.code;
+  switch (code) {
+    case "TELEGRAM_INIT_DATA_MISSING":
+      return "missing_init_data";
+    case "TELEGRAM_INIT_DATA_INVALID":
+      return "invalid_hash";
+    case "SELLER_NOT_LINKED":
+      return "user_not_linked";
+    case "SELLER_INACTIVE":
+      return "seller_inactive";
+    case "SHOP_NOT_FOUND":
+      return "shop_not_found";
+    case "AUTH_MISCONFIGURED":
+      return "auth_misconfigured";
+    default:
+      return "unknown";
+  }
+}
 
 export function describeTelegramAuthError(error: unknown) {
   const codedError = error as CodedError;

@@ -16,7 +16,7 @@ Telegram voice
 
 Если распознаны товар, количество, цена и `confidence >= 0.80`, позиция сразу получает внутренний статус `processed`, показывается как «Готово» и входит в отчёт. Если нет цены/количества, confidence ниже порога, текст странный или часть позиций неполная, такие позиции показываются как «Нужно проверить» и не входят в выручку до исправления. Исключённые позиции показываются как «Исключено» и не учитываются.
 
-`shop_id` никогда не приходит от клиента. Сервер определяет магазин по Telegram initData либо по server-side fallback env.
+`shop_id` никогда не приходит от клиента. Сервер валидирует raw Telegram `initData`, находит seller по `user.id` и использует `seller.shop_id`. Browser fallback разрешён только явной server-side конфигурацией.
 
 Бот отвечает `✅ Запись сохранена` только после успешного `save_voice_sale` и read-back проверки созданной продажи и точного количества `sale_items`. Ошибка Supabase даёт ответ `⚠️ Не удалось сохранить запись. Попробуйте ещё раз.` без ложного success.
 
@@ -65,6 +65,7 @@ Telegram voice
 | `ALLOW_WEBAPP_FALLBACK` | Если `true`, Mini App может открыться без Telegram initData. |
 | `DEFAULT_SHOP_ID` | Shop id для browser fallback; читается только сервером. |
 | `DEFAULT_SELLER_ID` | Seller id для browser fallback; читается только сервером. |
+| `DEBUG_TELEGRAM_WEBAPP` | Показывает `/debug-telegram` и кнопку диагностики; в production по умолчанию выключен. |
 
 Секреты не должны иметь префикс `NEXT_PUBLIC_` и не коммитятся.
 
@@ -72,11 +73,12 @@ Telegram voice
 
 Mini App работает в трёх режимах:
 
-- Telegram mode: клиент видит `window.Telegram.WebApp.initData`, `apiFetch` отправляет `x-telegram-init-data` и `x-app-mode: telegram`, сервер проверяет HMAC и находит owner/seller в БД.
+- Telegram mode: клиент проверяет `window.Telegram.WebApp`, непустой raw `initData` и `initDataUnsafe.user.id`; `apiFetch` отправляет raw строку в `x-telegram-init-data`. Сервер проверяет HMAC через `TELEGRAM_BOT_TOKEN` этого же бота, включая поле `signature` и исключая только `hash`.
+- Seller/shop resolution: сервер сначала ищет seller по Telegram user id. Если seller отсутствует, но существует active owner binding, seller создаётся в том же `shop_id`. Отчёт читает `sales` по этому `shop_id`, а `sale_items` — только по найденным sale IDs.
 - Browser fallback mode: initData нет, `apiFetch` отправляет `x-app-mode: fallback`, сервер загружает `DEFAULT_SELLER_ID` из БД и проверяет, что его `shop_id` совпадает с `DEFAULT_SHOP_ID`.
-- Error mode: UI показывает ошибку только для реальных проблем сервера, БД или конфигурации. Отсутствие initData само по себе не заменяет интерфейс красной блокировкой.
+- Error mode: UI показывает явную причину доступа и не маскирует auth/DB ошибку нулевым отчётом или сообщением «Записей нет».
 
-`/debug-telegram` остаётся безопасной диагностикой SDK/initData и не является обязательным шагом для открытия отчёта.
+`TELEGRAM_WEBHOOK_SECRET` используется только для webhook header и не участвует в WebApp HMAC. `/debug-telegram` доступен в production только при `DEBUG_TELEGRAM_WEBAPP=true`.
 
 ## Supabase migrations
 
@@ -101,7 +103,7 @@ npm run telegram:set-webhook
 npm run telegram:webhook-info
 ```
 
-`/start` отправляет reply и inline `web_app` кнопки «Открыть отчёт», задаёт `MenuButtonWebApp` и даёт кнопку «Диагностика Telegram» на `/debug-telegram`.
+`/start` отправляет reply и inline `web_app` кнопки «Открыть отчёт» и задаёт `MenuButtonWebApp`. Кнопка «Диагностика Telegram» добавляется только при `DEBUG_TELEGRAM_WEBAPP=true`.
 
 ## Проверка продажи
 

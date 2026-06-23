@@ -30,6 +30,11 @@ AI обязан прочитать по порядку:
 - Исключение позиции выполняется только через soft delete.
 - Кнопка отчёта в Telegram создаётся только как `web_app`, не как обычная URL-кнопка.
 - Web App передаёт `Telegram.WebApp.initData` в `x-telegram-init-data`, а также `x-app-mode`.
+- Передаётся raw `initData`, не `initDataUnsafe`. Клиент отдельно проверяет наличие `Telegram.WebApp`, непустого `initData` и `initDataUnsafe.user.id`.
+- HMAC WebApp проверяется только через `TELEGRAM_BOT_TOKEN`; `TELEGRAM_WEBHOOK_SECRET` предназначен только для webhook header. В data-check-string исключается только `hash`, поле `signature` сохраняется.
+- WebApp сначала ищет seller по Telegram user id. Active owner binding может создать seller только в том же `shop_id`; произвольный client shop запрещён.
+- Отчёт сначала читает `sales` по server-derived `shop_id`, затем `sale_items` по этим sale IDs. Auth/DB ошибка не должна превращаться в нулевой отчёт или «Записей нет».
+- Production-кнопка и route диагностики доступны только при `DEBUG_TELEGRAM_WEBAPP=true`.
 - Browser fallback разрешён только при `ALLOW_WEBAPP_FALLBACK=true`; `DEFAULT_SHOP_ID` и `DEFAULT_SELLER_ID` читаются только на сервере из env.
 - Корневой Web App URL не должен выполнять server redirect до инициализации Telegram SDK.
 - Сбой Storage или невалидный LLM JSON не должен скрывать распознанную продажу: создаётся запись «Нужно проверить».

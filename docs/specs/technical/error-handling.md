@@ -1,8 +1,10 @@
 # Error Handling
 
-Mini App не показывает красную блокировку только из-за отсутствия Telegram initData. Direct browser open должен отрисовать интерфейс; данные берутся из fallback env, если fallback включён.
+Mini App показывает состояние session bootstrap. Direct browser open получает данные только если fallback явно включён и корректно настроен; иначе показывается понятная auth ошибка.
 
-UI показывает ошибку только для реальных проблем сервера, БД или конфигурации. Auth 401 без fallback не должен навсегда скрывать интерфейс.
+При непустом валидном raw initData UI не показывает production-блокировку «откройте через кнопку бота». Invalid hash, expired auth date, missing bot token и user not linked логируются отдельными безопасными reason.
+
+Ошибки Telegram auth и Supabase не маскируются под успешный пустой результат. Report не показывает нулевые метрики, а records не показывает «Записей нет», если чтение завершилось ошибкой.
 
 Voice pipeline:
 

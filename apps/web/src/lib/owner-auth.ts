@@ -13,11 +13,12 @@ import {
   TelegramPrincipalError,
   type TelegramPrincipalRecord
 } from "./telegram-principal";
+import { getTelegramAuthErrorReason } from "./telegram-auth-errors";
 
 export const TELEGRAM_INIT_DATA_COOKIE = "voice_sales_telegram_init_data";
 
 export type OwnerContext = {
-  ownerId: string;
+  sellerId: string | null;
   shopId: string;
   telegramId: number;
   demo: boolean;
@@ -33,7 +34,8 @@ export class OwnerAccessError extends Error {
       | "SELLER_INACTIVE"
       | "SHOP_NOT_FOUND"
       | "AUTH_MISCONFIGURED",
-    message: string
+    message: string,
+    public readonly reason?: string
   ) {
     super(message);
     this.name = "OwnerAccessError";
@@ -102,7 +104,7 @@ async function resolveFallbackContext(): Promise<OwnerContext> {
   }
 
   return {
-    ownerId: String(seller.id),
+    sellerId: String(seller.id),
     shopId: String(seller.shop_id),
     telegramId: Number(seller.telegram_id),
     demo: false,
@@ -114,7 +116,10 @@ function isMissingOwnersTable(error: { code?: string; message?: string } | null)
   return error?.code === "PGRST205";
 }
 
-async function findActiveOwnerByTelegramId(telegramId: number): Promise<OwnerContext> {
+async function resolveTelegramSellerContext(
+  telegramId: number,
+  sellerName: string | null
+): Promise<OwnerContext> {
   const admin = getSupabaseAdminClient();
 
   if (!admin) {
@@ -149,11 +154,38 @@ async function findActiveOwnerByTelegramId(telegramId: number): Promise<OwnerCon
           .maybeSingle();
         if (error) throw error;
         return Boolean(data);
+      },
+      async createSellerForOwner({ shopId }) {
+        const { data, error } = await admin
+          .from("sellers")
+          .insert({
+            shop_id: shopId,
+            telegram_id: telegramId,
+            name: sellerName
+          })
+          .select("id, shop_id, telegram_id, is_active")
+          .single();
+
+        if (!error) {
+          return data as TelegramPrincipalRecord;
+        }
+
+        if (error.code === "23505") {
+          const { data: existing, error: existingError } = await admin
+            .from("sellers")
+            .select("id, shop_id, telegram_id, is_active")
+            .eq("telegram_id", telegramId)
+            .single();
+          if (existingError) throw existingError;
+          return existing as TelegramPrincipalRecord;
+        }
+
+        throw error;
       }
     });
 
     return {
-      ownerId: principal.principalId,
+      sellerId: principal.role === "seller" ? principal.principalId : null,
       shopId: principal.shopId,
       telegramId: principal.telegramId,
       demo: false,
@@ -171,12 +203,12 @@ async function requireDemoOwner(): Promise<OwnerContext> {
   const admin = getSupabaseAdminClient();
 
   if (!admin) {
-    return { ownerId: "demo-owner", shopId: "demo-shop", telegramId: 0, demo: true, mode: "demo" };
+    return { sellerId: "demo-seller", shopId: "demo-shop", telegramId: 0, demo: true, mode: "demo" };
   }
 
   const configuredTelegramId = Number(process.env.DEMO_OWNER_TELEGRAM_ID);
   if (Number.isSafeInteger(configuredTelegramId) && configuredTelegramId > 0) {
-    const owner = await findActiveOwnerByTelegramId(configuredTelegramId);
+    const owner = await resolveTelegramSellerContext(configuredTelegramId, null);
     return { ...owner, demo: true, mode: "demo" };
   }
 
@@ -206,7 +238,7 @@ async function requireDemoOwner(): Promise<OwnerContext> {
   }
 
   return {
-    ownerId: String(owner.id),
+    sellerId: null,
     shopId: String(owner.shop_id),
     telegramId: Number(owner.telegram_id),
     demo: true,
@@ -217,34 +249,40 @@ async function requireDemoOwner(): Promise<OwnerContext> {
 export async function authenticateOwner(initData: string): Promise<OwnerContext> {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   let telegramUserId: number | null = null;
-  let sellerFound = false;
+  let sellerId: string | null = null;
   let shopId: string | null = null;
-
-  if (!botToken) {
-    throw new OwnerAccessError("AUTH_MISCONFIGURED", "Telegram bot token is not configured.");
-  }
+  let errorReason: string | null = null;
 
   try {
+    if (!botToken) {
+      throw new OwnerAccessError(
+        "AUTH_MISCONFIGURED",
+        "Telegram bot token is not configured.",
+        "missing_bot_token"
+      );
+    }
+
     const { user } = verifyTelegramInitData(initData, botToken);
     telegramUserId = user.id;
-    const owner = await findActiveOwnerByTelegramId(user.id);
-    sellerFound = true;
+    const sellerName = [user.first_name, user.last_name].filter(Boolean).join(" ").trim() || null;
+    const owner = await resolveTelegramSellerContext(user.id, sellerName);
+    sellerId = owner.sellerId;
     shopId = owner.shopId;
     return owner;
   } catch (error) {
+    errorReason = getTelegramAuthErrorReason(error);
     if (error instanceof OwnerAccessError) throw error;
     if (error instanceof TelegramInitDataError) {
-      throw new OwnerAccessError(error.code, error.message);
+      throw new OwnerAccessError(error.code, error.message, error.reason);
     }
     throw error;
   } finally {
     console.info("webapp auth", {
-      hasInitData: Boolean(initData),
-      initDataLength: initData.length,
-      hasTelegramUser: Boolean(telegramUserId),
-      sellerFound,
+      telegramUserId,
+      sellerId,
       shopId,
-      mode: "telegram"
+      mode: "telegram",
+      errorReason
     });
   }
 }

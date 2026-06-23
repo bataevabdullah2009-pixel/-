@@ -27,7 +27,7 @@ export function registerStartHandler(bot: Telegraf<Context>, env: AppEnv) {
       createReportReplyKeyboard(env.NEXT_PUBLIC_APP_URL)
     );
     await ctx.reply(
-      "Откройте отчёт новой кнопкой ниже. Если доступ не подтверждается, запустите безопасную диагностику Telegram.",
+      "Откройте отчёт новой кнопкой ниже.",
       createReportKeyboard(env.NEXT_PUBLIC_APP_URL)
     );
   });

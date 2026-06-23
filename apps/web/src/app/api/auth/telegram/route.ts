@@ -6,7 +6,10 @@ import {
 import {
   readTelegramInitDataHeader
 } from "@/lib/telegram-init-data";
-import { describeTelegramAuthError } from "@/lib/telegram-auth-errors";
+import {
+  describeTelegramAuthError,
+  getTelegramAuthErrorReason
+} from "@/lib/telegram-auth-errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,6 +18,13 @@ export async function POST(request: Request) {
   try {
     const receivedInitData = readTelegramInitDataHeader(request.headers);
     const context = await resolveRequestContext(request);
+    console.info("webapp auth accepted", {
+      telegramUserId: context.telegramId,
+      sellerId: context.sellerId,
+      shopId: context.shopId,
+      mode: context.mode,
+      errorReason: null
+    });
 
     const response = NextResponse.json({ ok: true, mode: context.mode });
     if (context.mode === "telegram" && receivedInitData) {
@@ -34,7 +44,8 @@ export async function POST(request: Request) {
     } else {
       console.info("webapp auth rejected", {
         status: details.status,
-        code: details.code
+        code: details.code,
+        errorReason: getTelegramAuthErrorReason(error)
       });
     }
     return NextResponse.json(

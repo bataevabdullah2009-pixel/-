@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-06-24 — P0: Telegram WebApp session и shop resolver
+
+- Исправлена HMAC-проверка актуального Telegram `initData`: data-check-string теперь исключает только `hash` и сохраняет поле `signature`.
+- Production API получал `initDataLength: 586`, но возвращал `401 TELEGRAM_INIT_DATA_INVALID` до чтения Telegram user id.
+- Клиент проверяет `Telegram.WebApp`, raw `initData` и `initDataUnsafe.user.id`, отправляет raw строку в `x-telegram-init-data` и показывает явную auth ошибку вместо ложного нуля.
+- Сервер использует только `TELEGRAM_BOT_TOKEN`; безопасные причины отказа разделены на missing initData, invalid hash, expired auth date, missing bot token и user not linked.
+- Seller определяется по Telegram user id. При наличии active owner binding отсутствующий seller создаётся в том же shop.
+- Report читает `sales` по server-derived `shop_id`, затем `sale_items` только по найденным sale IDs; log содержит Telegram user, seller, shop, counts, период и error reason.
+- Records больше не показывает «Записей нет» при auth/DB ошибке, а report не выводит нулевые метрики как успешный результат.
+- «Диагностика Telegram» и `/debug-telegram` скрыты в production без `DEBUG_TELEGRAM_WEBAPP=true`.
+- Voice/STT/parser/save pipeline не изменялся.
+- Проверено: `npm run lint` — passed; `npm run test` — 8 files, 79 tests passed; `npm run build` — bot/web/shared passed.
+- Read-only Supabase check подтвердил совпадение bot sale `shop_id` и WebApp seller `shop_id`, а также наличие `sale_items`.
+
 ## 2026-06-24 — P0: подтверждённое сохранение и корректный отчёт
 
 - Устранён ложный success: бот подтверждает запись только после RPC и read-back проверки `sales` и точного количества `sale_items`.

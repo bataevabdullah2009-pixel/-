@@ -155,6 +155,12 @@ describe("sales flow stabilization", () => {
       web_app: { url: "https://voice-sales.example.com" }
     });
     expect(button).not.toHaveProperty("url");
+    expect(keyboard.reply_markup.inline_keyboard).toHaveLength(1);
+  });
+
+  it("shows Telegram diagnostics only behind DEBUG_TELEGRAM_WEBAPP", () => {
+    const keyboard = createReportKeyboard("https://voice-sales.example.com", true);
+
     expect(keyboard.reply_markup.inline_keyboard[1]?.[0]).toMatchObject({
       text: "Диагностика Telegram",
       web_app: { url: "https://voice-sales.example.com/debug-telegram" }

@@ -9,6 +9,10 @@ export type TelegramPrincipalLookup = {
   findOwner(telegramId: number): Promise<TelegramPrincipalRecord | null>;
   findSeller(telegramId: number): Promise<TelegramPrincipalRecord | null>;
   shopExists(shopId: string): Promise<boolean>;
+  createSellerForOwner?(params: {
+    telegramId: number;
+    shopId: string;
+  }): Promise<TelegramPrincipalRecord>;
 };
 
 export class TelegramPrincipalError extends Error {
@@ -35,7 +39,7 @@ export async function resolveTelegramPrincipal(
     throw new TelegramPrincipalError("SELLER_INACTIVE", "Доступ к магазину отключён");
   }
 
-  const principal = seller
+  let principal = seller
     ? { record: seller, role: "seller" as const }
     : owner
       ? { record: owner, role: "owner" as const }
@@ -53,6 +57,21 @@ export async function resolveTelegramPrincipal(
     : "";
   if (!shopId || !(await lookup.shopExists(shopId))) {
     throw new TelegramPrincipalError("SHOP_NOT_FOUND", "Магазин не найден");
+  }
+
+  if (principal.role === "owner" && lookup.createSellerForOwner) {
+    const createdSeller = await lookup.createSellerForOwner({ telegramId, shopId });
+    if (
+      createdSeller.is_active !== true ||
+      String(createdSeller.shop_id).trim() !== shopId ||
+      Number(createdSeller.telegram_id) !== telegramId
+    ) {
+      throw new TelegramPrincipalError(
+        "SELLER_NOT_LINKED",
+        "Не удалось привязать Telegram к продавцу"
+      );
+    }
+    principal = { record: createdSeller, role: "seller" };
   }
 
   return {

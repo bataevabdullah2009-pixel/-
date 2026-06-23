@@ -1,6 +1,6 @@
 # Report Calculation
 
-Отчёт строится по `sale_items`, связанным с продажами выбранного `shop_id` и периода.
+Отчёт сначала выбирает `sales` по server-derived `shop_id` и периоду, затем читает `sale_items` только по найденным sale IDs.
 
 В выручку и количество входят только позиции:
 
@@ -13,3 +13,5 @@
 После save/confirm/exclude/restore/reset сервер пересчитывает `sales.total_amount` и `sales.status`, затем инвалидирует `/daily-report` и `/records`.
 
 Границы периода вычисляются в `Europe/Moscow`; начало включительно, конец не включительно.
+
+Report log содержит `telegramUserId`, `sellerId`, `shopId`, число sales, число sale_items, date range и error reason. InitData и секреты не логируются.

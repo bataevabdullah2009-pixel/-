@@ -2,4 +2,4 @@
 
 Текущая работа находится в `active`, завершённые результаты — в `completed`.
 
-Актуальное состояние после 2026-06-23: Web App поддерживает Telegram и browser fallback modes, а уверенные voice-продажи сразу попадают в отчёт.
+Актуальное состояние на 2026-06-24: WebApp валидирует актуальный raw Telegram initData, использует seller shop для report/records и явно показывает auth/DB ошибки. Browser fallback работает только при явной server-side конфигурации.

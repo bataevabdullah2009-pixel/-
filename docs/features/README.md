@@ -1,6 +1,6 @@
 # Функции
 
-Функции панели доступны через Telegram Mini App и browser fallback mode. Данные ограничены server-derived магазином.
+Функции панели доступны через Telegram Mini App и явно включённый browser fallback mode. Данные ограничены server-derived магазином; auth/DB ошибки не отображаются как пустые данные.
 
 - [Voice processing](./voice-processing.md)
 - [Sales report](./sales-report.md)

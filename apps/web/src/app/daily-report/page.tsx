@@ -92,6 +92,27 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
   const reviewItems = summary.reviewItems;
   const processedItems = items.filter((item) => isRevenueSaleItemStatus(item.status));
 
+  if (error) {
+    return (
+      <section className="pageStack">
+        <div className="pageTitle">
+          <div>
+            <p className="eyebrow">Сводка магазина</p>
+            <h2>Продажи и выручка</h2>
+          </div>
+        </div>
+        <div className="actionNotice actionNotice-error" role="alert">{error}</div>
+        <DateFilter
+          basePath="/daily-report"
+          currentPreset={period}
+          currentDate={date}
+          params={params}
+          includeYesterday
+        />
+      </section>
+    );
+  }
+
   return (
     <section className="pageStack">
       <div className="pageTitle">
@@ -107,8 +128,6 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
           {message}
         </div>
       ) : null}
-
-      {error ? <div className="actionNotice actionNotice-error" role="alert">{error}</div> : null}
 
       <aside className="summaryBar" aria-label="Итоги за выбранный период">
         <div className="summaryPeriod">

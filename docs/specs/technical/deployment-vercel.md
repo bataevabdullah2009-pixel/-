@@ -10,6 +10,8 @@ DEFAULT_SHOP_ID=<shop uuid>
 DEFAULT_SELLER_ID=<seller uuid>
 ```
 
+`DEBUG_TELEGRAM_WEBAPP` в production отсутствует или равен `false`; временно включать диагностику можно только явным значением `true`.
+
 Migrations применяются до deploy кода, который читает новые колонки. После deploy задаётся Telegram webhook и проверяется `npm run telegram:webhook-info`.
 
-Production smoke отдельно проверяет прямое открытие Web App в fallback mode и открытие через Telegram кнопку.
+Production smoke проверяет открытие через Telegram кнопку, успешный auth при `initDataLength > 0`, совпадение seller/shop в auth и report logs, ненулевые counts при наличии строк и прямое открытие только если fallback включён.

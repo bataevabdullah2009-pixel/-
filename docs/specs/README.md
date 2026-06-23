@@ -7,4 +7,4 @@
 - [product](./product/seller-voice-flow.md)
 - [data](./data/data-model.md)
 
-Главные правила: Telegram и fallback auth поддерживаются явно, `shop_id` не принимается от клиента, уверенные voice-продажи сразу входят в отчёт, спорные позиции уходят в «Нужно проверить».
+Главные правила: raw Telegram initData проверяется через bot token, fallback auth включается явно, `shop_id` не принимается от клиента, report читает sale_items только через sales seller shop, уверенные voice-продажи сразу входят в отчёт, спорные позиции уходят в «Нужно проверить».

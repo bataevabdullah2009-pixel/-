@@ -1,3 +1,3 @@
 # Roadmap
 
-Актуальная дорожная карта после P0 pipeline fix: [roadmap.md](./roadmap.md).
+Актуальная дорожная карта после P0 WebApp session/shop resolver fix: [roadmap.md](./roadmap.md).

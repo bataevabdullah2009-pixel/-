@@ -7,10 +7,19 @@ export type TelegramInitUser = {
   username?: string;
 };
 
+export type TelegramInitDataFailureReason =
+  | "missing_init_data"
+  | "missing_bot_token"
+  | "invalid_hash"
+  | "expired_auth_date"
+  | "invalid_user"
+  | "shop_mismatch";
+
 export class TelegramInitDataError extends Error {
   constructor(
     public readonly code: "TELEGRAM_INIT_DATA_MISSING" | "TELEGRAM_INIT_DATA_INVALID",
-    message: string
+    message: string,
+    public readonly reason: TelegramInitDataFailureReason
   ) {
     super(message);
     this.name = "TelegramInitDataError";
@@ -19,7 +28,11 @@ export class TelegramInitDataError extends Error {
 
 export function requireMatchingShop(ownerShopId: string, targetShopId: string) {
   if (ownerShopId !== targetShopId) {
-    throw new TelegramInitDataError("TELEGRAM_INIT_DATA_INVALID", "Owner cannot access this shop.");
+    throw new TelegramInitDataError(
+      "TELEGRAM_INIT_DATA_INVALID",
+      "Owner cannot access this shop.",
+      "shop_mismatch"
+    );
   }
 
   return ownerShopId;
@@ -34,7 +47,8 @@ export function requireTelegramInitDataHeader(headers: Pick<Headers, "get">) {
   if (!initData) {
     throw new TelegramInitDataError(
       "TELEGRAM_INIT_DATA_MISSING",
-      "Telegram initData is missing."
+      "Telegram initData is missing.",
+      "missing_init_data"
     );
   }
   return initData;
@@ -45,8 +59,19 @@ export function verifyTelegramInitData(
   botToken: string,
   options: { now?: Date; maxAgeSeconds?: number } = {}
 ) {
-  if (!initData || !botToken) {
-    throw new TelegramInitDataError("TELEGRAM_INIT_DATA_INVALID", "Telegram initData or bot token is missing.");
+  if (!initData) {
+    throw new TelegramInitDataError(
+      "TELEGRAM_INIT_DATA_MISSING",
+      "Telegram initData is missing.",
+      "missing_init_data"
+    );
+  }
+  if (!botToken) {
+    throw new TelegramInitDataError(
+      "TELEGRAM_INIT_DATA_INVALID",
+      "Telegram bot token is missing.",
+      "missing_bot_token"
+    );
   }
 
   const params = new URLSearchParams(initData);
@@ -55,11 +80,15 @@ export function verifyTelegramInitData(
   const userJson = params.get("user");
 
   if (!receivedHash || !/^[a-f\d]{64}$/i.test(receivedHash) || !Number.isFinite(authDate) || !userJson) {
-    throw new TelegramInitDataError("TELEGRAM_INIT_DATA_INVALID", "Telegram initData is incomplete.");
+    throw new TelegramInitDataError(
+      "TELEGRAM_INIT_DATA_INVALID",
+      "Telegram initData is incomplete.",
+      "invalid_hash"
+    );
   }
 
   const dataCheckString = [...params.entries()]
-    .filter(([key]) => key !== "hash" && key !== "signature")
+    .filter(([key]) => key !== "hash")
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([key, value]) => `${key}=${value}`)
     .join("\n");
@@ -68,7 +97,11 @@ export function verifyTelegramInitData(
   const actualHash = Buffer.from(receivedHash, "hex");
 
   if (actualHash.length !== expectedHash.length || !timingSafeEqual(expectedHash, actualHash)) {
-    throw new TelegramInitDataError("TELEGRAM_INIT_DATA_INVALID", "Telegram initData signature is invalid.");
+    throw new TelegramInitDataError(
+      "TELEGRAM_INIT_DATA_INVALID",
+      "Telegram initData signature is invalid.",
+      "invalid_hash"
+    );
   }
 
   const nowSeconds = Math.floor((options.now ?? new Date()).getTime() / 1000);
@@ -76,18 +109,30 @@ export function verifyTelegramInitData(
   const age = nowSeconds - authDate;
 
   if (age < -60 || age > maxAgeSeconds) {
-    throw new TelegramInitDataError("TELEGRAM_INIT_DATA_INVALID", "Telegram initData has expired.");
+    throw new TelegramInitDataError(
+      "TELEGRAM_INIT_DATA_INVALID",
+      "Telegram initData has expired.",
+      "expired_auth_date"
+    );
   }
 
   let user: TelegramInitUser;
   try {
     user = JSON.parse(userJson) as TelegramInitUser;
   } catch {
-    throw new TelegramInitDataError("TELEGRAM_INIT_DATA_INVALID", "Telegram user data is invalid.");
+    throw new TelegramInitDataError(
+      "TELEGRAM_INIT_DATA_INVALID",
+      "Telegram user data is invalid.",
+      "invalid_user"
+    );
   }
 
   if (!Number.isSafeInteger(user.id) || user.id <= 0) {
-    throw new TelegramInitDataError("TELEGRAM_INIT_DATA_INVALID", "Telegram user id is invalid.");
+    throw new TelegramInitDataError(
+      "TELEGRAM_INIT_DATA_INVALID",
+      "Telegram user id is invalid.",
+      "invalid_user"
+    );
   }
 
   return { user, authDate };

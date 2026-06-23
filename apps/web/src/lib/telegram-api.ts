@@ -32,6 +32,7 @@ export class TelegramApiError extends Error {
 export type AppAuthContext = {
   mode: "telegram" | "fallback";
   initData?: string;
+  telegramUserId?: number;
   hasTelegram: boolean;
   hasWebApp: boolean;
 };
@@ -50,9 +51,11 @@ export function getAppAuthContext(): AppAuthContext {
   const initData = webApp?.initData?.trim() ?? "";
 
   if (initData.length > 0) {
+    const telegramUserId = webApp?.initDataUnsafe?.user?.id;
     return {
       mode: "telegram",
       initData,
+      telegramUserId: Number.isSafeInteger(telegramUserId) ? telegramUserId : undefined,
       hasTelegram,
       hasWebApp: Boolean(webApp)
     };

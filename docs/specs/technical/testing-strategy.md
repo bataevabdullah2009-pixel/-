@@ -13,7 +13,13 @@ Regression tests покрывают:
 - московские границы даты;
 - ручное сохранение processed patch;
 - Telegram initData validation;
+- актуальное initData с полем `signature`;
+- invalid hash → 401 mapping, expired auth date и missing bot token reasons;
 - `apiFetch` в Telegram и fallback modes;
+- Telegram user → seller → shop и seller creation из owner binding;
+- report sale_items только из sales того же shop;
+- ненулевой report при существующих sales/sale_items;
+- отсутствие debug button без `DEBUG_TELEGRAM_WEBAPP`;
 - отсутствие client `shop_id`;
 - Web App buttons;
 - bot reply без internal enum.

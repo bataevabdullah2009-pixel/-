@@ -1,3 +1,3 @@
 # Активные планы
 
-Активных планов нет. P0 pipeline hotfix закрыт в `../completed/006-p0-confirmed-persistence-and-report.md`.
+Активных планов нет. P0 WebApp auth/shop resolver закрыт в `../completed/007-webapp-session-and-shop-resolver.md`.

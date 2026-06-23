@@ -18,11 +18,15 @@ Telegram voice
 Telegram mode:
   telegram-web-app.js
   -> window.Telegram.WebApp.initData
-  -> apiFetch(x-app-mode=telegram, x-telegram-init-data)
+  -> client checks WebApp + raw initData + initDataUnsafe.user.id
+  -> apiFetch(x-app-mode=telegram, x-telegram-init-data=<raw initData>)
   -> resolveRequestContext()
-  -> HMAC validation
-  -> seller-first lookup, then owner
+  -> HMAC via TELEGRAM_BOT_TOKEN, all fields except hash
+  -> seller lookup by Telegram user id
+  -> optional seller creation from active owner binding in the same shop
   -> server-derived shop_id
+  -> sales filtered by shop_id
+  -> sale_items filtered by resolved sale IDs
 
 Browser fallback mode:
   no initData
@@ -33,7 +37,7 @@ Browser fallback mode:
   -> seller row lookup and shop_id equality check
 ```
 
-`shop_id` не является частью доверенного client contract. Отчёт, записи, продавцы и Server Actions используют только server-derived context.
+`TELEGRAM_WEBHOOK_SECRET` не участвует в WebApp auth. `shop_id` не является частью доверенного client contract. Отчёт, записи, продавцы и Server Actions используют только server-derived context.
 
 ## Data flow
 

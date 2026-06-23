@@ -18,7 +18,7 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
   const date = getStringParam(params.date);
   const sellerId = getStringParam(params.sellerId);
   const search = getStringParam(params.search);
-  const [sellers, records] = await Promise.all([
+  const [sellers, recordsResult] = await Promise.all([
     getSellers(),
     getRecords({
       period,
@@ -27,6 +27,7 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
       search
     })
   ]);
+  const { records, error } = recordsResult;
 
   return (
     <section className="pageStack">
@@ -50,13 +51,15 @@ export default async function RecordsPage({ searchParams }: RecordsPageProps) {
         </form>
       </div>
 
+      {error ? <div className="actionNotice actionNotice-error" role="alert">{error}</div> : null}
+
       {records.length ? (
         <div className="recordsList">
           {records.map((record) => (
             <RecordCard key={record.id} record={record} />
           ))}
         </div>
-      ) : (
+      ) : error ? null : (
         <EmptyState title="Записей нет" description="Попробуйте другой период, продавца или поисковую строку." />
       )}
     </section>

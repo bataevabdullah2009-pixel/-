@@ -19,6 +19,8 @@ import {
   initializeTelegramWebApp,
   waitForTelegramWebApp
 } from "../apps/web/src/lib/telegram-api";
+import { scopeReportRows } from "../apps/web/src/features/records/report-scope";
+import { buildSalesReport } from "../packages/shared/utils/date-range";
 import {
   buildTelegramWebhookUrl,
   parseTelegramPublicUrl
@@ -28,6 +30,7 @@ function signedInitData(botToken: string, telegramId: number, authDate: number) 
   const params = new URLSearchParams({
     auth_date: String(authDate),
     query_id: "query-1",
+    signature: "telegram-ed25519-signature",
     user: JSON.stringify({ id: telegramId, first_name: "Owner" })
   });
   const dataCheckString = [...params.entries()]
@@ -79,6 +82,7 @@ describe("Telegram Mini App authentication", () => {
     initializeTelegramWebApp();
 
     expect(getTelegramInitData()).toBe("signed-data");
+    expect(getAppAuthContext().telegramUserId).toBe(777);
     expect(ready).toHaveBeenCalledOnce();
     expect(expand).toHaveBeenCalledOnce();
   });
@@ -138,13 +142,32 @@ describe("Telegram Mini App authentication", () => {
     }
 
     expect(error).toBeInstanceOf(TelegramInitDataError);
+    expect(error).toMatchObject({ reason: "invalid_hash" });
     expect(describeTelegramAuthError(error)).toMatchObject({
       status: 401,
       code: "TELEGRAM_INIT_DATA_INVALID"
     });
   });
 
-  it("valid initData resolves the linked seller", async () => {
+  it("reports expired auth_date separately from invalid hash", () => {
+    const token = "123456:secret";
+    const signedAt = new Date("2026-06-20T12:00:00.000Z");
+    const initData = signedInitData(token, 777, Math.floor(signedAt.getTime() / 1000));
+
+    expect(() => verifyTelegramInitData(initData, token, {
+      now: new Date("2026-06-22T12:00:00.000Z")
+    })).toThrow(expect.objectContaining({ reason: "expired_auth_date" }));
+  });
+
+  it("reports a missing bot token without using the webhook secret", () => {
+    const now = new Date("2026-06-20T12:00:00.000Z");
+    const initData = signedInitData("123456:secret", 777, Math.floor(now.getTime() / 1000));
+
+    expect(() => verifyTelegramInitData(initData, "", { now }))
+      .toThrow(expect.objectContaining({ reason: "missing_bot_token" }));
+  });
+
+  it("valid initData returns a session for the linked seller", async () => {
     const token = "123456:secret";
     const now = new Date("2026-06-20T12:00:00.000Z");
     const initData = signedInitData(token, 777, Math.floor(now.getTime() / 1000));
@@ -155,6 +178,35 @@ describe("Telegram Mini App authentication", () => {
     expect(principal).toMatchObject({
       principalId: "seller-1",
       telegramId: 777,
+      shopId: "shop-1",
+      role: "seller"
+    });
+  });
+
+  it("creates and links a seller from an existing owner shop", async () => {
+    const createSellerForOwner = vi.fn().mockResolvedValue({
+      id: "seller-created",
+      shop_id: "shop-1",
+      telegram_id: 777,
+      is_active: true
+    });
+    const principal = await resolveTelegramPrincipal(777, lookup({
+      findSeller: vi.fn().mockResolvedValue(null),
+      findOwner: vi.fn().mockResolvedValue({
+        id: "owner-1",
+        shop_id: "shop-1",
+        telegram_id: 777,
+        is_active: true
+      }),
+      createSellerForOwner
+    }));
+
+    expect(createSellerForOwner).toHaveBeenCalledWith({
+      telegramId: 777,
+      shopId: "shop-1"
+    });
+    expect(principal).toMatchObject({
+      principalId: "seller-created",
       shopId: "shop-1",
       role: "seller"
     });
@@ -224,6 +276,84 @@ describe("Telegram Mini App authentication", () => {
 
     expect(filters).toEqual({ period: "today", date: "2026-06-20" });
     expect(filters).not.toHaveProperty("shop_id");
+  });
+
+  it("report reads sale_items only through sales from the resolved shop", () => {
+    const scoped = scopeReportRows(
+      [{
+        id: "sale-1",
+        shop_id: "shop-1",
+        created_at: "2026-06-24T10:00:00.000Z"
+      }],
+      [
+        {
+          id: "item-1",
+          sale_id: "sale-1",
+          product_name: "Хлеб",
+          quantity: 2,
+          unit: "шт",
+          price: 50,
+          total: 100,
+          confidence: 1,
+          status: "processed"
+        },
+        {
+          id: "item-other-shop",
+          sale_id: "sale-2",
+          product_name: "Чужой товар",
+          quantity: 100,
+          unit: "шт",
+          price: 100,
+          total: 10000,
+          confidence: 1,
+          status: "processed"
+        }
+      ],
+      "shop-1"
+    );
+
+    expect(scoped.salesCount).toBe(1);
+    expect(scoped.saleItemsCount).toBe(1);
+    expect(buildSalesReport(scoped.items)).toMatchObject({
+      totalQuantity: 2,
+      totalRevenue: 100
+    });
+  });
+
+  it("does not return a zero report when scoped sales and sale_items exist", () => {
+    const scoped = scopeReportRows(
+      [{
+        id: "sale-1",
+        shop_id: "shop-1",
+        created_at: "2026-06-24T10:00:00.000Z"
+      }],
+      [{
+        id: "item-1",
+        sale_id: "sale-1",
+        product_name: "Сникерс",
+        quantity: 5,
+        unit: "шт",
+        price: 100,
+        total: 500,
+        confidence: 1,
+        status: "processed"
+      }],
+      "shop-1"
+    );
+
+    expect(buildSalesReport(scoped.items).totalRevenue).toBe(500);
+  });
+
+  it("rejects report rows from a shop different from the resolved seller shop", () => {
+    expect(() => scopeReportRows(
+      [{
+        id: "sale-2",
+        shop_id: "shop-2",
+        created_at: "2026-06-24T10:00:00.000Z"
+      }],
+      [],
+      "shop-1"
+    )).toThrow("Report shop scope mismatch");
   });
 
   it("accepts only a canonical HTTPS Web App URL", () => {

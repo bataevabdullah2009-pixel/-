@@ -5,13 +5,18 @@ export function createTelegramBot(env: AppEnv) {
   return new Telegraf(env.TELEGRAM_BOT_TOKEN);
 }
 
-export function createReportKeyboard(appUrl: string) {
-  const debugUrl = new URL("/debug-telegram", appUrl).toString();
+export function createReportKeyboard(
+  appUrl: string,
+  debugTelegramWebApp = process.env.DEBUG_TELEGRAM_WEBAPP === "true"
+) {
+  const rows = [[Markup.button.webApp("Открыть отчёт", appUrl)]];
 
-  return Markup.inlineKeyboard([
-    [Markup.button.webApp("Открыть отчёт", appUrl)],
-    [Markup.button.webApp("Диагностика Telegram", debugUrl)]
-  ]);
+  if (debugTelegramWebApp) {
+    const debugUrl = new URL("/debug-telegram", appUrl).toString();
+    rows.push([Markup.button.webApp("Диагностика Telegram", debugUrl)]);
+  }
+
+  return Markup.inlineKeyboard(rows);
 }
 
 export function createReportReplyKeyboard(appUrl: string) {

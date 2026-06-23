@@ -12,9 +12,20 @@ import {
   normalizeUnit
 } from "@voice-sales-log/shared/utils/date-range";
 import type { DateRangePreset, SaleItem } from "@voice-sales-log/shared/types";
-import { OwnerAccessError, requireOwner, requireShopAccess } from "@/lib/owner-auth";
+import {
+  OwnerAccessError,
+  requireOwner,
+  requireShopAccess,
+  type OwnerContext
+} from "@/lib/owner-auth";
 import { getStorageBucket, getSupabaseAdminClient } from "@/lib/supabase";
+import { getTelegramAuthErrorReason } from "@/lib/telegram-auth-errors";
 import type { RecordFilters, RecordListItem, ReportFilters, SellerOption } from "./records.types";
+import {
+  scopeReportRows,
+  type ReportSaleItemRow,
+  type ReportSaleRow
+} from "./report-scope";
 
 type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdminClient>>;
 
@@ -100,8 +111,11 @@ function logServerError(operation: string, error: unknown) {
 
 function reportLoadMessage(error: unknown) {
   if (error instanceof OwnerAccessError) {
-    if (error.code === "TELEGRAM_INIT_DATA_MISSING" || error.code === "TELEGRAM_INIT_DATA_INVALID") {
-      return "Не удалось подтвердить Telegram-сессию. Откройте отчёт из кнопки бота ещё раз.";
+    if (error.code === "TELEGRAM_INIT_DATA_MISSING") {
+      return "Telegram-сессия не передана. Откройте WebApp внутри Telegram.";
+    }
+    if (error.code === "TELEGRAM_INIT_DATA_INVALID") {
+      return "Telegram-сессия недействительна или устарела. Закройте WebApp и откройте отчёт заново.";
     }
     if (error.code === "SELLER_NOT_LINKED") return "Ваш Telegram не привязан к магазину";
     if (error.code === "SELLER_INACTIVE") return "Доступ к магазину отключён";
@@ -109,6 +123,27 @@ function reportLoadMessage(error: unknown) {
   }
 
   return "Не удалось загрузить отчёт.";
+}
+
+function logReportResult(params: {
+  owner: OwnerContext | null;
+  range: { start: string; end: string };
+  salesCount: number;
+  saleItemsCount: number;
+  error: unknown | null;
+}) {
+  const errorCode = (params.error as { code?: string } | null)?.code;
+  console.info("webapp report", {
+    telegramUserId: params.owner?.telegramId ?? null,
+    sellerId: params.owner?.sellerId ?? null,
+    shopId: params.owner?.shopId ?? null,
+    salesCount: params.salesCount,
+    saleItemsCount: params.saleItemsCount,
+    dateRange: params.range,
+    errorReason: params.error
+      ? errorCode || getTelegramAuthErrorReason(params.error)
+      : null
+  });
 }
 
 async function createSignedAudioUrl(audioPath: string | null, fallbackUrl: string | null) {
@@ -174,7 +209,9 @@ export async function getSellers(): Promise<SellerOption[]> {
   }
 }
 
-export async function getRecords(filters: RecordFilters): Promise<RecordListItem[]> {
+export async function getRecords(
+  filters: RecordFilters
+): Promise<{ records: RecordListItem[]; error: string | null }> {
   const range = getDateRange(filters.period, { date: filters.date });
   try {
     const owner = await requireOwner();
@@ -188,7 +225,7 @@ export async function getRecords(filters: RecordFilters): Promise<RecordListItem
           `${record.cleaned_text ?? ""} ${record.raw_text ?? ""}`.toLocaleLowerCase("ru-RU").includes(search)
         );
       }
-      return records;
+      return { records, error: null };
     }
 
     if (!admin) throw new Error("Supabase admin client is not configured.");
@@ -220,7 +257,7 @@ export async function getRecords(filters: RecordFilters): Promise<RecordListItem
     const { data, error } = await query;
     if (error) throw error;
 
-    return Promise.all(
+    const records = await Promise.all(
       (data ?? []).map(async (sale: any) => {
         const seller = Array.isArray(sale.sellers) ? sale.sellers[0] : sale.sellers;
         const voiceRecord = Array.isArray(sale.voice_records) ? sale.voice_records[0] : sale.voice_records;
@@ -237,20 +274,27 @@ export async function getRecords(filters: RecordFilters): Promise<RecordListItem
         };
       })
     );
+    return { records, error: null };
   } catch (error) {
     logServerError("getRecords", error);
-    return [];
+    return { records: [], error: reportLoadMessage(error) };
   }
 }
 
 export async function getReport(filters: ReportFilters) {
   const range = getDateRange(filters.period, { date: filters.date });
+  let owner: OwnerContext | null = null;
+  let salesCount = 0;
+  let saleItemsCount = 0;
   try {
-    const owner = await requireOwner();
+    owner = await requireOwner();
     const admin = getSupabaseAdminClient();
 
     if (owner.shopId === "demo-shop" && !admin) {
       const items = filterByDateRange(demoSaleItems, range);
+      salesCount = items.length ? 1 : 0;
+      saleItemsCount = items.length;
+      logReportResult({ owner, range, salesCount, saleItemsCount, error: null });
       return {
         range,
         summary: buildSalesReport(items),
@@ -261,59 +305,39 @@ export async function getReport(filters: ReportFilters) {
     }
 
     if (!admin) throw new Error("Supabase admin client is not configured.");
-    const { data, error } = await admin
+    const { data: sales, error: salesError } = await admin
       .from("sales")
-      .select(
-        `
-        id,
-        created_at,
-        sale_items (
-          id,
-          sale_id,
-          product_id,
-          product_name,
-          quantity,
-          unit,
-          price,
-          total,
-          confidence,
-          status,
-          created_at,
-          updated_at,
-          deleted_at,
-          deleted_reason,
-          deleted_previous_status
-        )
-      `
-      )
+      .select("id, shop_id, created_at")
       .eq("shop_id", owner.shopId)
       .gte("created_at", range.start)
       .lt("created_at", range.end);
 
-    if (error) throw error;
+    if (salesError) throw salesError;
 
-    const items: SaleItem[] = (data ?? []).flatMap((sale: any) =>
-      (sale.sale_items ?? []).map((item: any) => ({
-        id: String(item.id),
-        sale_id: String(item.sale_id),
-        product_id: item.product_id,
-        product_name: String(item.product_name),
-        quantity: Number(item.quantity),
-        unit: String(item.unit),
-        price: item.price === null ? null : Number(item.price),
-        total: item.total === null ? null : Number(item.total),
-        confidence: Number(item.confidence),
-        status: item.status,
-        created_at: String(sale.created_at),
-        updated_at: item.updated_at ? String(item.updated_at) : undefined,
-        deleted_at: item.deleted_at ? String(item.deleted_at) : null,
-        deleted_reason: item.deleted_reason ?? null,
-        deleted_previous_status: item.deleted_previous_status ?? null
-      }))
+    const saleIds = (sales ?? []).map((sale: any) => String(sale.id));
+    let saleItems: ReportSaleItemRow[] = [];
+    if (saleIds.length) {
+      const { data, error } = await admin
+        .from("sale_items")
+        .select(
+          "id, sale_id, product_id, product_name, quantity, unit, price, total, confidence, status, updated_at, deleted_at, deleted_reason, deleted_previous_status"
+        )
+        .in("sale_id", saleIds);
+      if (error) throw error;
+      saleItems = (data ?? []) as ReportSaleItemRow[];
+    }
+
+    const scoped = scopeReportRows(
+      (sales ?? []) as ReportSaleRow[],
+      saleItems,
+      owner.shopId
     );
-    const sortedItems = items.sort((left, right) =>
+    salesCount = scoped.salesCount;
+    saleItemsCount = scoped.saleItemsCount;
+    const sortedItems = scoped.items.sort((left, right) =>
       left.product_name.localeCompare(right.product_name, "ru-RU")
     );
+    logReportResult({ owner, range, salesCount, saleItemsCount, error: null });
 
     return {
       range,
@@ -324,6 +348,7 @@ export async function getReport(filters: ReportFilters) {
     };
   } catch (error) {
     logServerError("getReport", error);
+    logReportResult({ owner, range, salesCount, saleItemsCount, error });
     return {
       range,
       summary: buildSalesReport([]),
