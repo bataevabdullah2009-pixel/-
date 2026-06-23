@@ -68,13 +68,43 @@ function readRequiredFallbackEnv() {
   return { defaultShopId, defaultSellerId };
 }
 
-function resolveFallbackContext(): OwnerContext {
+async function resolveFallbackContext(): Promise<OwnerContext> {
   const { defaultShopId, defaultSellerId } = readRequiredFallbackEnv();
+  const admin = getSupabaseAdminClient();
+
+  if (!admin) {
+    throw new OwnerAccessError("AUTH_MISCONFIGURED", "Supabase admin client is not configured.");
+  }
+
+  const { data: seller, error } = await admin
+    .from("sellers")
+    .select("id, shop_id, telegram_id, is_active")
+    .eq("id", defaultSellerId)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+  if (!seller) {
+    throw new OwnerAccessError("SELLER_NOT_LINKED", "Fallback seller is not configured.");
+  }
+  if (!seller.is_active) {
+    throw new OwnerAccessError("SELLER_INACTIVE", "Fallback seller is inactive.");
+  }
+
+  try {
+    requireMatchingShop(defaultShopId, String(seller.shop_id));
+  } catch {
+    throw new OwnerAccessError(
+      "AUTH_MISCONFIGURED",
+      "DEFAULT_SHOP_ID does not match DEFAULT_SELLER_ID shop_id."
+    );
+  }
 
   return {
-    ownerId: defaultSellerId,
-    shopId: defaultShopId,
-    telegramId: 0,
+    ownerId: String(seller.id),
+    shopId: String(seller.shop_id),
+    telegramId: Number(seller.telegram_id),
     demo: false,
     mode: "fallback"
   };
@@ -226,7 +256,7 @@ export async function resolveRequestContext(request?: Request): Promise<OwnerCon
   }
 
   if (request && isWebAppFallbackAllowed()) {
-    return resolveFallbackContext();
+    return await resolveFallbackContext();
   }
 
   const cookieStore = await cookies();
@@ -237,7 +267,7 @@ export async function resolveRequestContext(request?: Request): Promise<OwnerCon
   }
 
   if (isWebAppFallbackAllowed()) {
-    return resolveFallbackContext();
+    return await resolveFallbackContext();
   }
 
   if (isDemoMode()) {

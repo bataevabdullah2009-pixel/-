@@ -15,11 +15,12 @@ import {
 import { uploadVoiceAudio } from "../services/storage.service";
 import {
   createReportKeyboard,
+  createVoiceSaveFailureMessage,
   createVoiceSaleUserMessage,
   downloadTelegramVoice
 } from "../services/telegram.service";
 import { transcribeAudio } from "../services/transcription.service";
-import { logger, redactSensitiveText } from "../utils/logger";
+import { formatErrorMessage, logger } from "../utils/logger";
 
 export type VoiceFailureStage =
   | "seller_resolve"
@@ -53,19 +54,30 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
     let parserJson: unknown | null = null;
     let parserErrorMessage: string | null = null;
     let salePersisted = false;
+    const pipelineMeta = () => ({
+      telegramMessageId,
+      telegramUserId: telegramId ?? null,
+      sellerId: seller?.id ?? null,
+      shopId: seller?.shopId ?? null
+    });
 
-    logger.info("voice_received", { telegramId, telegramMessageId });
+    logger.info("voice_received", pipelineMeta());
 
     if (!telegramId) {
-      logger.error("voice_failed", { stage: "seller_resolve", telegramMessageId, error: "telegram_user_id_missing" });
+      logger.error("voice_failed", {
+        ...pipelineMeta(),
+        stage: "seller_resolve",
+        finalStatus: "failed",
+        errorMessage: "telegram_user_id_missing"
+      });
       await ctx.reply("Не удалось определить продавца. Попробуйте команду /start.");
       return;
     }
 
     try {
       seller = await requireSeller(env, telegramId, sellerName);
-      logger.info("seller_resolved", { telegramId, telegramMessageId, sellerId: seller.id });
-      logger.info("shop_resolved", { telegramId, telegramMessageId, shopId: seller.shopId });
+      logger.info("seller_resolved", pipelineMeta());
+      logger.info("shop_resolved", pipelineMeta());
 
       stage = "telegram_reply";
       await ctx.reply("Голосовое получено, обрабатываю.");
@@ -75,8 +87,7 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
       const fileUrl = await ctx.telegram.getFileLink(telegramFileId);
       const audio = await downloadTelegramVoice(fileUrl, telegramFileId);
       logger.info("telegram_file_downloaded", {
-        telegramId,
-        telegramMessageId,
+        ...pipelineMeta(),
         telegramFileId,
         fileSize: audio.fileSize,
         contentType: audio.telegramContentType
@@ -89,8 +100,7 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
       });
       const sttAudio = preparedAudio.audio;
       logger.info("audio_prepared", {
-        telegramId,
-        telegramMessageId,
+        ...pipelineMeta(),
         sourceFileSize: audio.fileSize,
         sttFileSize: sttAudio.buffer.byteLength,
         sttMimeType: sttAudio.contentType,
@@ -106,13 +116,17 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
         audioPath = uploaded.path;
         audioUrl = uploaded.publicUrl;
       } catch (error) {
-        logger.warn("voice_storage_upload_failed", { telegramId, telegramMessageId, error });
+        logger.warn("voice_storage_upload_failed", { ...pipelineMeta(), errorMessage: formatErrorMessage(error) });
       }
 
       stage = "stt";
-      logger.info("stt_started", { telegramId, telegramMessageId });
+      logger.info("stt_started", pipelineMeta());
       rawText = await transcribeAudio(env, sttAudio);
-      logger.info("stt_finished", { telegramId, telegramMessageId, transcriptLength: rawText.length });
+      logger.info("stt_finished", {
+        ...pipelineMeta(),
+        sttText: rawText,
+        transcriptLength: rawText.length
+      });
       await tryWriteProcessingAuditLog({
         env,
         sellerTelegramId: telegramId,
@@ -122,18 +136,25 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
       });
 
       stage = "llm";
-      logger.info("llm_parse_started", { telegramId, telegramMessageId });
+      logger.info("llm_parse_started", { ...pipelineMeta(), sttText: rawText });
       cleanedText = await cleanupTranscript(env, rawText);
       const parserResult = await parseSaleTranscript(env, rawText, cleanedText);
       parsedSale = parserResult.parsedSale;
       parserJson = parserResult.parserJson;
       parserErrorMessage = parserResult.errorMessage;
       logger.info("llm_parse_finished", {
-        telegramId,
-        telegramMessageId,
-        itemCount: parsedSale.items.length,
+        ...pipelineMeta(),
+        sttText: rawText,
+        parsedItemsCount: parsedSale.items.length,
+        parsedItems: parsedSale.items.map((item) => ({
+          product: item.product_name,
+          quantity: item.quantity ?? null,
+          price: item.price,
+          total: item.total,
+          confidence: item.confidence
+        })),
         needsReview: parsedSale.needs_review,
-        fallbackReason: parserErrorMessage
+        errorMessage: parserErrorMessage
       });
       await tryWriteProcessingAuditLog({
         env,
@@ -160,18 +181,22 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
         errorMessage: parserErrorMessage
       });
       salePersisted = true;
-      logger.info("sale_created", { telegramId, telegramMessageId, saleId: result.saleId, shopId: seller.shopId });
+      logger.info("sale_created", {
+        ...pipelineMeta(),
+        saleInsertResultId: result.saleId,
+        finalStatus: result.status
+      });
       logger.info("sale_items_created", {
-        telegramId,
-        telegramMessageId,
-        saleId: result.saleId,
-        itemCount: result.itemCount
+        ...pipelineMeta(),
+        saleInsertResultId: result.saleId,
+        saleItemsInsertCount: result.itemCount,
+        finalStatus: result.status
       });
       logger.info("voice_processed", {
-        telegramId,
-        telegramMessageId,
-        saleId: result.saleId,
-        status: result.status
+        ...pipelineMeta(),
+        saleInsertResultId: result.saleId,
+        saleItemsInsertCount: result.itemCount,
+        finalStatus: result.status
       });
 
       stage = "telegram_reply";
@@ -181,9 +206,20 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
         createReportKeyboard(env.NEXT_PUBLIC_APP_URL)
       );
     } catch (error) {
-      const unsafeMessage = error instanceof Error ? error.message : "Unknown voice processing error.";
-      const messageText = redactSensitiveText(unsafeMessage);
-      logger.error("voice_failed", { stage, error: messageText, telegramId, telegramMessageId });
+      const errorMessage = formatErrorMessage(error);
+      logger.error("voice_failed", {
+        ...pipelineMeta(),
+        stage,
+        sttText: rawText,
+        parsedItemsCount: parsedSale?.items.length ?? 0,
+        parsedItems: parsedSale?.items.map((item) => ({
+          product: item.product_name,
+          quantity: item.quantity ?? null,
+          price: item.price
+        })) ?? [],
+        finalStatus: "failed",
+        errorMessage
+      });
 
       if (error instanceof SellerAccessError) {
         await ctx.reply("Ваш Telegram не привязан к магазину.");
@@ -201,14 +237,23 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
             rawText,
             cleanedText,
             parserJson,
-            errorMessage: `stage=${stage}; ${messageText}`
+            errorMessage: `stage=${stage}; ${errorMessage}`
           });
         } catch (saveError) {
-          logger.error("failed_voice_record_save_failed", { stage: "supabase_insert", error: saveError, telegramId, telegramMessageId });
+          logger.error("failed_voice_record_save_failed", {
+            ...pipelineMeta(),
+            stage: "supabase_insert",
+            finalStatus: "failed",
+            errorMessage: formatErrorMessage(saveError)
+          });
         }
       }
 
-      await ctx.reply("⚠️ Не удалось обработать голосовое. Попробуйте ещё раз.");
+      await ctx.reply(
+        stage === "supabase_insert"
+          ? createVoiceSaveFailureMessage()
+          : "⚠️ Не удалось обработать голосовое. Попробуйте ещё раз."
+      );
     }
   });
 }

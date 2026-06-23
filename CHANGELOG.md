@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-06-24 — P0: подтверждённое сохранение и корректный отчёт
+
+- Устранён ложный success: бот подтверждает запись только после RPC и read-back проверки `sales` и точного количества `sale_items`.
+- Удалён неатомарный server fallback insert при отсутствии `save_voice_sale`; отсутствие RPC теперь является ошибкой сохранения.
+- Supabase ошибки логируются с реальными `code/message/details/hint`, без токенов и ключей.
+- Pipeline logs содержат `telegramMessageId`, `telegramUserId`, `sellerId`, `shopId`, `sttText`, parsed items, sale id, item count, final status и error message.
+- STT явно получает русский язык и контекст продажи; evidence validator использует совпадающий очищенный русский текст при латинской транслитерации.
+- Полная уверенная позиция больше не остаётся в review только из-за общего parser-level флага.
+- Telegram WebApp выбирает seller shop раньше owner shop; fallback seller проверяется против `DEFAULT_SHOP_ID`.
+- Report учитывает готовые позиции, показывает review отдельно и использует московские календарные границы.
+- Save/confirm/exclude/restore/reset проверяют фактически изменённые строки; сбой audit log не маскируется как сбой основной мутации.
+- Добавлена миграция `20260623221651_repair_complete_single_item_sales.sql` для старых однозначных записей.
+- Добавлены regression tests parser/save/read-back/report/review/shop/timezone/STT.
+- Проверено: `npm run lint` — passed; `npm run test` — 8 files, 72 tests passed; `npm run build` — bot/web/shared passed.
+- Live Supabase read-back за 24 июня 2026 (`Europe/Moscow`) показывает `Ники`, 4 × 100, выручка 400.
+
 ## 2026-06-23 — Web App fallback и автоготовые voice-продажи
 
 - Убрана жёсткая клиентская блокировка Mini App без Telegram initData: `TelegramAuthBootstrap` больше не заменяет интерфейс красной ошибкой.

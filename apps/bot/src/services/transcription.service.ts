@@ -22,6 +22,8 @@ export async function transcribeAudio(env: AppEnv, audio: TranscriptionAudioFile
   form.append("file", new Blob([audioBuffer], { type: audio.contentType }), audio.filename);
   form.append("model", env.STT_MODEL || "whisper-large-v3-turbo");
   form.append("response_format", "json");
+  form.append("language", "ru");
+  form.append("prompt", "Русская запись продажи: название товара, количество, штуки или килограммы, цена в рублях.");
 
   const response = await fetch(env.STT_API_URL, {
     method: "POST",

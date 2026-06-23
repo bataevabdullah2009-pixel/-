@@ -18,6 +18,8 @@ Telegram voice
 
 `shop_id` никогда не приходит от клиента. Сервер определяет магазин по Telegram initData либо по server-side fallback env.
 
+Бот отвечает `✅ Запись сохранена` только после успешного `save_voice_sale` и read-back проверки созданной продажи и точного количества `sale_items`. Ошибка Supabase даёт ответ `⚠️ Не удалось сохранить запись. Попробуйте ещё раз.` без ложного success.
+
 ## Роли
 
 - `seller` — отправляет голосовые продажи в Telegram и должен быть активным в своём магазине.
@@ -71,14 +73,14 @@ Telegram voice
 Mini App работает в трёх режимах:
 
 - Telegram mode: клиент видит `window.Telegram.WebApp.initData`, `apiFetch` отправляет `x-telegram-init-data` и `x-app-mode: telegram`, сервер проверяет HMAC и находит owner/seller в БД.
-- Browser fallback mode: initData нет, `apiFetch` отправляет `x-app-mode: fallback`, сервер использует `DEFAULT_SHOP_ID` и `DEFAULT_SELLER_ID`, если `ALLOW_WEBAPP_FALLBACK=true`.
+- Browser fallback mode: initData нет, `apiFetch` отправляет `x-app-mode: fallback`, сервер загружает `DEFAULT_SELLER_ID` из БД и проверяет, что его `shop_id` совпадает с `DEFAULT_SHOP_ID`.
 - Error mode: UI показывает ошибку только для реальных проблем сервера, БД или конфигурации. Отсутствие initData само по себе не заменяет интерфейс красной блокировкой.
 
 `/debug-telegram` остаётся безопасной диагностикой SDK/initData и не является обязательным шагом для открытия отчёта.
 
 ## Supabase migrations
 
-Migrations создают shops, sellers, products, voice_records, sales, sale_items, audit_logs, soft-delete поля `sale_items.deleted_at`, `deleted_reason`, `deleted_previous_status`, `updated_at`, таблицу `owners` и функцию `save_voice_sale`. Исключение товара использует `deleted_at = now()`, восстановление — `deleted_at = null`.
+Migrations создают shops, sellers, products, voice_records, sales, sale_items, audit_logs, soft-delete поля `sale_items.deleted_at`, `deleted_reason`, `deleted_previous_status`, `updated_at`, таблицу `owners` и функцию `save_voice_sale`. Миграция `repair_complete_single_item_sales` исправляет старые однозначные single-item записи, которые были ошибочно сохранены в review. Исключение товара использует `deleted_at = now()`, восстановление — `deleted_at = null`.
 
 Пример назначения ролей:
 

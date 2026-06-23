@@ -9,4 +9,4 @@
 
 Клиентский Web App вызывает `getAppAuthContext()` и `apiFetch()`. Серверный Web App использует `resolveRequestContext()`. Явные Mini App API routes не должны иметь отдельную auth-логику.
 
-Voice sale сохраняется через RPC `save_voice_sale`; если RPC отсутствует во время rollout, server-side fallback insert создаёт voice record, sale и sale_items с компенсирующей очисткой при ошибке.
+Voice sale сохраняется только через RPC `save_voice_sale`. После RPC приложение проверяет sale и точное количество sale_items чтением из Supabase. Если RPC отсутствует или read-back не подтверждает строки, бот возвращает ошибку сохранения и не пишет success.

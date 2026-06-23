@@ -9,7 +9,7 @@
 - server `resolveRequestContext()` с Telegram и fallback modes;
 - server-derived shop isolation;
 - service role только на сервере;
-- RPC persistence с server fallback insert;
+- RPC persistence с обязательной read-back проверкой sale и sale_items;
 - автоматический `processed` для уверенных voice-позиций;
 - review только для реальных проблем распознавания;
 - soft delete, restore и reset day;

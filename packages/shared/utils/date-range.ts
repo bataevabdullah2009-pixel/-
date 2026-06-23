@@ -327,6 +327,10 @@ export function buildExcludedSaleItemPatch(
   };
 }
 
+export function isRevenueSaleItemStatus(status: string) {
+  return status === "processed" || status === "confirmed";
+}
+
 export function buildSalesReport(items: SaleItem[]): ReportSummary {
   const rows = new Map<string, { key: string; product_name: string; quantity: number; unit: string; revenue: number }>();
   const reviewItems: SaleItem[] = [];
@@ -338,7 +342,7 @@ export function buildSalesReport(items: SaleItem[]): ReportSummary {
     }
 
     if (
-      item.status === "processed" &&
+      isRevenueSaleItemStatus(item.status) &&
       item.product_id &&
       item.price !== null &&
       item.total !== null &&
@@ -353,8 +357,10 @@ export function buildSalesReport(items: SaleItem[]): ReportSummary {
       continue;
     }
 
-    if (item.status !== "processed" || item.price === null || item.total === null) {
-      reviewItems.push(item);
+    if (!isRevenueSaleItemStatus(item.status) || item.price === null || item.total === null) {
+      if (item.status !== "excluded") {
+        reviewItems.push(item);
+      }
       continue;
     }
 

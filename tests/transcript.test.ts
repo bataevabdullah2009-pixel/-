@@ -1,10 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { transcribeAudio } from "../apps/bot/src/services/transcription.service";
 import {
   deriveVoiceRecordStatus,
   ensureProcessedRecordHasCleanedText,
   parsedSaleSchema,
   voiceRecordSchema
 } from "../packages/shared/schemas/record.schema";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("transcript validation", () => {
   it("marks empty transcript as needs_review", () => {
@@ -52,5 +57,38 @@ describe("transcript validation", () => {
     });
 
     expect(record.status).toBe("processed");
+  });
+
+  it("asks STT to transcribe Russian speech", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ text: "Ники четыре штуки по сто рублей" })
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await transcribeAudio({
+      TELEGRAM_BOT_TOKEN: "token",
+      NEXT_PUBLIC_APP_URL: "https://voice-sales.example.com",
+      SUPABASE_URL: "https://project.supabase.co",
+      SUPABASE_ANON_KEY: "anon",
+      SUPABASE_SERVICE_ROLE_KEY: "service",
+      SUPABASE_STORAGE_BUCKET: "voice-records",
+      STT_API_KEY: "stt",
+      STT_API_URL: "https://api.groq.com/openai/v1/audio/transcriptions",
+      STT_MODEL: "whisper-large-v3",
+      LLM_API_KEY: "llm",
+      LLM_API_URL: "https://llm.example.com",
+      LLM_MODEL: "llm-model",
+      DEMO_MODE: false,
+      DEFAULT_SHOP_NAME: "Демо-магазин"
+    }, {
+      buffer: Buffer.from("audio"),
+      filename: "voice.ogg",
+      contentType: "audio/ogg"
+    });
+
+    const body = fetchMock.mock.calls[0]?.[1]?.body as FormData;
+    expect(body.get("language")).toBe("ru");
+    expect(body.get("prompt")).toContain("Русская запись продажи");
   });
 });

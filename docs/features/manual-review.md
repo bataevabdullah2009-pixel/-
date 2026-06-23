@@ -10,4 +10,4 @@ deleted_at = now()
 deleted_reason = excluded_by_owner
 ```
 
-Восстановление очищает `deleted_at` и возвращает предыдущий статус. После save/confirm/exclude/restore выполняется revalidation `/daily-report` и `/records`.
+Восстановление очищает `deleted_at` и возвращает предыдущий статус. Save/confirm/exclude/restore проверяют возвращённую строку Supabase, затем пересчитывают sale и выполняют revalidation `/daily-report` и `/records`. Audit log остаётся диагностикой и не превращает успешно выполненную основную мутацию в ошибку UI.

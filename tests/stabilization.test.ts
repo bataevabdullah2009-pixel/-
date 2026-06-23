@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildVoiceSaleRpcPayload,
   ensureReviewableSaleItems,
+  persistVoiceSale,
   resolveSellerAccess,
   SellerAccessError
 } from "../apps/bot/src/services/records.service";
@@ -11,6 +12,7 @@ import {
   createReportKeyboard,
   createReportMenuButton,
   createReportReplyKeyboard,
+  createVoiceSaveFailureMessage,
   createVoiceSaleUserMessage
 } from "../apps/bot/src/services/telegram.service";
 import { buildExcludedSaleItemPatch, buildManualSaleItemPatch, buildSalesReport } from "../packages/shared/utils/date-range";
@@ -244,6 +246,146 @@ describe("sales flow stabilization", () => {
 
     expect(payload.p_status).toBe("processed");
     expect(payload.p_items).toEqual([expect.objectContaining({ status: "processed", total: 400 })]);
+  });
+
+  it("creates sale and sale_items and verifies them before reporting success", async () => {
+    const persistedSales: Array<Record<string, unknown>> = [];
+    const persistedItems: Array<Record<string, unknown>> = [];
+    const payload = buildVoiceSaleRpcPayload({
+      seller: { id: "seller-1", shopId: "shop-1" },
+      telegramMessageId: "44",
+      audioPath: null,
+      audioUrl: null,
+      rawText: "Сникерс 5 штук по 100 рублей",
+      parsedSale: {
+        items: [],
+        raw_text: "Сникерс 5 штук по 100 рублей",
+        cleaned_text: "Сникерс, 5 штук по 100 рублей.",
+        needs_review: false
+      },
+      parserJson: null,
+      errorMessage: null,
+      saleStatus: "processed",
+      totalAmount: 500,
+      resolvedItems: [{
+        product_id: null,
+        product_name: "Сникерс",
+        quantity: 5,
+        unit: "шт",
+        price: 100,
+        total: 500,
+        confidence: 1,
+        status: "processed"
+      }]
+    });
+    const client = {
+      rpc: vi.fn(async () => {
+        persistedSales.push({
+          id: "sale-1",
+          shop_id: payload.p_shop_id,
+          seller_id: payload.p_seller_id,
+          voice_record_id: "voice-1"
+        });
+        persistedItems.push(...payload.p_items.map((saleItem, index) => ({
+          id: `item-${index + 1}`,
+          sale_id: "sale-1",
+          ...saleItem
+        })));
+        return { data: [{ sale_id: "sale-1", voice_record_id: "voice-1" }], error: null };
+      }),
+      from: vi.fn((table: string) => {
+        if (table === "sales") {
+          const query = {
+            select: vi.fn(() => query),
+            eq: vi.fn(() => query),
+            single: vi.fn(async () => ({ data: persistedSales[0], error: null }))
+          };
+          return query;
+        }
+
+        const query = {
+          select: vi.fn(() => query),
+          eq: vi.fn(async () => ({
+            data: persistedItems.map(({ id }) => ({ id })),
+            count: persistedItems.length,
+            error: null
+          }))
+        };
+        return query;
+      })
+    };
+
+    const result = await persistVoiceSale(client as never, payload);
+    const report = buildSalesReport(persistedItems.map((persistedItem) => ({
+      ...persistedItem,
+      created_at: "2026-06-24T10:00:00.000Z"
+    })) as SaleItem[]);
+
+    expect(result).toEqual({
+      sale_id: "sale-1",
+      voice_record_id: "voice-1",
+      item_count: 1
+    });
+    expect(persistedSales).toHaveLength(1);
+    expect(persistedItems).toHaveLength(1);
+    expect(report.totalRevenue).toBe(500);
+  });
+
+  it("rejects false success when no sale_items can be read back", async () => {
+    const payload = buildVoiceSaleRpcPayload({
+      seller: { id: "seller-1", shopId: "shop-1" },
+      telegramMessageId: "45",
+      audioPath: null,
+      audioUrl: null,
+      rawText: "Сникерс 5 штук по 100 рублей",
+      parsedSale: {
+        items: [],
+        raw_text: "Сникерс 5 штук по 100 рублей",
+        cleaned_text: "Сникерс, 5 штук по 100 рублей.",
+        needs_review: false
+      },
+      parserJson: null,
+      errorMessage: null,
+      saleStatus: "processed",
+      totalAmount: 500,
+      resolvedItems: [{
+        product_id: null,
+        product_name: "Сникерс",
+        quantity: 5,
+        unit: "шт",
+        price: 100,
+        total: 500,
+        confidence: 1,
+        status: "processed"
+      }]
+    });
+    const client = {
+      rpc: vi.fn().mockResolvedValue({
+        data: [{ sale_id: "sale-1", voice_record_id: "voice-1" }],
+        error: null
+      }),
+      from: vi.fn((table: string) => {
+        if (table === "sales") {
+          const query = {
+            select: vi.fn(() => query),
+            eq: vi.fn(() => query),
+            single: vi.fn().mockResolvedValue({ data: { id: "sale-1" }, error: null })
+          };
+          return query;
+        }
+
+        const query = {
+          select: vi.fn(() => query),
+          eq: vi.fn().mockResolvedValue({ data: [], count: 0, error: null })
+        };
+        return query;
+      })
+    };
+
+    await expect(persistVoiceSale(client as never, payload)).rejects.toThrow(
+      "Saved sale item count mismatch"
+    );
+    expect(createVoiceSaveFailureMessage()).toBe("⚠️ Не удалось сохранить запись. Попробуйте ещё раз.");
   });
 
   it("turns invalid LLM JSON into manual review instead of failing the voice", async () => {

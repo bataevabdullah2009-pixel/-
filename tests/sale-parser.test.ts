@@ -90,6 +90,79 @@ describe("sale parser evidence rules", () => {
     });
   });
 
+  it("parses Niki quantity and price written as words", () => {
+    expect(parseExample("Ники четыре штуки по сто рублей", "Ники")).toMatchObject({
+      product_name: "Ники",
+      quantity: 4,
+      unit: "шт",
+      price: 100,
+      total: 400,
+      status: "processed"
+    });
+  });
+
+  it("parses Snickers quantity and price written as digits", () => {
+    expect(parseExample("Сникерс 5 штук по 100 рублей", "Сникерс")).toMatchObject({
+      product_name: "Сникерс",
+      quantity: 5,
+      unit: "шт",
+      price: 100,
+      total: 500,
+      status: "processed"
+    });
+  });
+
+  it("uses matching cleaned Russian evidence when STT returns non-Cyrillic transliteration", () => {
+    const parsed = enforceTranscriptEvidence(
+      {
+        items: [{
+          product_name: "Ники",
+          quantity: 4,
+          unit: "шт",
+          price: 100,
+          total: 400,
+          confidence: 0.95
+        }],
+        raw_text: "",
+        cleaned_text: "",
+        needs_review: false
+      },
+      "Nikies četiri štuki po sto rubliai.",
+      "Ники, четыре штуки по сто рублей."
+    );
+
+    expect(normalizeSaleItemFields(parsed.items[0]!)).toMatchObject({
+      product_name: "Ники",
+      quantity: 4,
+      price: 100,
+      total: 400,
+      status: "processed"
+    });
+    expect(parsed.needs_review).toBe(false);
+  });
+
+  it("does not keep a complete confident item in review only because of the parser-level flag", () => {
+    const parsed = enforceTranscriptEvidence(
+      {
+        items: [{
+          product_name: "Сникерс",
+          quantity: 5,
+          unit: "шт",
+          price: 100,
+          total: 500,
+          confidence: 1
+        }],
+        raw_text: "",
+        cleaned_text: "",
+        needs_review: true
+      },
+      "Сникерс 5 штук по 100 рублей",
+      "Сникерс, 5 штук по 100 рублей."
+    );
+
+    expect(parsed.needs_review).toBe(false);
+  });
+
   it("accepts a price after 'по' without a ruble suffix", () => {
     expect(parseExample("Хлеб 4 штуки по 40", "Хлеб")).toMatchObject({
       quantity: 4,

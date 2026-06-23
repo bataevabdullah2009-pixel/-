@@ -97,7 +97,7 @@ export async function waitForTelegramWebApp(timeoutMs = 10000) {
 
   while (Date.now() - startedAt < timeoutMs) {
     const webApp = getTelegramWebApp();
-    if (webApp) return webApp;
+    if (webApp?.initData?.trim()) return webApp;
     await new Promise((resolve) => setTimeout(resolve, 50));
   }
 

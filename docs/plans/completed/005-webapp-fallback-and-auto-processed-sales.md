@@ -1,5 +1,7 @@
 # Web App fallback и автоготовые продажи — завершено 2026-06-23
 
+Актуальный P0 persistence contract и исправление report flow описаны в [плане 006](./006-p0-confirmed-persistence-and-report.md).
+
 ## Цель
 
 Убрать жёсткую блокировку Mini App без Telegram initData и вернуть нормальную voice-логику: готовые продажи сразу входят в отчёт, проверка нужна только для реальных проблем.

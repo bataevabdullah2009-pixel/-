@@ -16,7 +16,8 @@ import {
   apiFetch,
   getAppAuthContext,
   getTelegramInitData,
-  initializeTelegramWebApp
+  initializeTelegramWebApp,
+  waitForTelegramWebApp
 } from "../apps/web/src/lib/telegram-api";
 import {
   buildTelegramWebhookUrl,
@@ -54,6 +55,7 @@ function lookup(overrides: Partial<TelegramPrincipalLookup> = {}): TelegramPrinc
 
 describe("Telegram Mini App authentication", () => {
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
@@ -163,6 +165,37 @@ describe("Telegram Mini App authentication", () => {
     expect(principal.shopId).toBe("shop-1");
     expect(requireMatchingShop(principal.shopId, "shop-1")).toBe("shop-1");
     expect(() => requireMatchingShop(principal.shopId, "shop-2")).toThrow();
+  });
+
+  it("prefers the seller shop used by the bot when the same Telegram user is also an owner", async () => {
+    const principal = await resolveTelegramPrincipal(777, lookup({
+      findOwner: vi.fn().mockResolvedValue({
+        id: "owner-1",
+        shop_id: "shop-2",
+        telegram_id: 777,
+        is_active: true
+      })
+    }));
+
+    expect(principal).toMatchObject({
+      principalId: "seller-1",
+      shopId: "shop-1",
+      role: "seller"
+    });
+  });
+
+  it("waits for Telegram initData instead of locking into fallback mode too early", async () => {
+    vi.useFakeTimers();
+    const webApp = { initData: "" };
+    vi.stubGlobal("window", { Telegram: { WebApp: webApp } });
+
+    const pending = waitForTelegramWebApp(500);
+    setTimeout(() => {
+      webApp.initData = "signed-data";
+    }, 100);
+    await vi.advanceTimersByTimeAsync(100);
+
+    await expect(pending).resolves.toBe(webApp);
   });
 
   it("inactive seller is denied", async () => {

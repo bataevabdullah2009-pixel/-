@@ -19,9 +19,9 @@
 
 `resolveRequestContext(request)`:
 
-1. Если есть `x-telegram-init-data`, валидирует HMAC через `TELEGRAM_BOT_TOKEN`, находит active owner/seller и возвращает `shopId`.
-2. Если initData нет и `ALLOW_WEBAPP_FALLBACK=true`, берёт `DEFAULT_SHOP_ID` и `DEFAULT_SELLER_ID` из server env.
-3. Если initData нет и fallback выключен, возвращает 401 для route handlers или пустое состояние в Server Components без красной блокировки UI.
+1. Если есть `x-telegram-init-data`, валидирует HMAC через `TELEGRAM_BOT_TOKEN`, сначала ищет active seller, затем owner, и возвращает DB `shop_id`. Это совпадает с bot save, который всегда использует seller по `telegram_id`.
+2. Если initData нет и `ALLOW_WEBAPP_FALLBACK=true`, загружает `DEFAULT_SELLER_ID` из БД и требует совпадения его `shop_id` с `DEFAULT_SHOP_ID`.
+3. Если initData нет и fallback выключен, возвращает 401; report не должен показывать такую ошибку как обычный пустой результат.
 
 Fallback log содержит только безопасные признаки: `mode`, `hasDefaultShop`, `hasDefaultSeller`.
 

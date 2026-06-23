@@ -22,4 +22,17 @@ describe("date ranges", () => {
 
     expect(filterByDateRange(records, range).map((record) => record.id)).toEqual(["1"]);
   });
+
+  it("uses Moscow calendar boundaries around midnight", () => {
+    const range = getDateRange("today", {
+      now: new Date("2026-06-23T22:30:00.000Z")
+    });
+
+    expect(range.start).toBe("2026-06-23T21:00:00.000Z");
+    expect(range.end).toBe("2026-06-24T21:00:00.000Z");
+    expect(filterByDateRange([
+      { id: "before", created_at: "2026-06-23T20:59:59.999Z" },
+      { id: "inside", created_at: "2026-06-23T21:00:00.000Z" }
+    ], range).map((record) => record.id)).toEqual(["inside"]);
+  });
 });

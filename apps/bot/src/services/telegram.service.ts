@@ -36,6 +36,10 @@ export function createVoiceSaleUserMessage(recognizedText: string, needsAttentio
   return `✅ Запись сохранена: ${recognizedText}`;
 }
 
+export function createVoiceSaveFailureMessage() {
+  return "⚠️ Не удалось сохранить запись. Попробуйте ещё раз.";
+}
+
 function safeTelegramFileName(fileId: string) {
   return `${fileId.replace(/[^a-zA-Z0-9_-]/g, "_")}.ogg`;
 }

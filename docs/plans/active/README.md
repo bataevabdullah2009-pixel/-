@@ -1,3 +1,3 @@
 # Активные планы
 
-Активных планов нет. Текущий hotfix закрыт в `../completed/005-webapp-fallback-and-auto-processed-sales.md`.
+Активных планов нет. P0 pipeline hotfix закрыт в `../completed/006-p0-confirmed-persistence-and-report.md`.

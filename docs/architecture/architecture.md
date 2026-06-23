@@ -4,9 +4,10 @@
 Telegram voice
   -> bot webhook / process-update
   -> audio preparation
-  -> STT
+  -> Russian STT
   -> LLM parser + evidence rules
-  -> Supabase save_voice_sale or server fallback insert
+  -> Supabase save_voice_sale
+  -> sales/sale_items read-back verification
   -> Next.js App Router Web App
   -> report / records / sellers / item mutations
 ```
@@ -20,7 +21,7 @@ Telegram mode:
   -> apiFetch(x-app-mode=telegram, x-telegram-init-data)
   -> resolveRequestContext()
   -> HMAC validation
-  -> owner/seller lookup
+  -> seller-first lookup, then owner
   -> server-derived shop_id
 
 Browser fallback mode:
@@ -29,6 +30,7 @@ Browser fallback mode:
   -> resolveRequestContext()
   -> ALLOW_WEBAPP_FALLBACK=true
   -> DEFAULT_SHOP_ID / DEFAULT_SELLER_ID from server env
+  -> seller row lookup and shop_id equality check
 ```
 
 `shop_id` не является частью доверенного client contract. Отчёт, записи, продавцы и Server Actions используют только server-derived context.

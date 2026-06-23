@@ -25,20 +25,20 @@ export async function resolveTelegramPrincipal(
   telegramId: number,
   lookup: TelegramPrincipalLookup
 ) {
-  const owner = await lookup.findOwner(telegramId);
-  if (owner && owner.is_active !== true) {
-    throw new TelegramPrincipalError("SELLER_INACTIVE", "Доступ к магазину отключён");
-  }
-
-  const seller = owner ? null : await lookup.findSeller(telegramId);
+  const seller = await lookup.findSeller(telegramId);
   if (seller && seller.is_active !== true) {
     throw new TelegramPrincipalError("SELLER_INACTIVE", "Доступ к магазину отключён");
   }
 
-  const principal = owner
-    ? { record: owner, role: "owner" as const }
-    : seller
-      ? { record: seller, role: "seller" as const }
+  const owner = seller ? null : await lookup.findOwner(telegramId);
+  if (owner && owner.is_active !== true) {
+    throw new TelegramPrincipalError("SELLER_INACTIVE", "Доступ к магазину отключён");
+  }
+
+  const principal = seller
+    ? { record: seller, role: "seller" as const }
+    : owner
+      ? { record: owner, role: "owner" as const }
       : null;
 
   if (!principal) {

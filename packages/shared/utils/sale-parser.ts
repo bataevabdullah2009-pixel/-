@@ -131,26 +131,66 @@ function getItemSegments(rawText: string, items: ParsedSaleItem[]) {
   });
 }
 
-function applyEvidence(item: ParsedSaleItem, segment: string): ParsedSaleItem {
+function extractEvidence(segment: string) {
   const quantityMatch = segment.match(QUANTITY_PATTERN);
   const priceMatch = segment.match(PRICE_PATTERN);
-  const quantity = parseSpokenNumber(quantityMatch?.[1]);
-  const price = parseSpokenNumber(priceMatch?.[1] ?? priceMatch?.[2]);
+  const productName = quantityMatch?.index === undefined
+    ? ""
+    : segment
+      .slice(0, quantityMatch.index)
+      .replace(/[\s,;:—–-]+$/u, "")
+      .trim();
+
+  return {
+    productName,
+    quantity: parseSpokenNumber(quantityMatch?.[1]),
+    unit: normalizeEvidenceUnit(quantityMatch?.[2]),
+    price: parseSpokenNumber(priceMatch?.[1] ?? priceMatch?.[2])
+  };
+}
+
+function matchesParsedNumber(value: number | null, parsedValue: number | null | undefined) {
+  return value !== null && typeof parsedValue === "number" && Number(parsedValue) === value;
+}
+
+function applyEvidence(item: ParsedSaleItem, rawSegment: string, cleanedSegment: string): ParsedSaleItem {
+  const rawEvidence = extractEvidence(rawSegment);
+  const cleanedEvidence = extractEvidence(cleanedSegment);
+  const allowCleanedFallback = !/\p{Script=Cyrillic}/u.test(rawSegment);
+  const quantity = rawEvidence.quantity ??
+    (allowCleanedFallback && matchesParsedNumber(cleanedEvidence.quantity, item.quantity)
+      ? cleanedEvidence.quantity
+      : null);
+  const price = rawEvidence.price ??
+    (allowCleanedFallback && matchesParsedNumber(cleanedEvidence.price, item.price)
+      ? cleanedEvidence.price
+      : null);
+  const unit = rawEvidence.quantity !== null
+    ? rawEvidence.unit
+    : quantity !== null
+      ? cleanedEvidence.unit
+      : null;
+  const productName = allowCleanedFallback && cleanedEvidence.productName
+    ? cleanedEvidence.productName
+    : item.product_name;
 
   return {
     ...item,
+    product_name: productName,
     quantity,
-    unit: quantity === null ? null : normalizeEvidenceUnit(quantityMatch?.[2]),
+    unit,
     price,
     total: quantity === null || price === null ? null : Number((quantity * price).toFixed(2))
   };
 }
 
 export function enforceTranscriptEvidence(parsedSale: ParsedSale, rawText: string, cleanedText: string): ParsedSale {
-  const segments = getItemSegments(rawText, parsedSale.items);
-  const items = parsedSale.items.map((item, index) => applyEvidence(item, segments[index] ?? ""));
+  const rawSegments = getItemSegments(rawText, parsedSale.items);
+  const cleanedSegments = getItemSegments(cleanedText, parsedSale.items);
+  const items = parsedSale.items.map((item, index) =>
+    applyEvidence(item, rawSegments[index] ?? "", cleanedSegments[index] ?? "")
+  );
   const needsReview =
-    parsedSale.needs_review ||
     items.length === 0 ||
     items.some((item) =>
       !item.product_name.trim() ||

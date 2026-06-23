@@ -244,78 +244,84 @@ export function buildVoiceSaleRpcPayload(params: {
   };
 }
 
-type VoiceSaleRpcPayload = ReturnType<typeof buildVoiceSaleRpcPayload>;
+export type VoiceSaleRpcPayload = ReturnType<typeof buildVoiceSaleRpcPayload>;
 
 function isMissingSaveVoiceSaleRpc(error: { code?: string; message?: string }) {
   return error.code === "PGRST202";
 }
 
-async function persistVoiceSaleDirectly(supabase: SupabaseClient, payload: VoiceSaleRpcPayload) {
-  const { data: voiceRecord, error: voiceError } = await supabase
-    .from("voice_records")
-    .insert({
-      shop_id: payload.p_shop_id,
-      seller_id: payload.p_seller_id,
-      telegram_message_id: payload.p_telegram_message_id,
-      audio_path: payload.p_audio_path,
-      audio_url: payload.p_audio_url,
-      raw_text: payload.p_raw_text,
-      cleaned_text: payload.p_cleaned_text,
-      parser_json: payload.p_parser_json,
-      status: payload.p_status,
-      error_message: payload.p_error_message
-    })
-    .select("id")
-    .single();
+async function verifyVoiceSalePersistence(
+  supabase: SupabaseClient,
+  payload: VoiceSaleRpcPayload,
+  persisted: { voice_record_id?: unknown; sale_id?: unknown } | null | undefined
+) {
+  if (!persisted?.sale_id || !persisted?.voice_record_id) {
+    throw new Error("Voice sale persistence returned no identifiers.");
+  }
 
-  if (voiceError) throw voiceError;
+  const expectedItemCount = payload.p_items.length;
+  if (expectedItemCount === 0) {
+    throw new Error("Voice sale persistence requires at least one sale item.");
+  }
 
+  const saleId = String(persisted.sale_id);
+  const voiceRecordId = String(persisted.voice_record_id);
   const { data: sale, error: saleError } = await supabase
     .from("sales")
-    .insert({
-      shop_id: payload.p_shop_id,
-      seller_id: payload.p_seller_id,
-      voice_record_id: voiceRecord.id,
-      raw_text: payload.p_raw_text,
-      cleaned_text: payload.p_cleaned_text,
-      total_amount: payload.p_total_amount,
-      status: payload.p_status
-    })
-    .select("id")
+    .select("id, shop_id, seller_id, voice_record_id")
+    .eq("id", saleId)
+    .eq("shop_id", payload.p_shop_id)
+    .eq("seller_id", payload.p_seller_id)
+    .eq("voice_record_id", voiceRecordId)
     .single();
 
   if (saleError) {
-    await supabase.from("voice_records").delete().eq("id", voiceRecord.id);
     throw saleError;
   }
+  if (!sale?.id) {
+    throw new Error("Saved sale could not be read back.");
+  }
 
-  const items = payload.p_items as ResolvedSaleItem[];
-  const { error: itemsError } = await supabase.from("sale_items").insert(
-    items.map((item) => ({ sale_id: sale.id, ...item }))
-  );
+  const { data: items, count, error: itemsError } = await supabase
+    .from("sale_items")
+    .select("id", { count: "exact" })
+    .eq("sale_id", saleId);
 
   if (itemsError) {
-    await supabase.from("sales").delete().eq("id", sale.id);
-    await supabase.from("voice_records").delete().eq("id", voiceRecord.id);
     throw itemsError;
   }
 
-  return { voice_record_id: voiceRecord.id, sale_id: sale.id };
-}
-
-async function persistVoiceSale(supabase: SupabaseClient, payload: VoiceSaleRpcPayload) {
-  const { data: persistedRows, error } = await supabase.rpc("save_voice_sale", payload);
-
-  if (!error) {
-    return Array.isArray(persistedRows) ? persistedRows[0] : persistedRows;
+  const insertedItemCount = count ?? items?.length ?? 0;
+  if (insertedItemCount !== expectedItemCount || items?.length !== expectedItemCount) {
+    throw new Error(
+      `Saved sale item count mismatch: expected=${expectedItemCount}; actual=${insertedItemCount}.`
+    );
   }
 
-  if (!isMissingSaveVoiceSaleRpc(error)) {
+  return {
+    voice_record_id: voiceRecordId,
+    sale_id: saleId,
+    item_count: insertedItemCount
+  };
+}
+
+export async function persistVoiceSale(supabase: SupabaseClient, payload: VoiceSaleRpcPayload) {
+  const { data: persistedRows, error } = await supabase.rpc("save_voice_sale", payload);
+
+  if (error) {
+    if (isMissingSaveVoiceSaleRpc(error)) {
+      logger.error("save_voice_sale_rpc_missing", {
+        code: error.code,
+        telegramMessageId: payload.p_telegram_message_id,
+        sellerId: payload.p_seller_id,
+        shopId: payload.p_shop_id
+      });
+    }
     throw error;
   }
 
-  logger.warn("save_voice_sale_rpc_missing", { code: error.code });
-  return persistVoiceSaleDirectly(supabase, payload);
+  const persisted = Array.isArray(persistedRows) ? persistedRows[0] : persistedRows;
+  return verifyVoiceSalePersistence(supabase, payload, persisted);
 }
 
 function calculateProcessedTotal(items: ResolvedSaleItem[]) {
@@ -354,7 +360,6 @@ export async function saveVoiceSale(params: {
   const resolvedItems = await Promise.all(sourceItems.map((item) => resolveSaleItem(env, seller.shopId, item)));
   const needsAttention =
     Boolean(errorMessage) ||
-    parsedSale.needs_review ||
     resolvedItems.length === 0 ||
     resolvedItems.some((item) => item.status !== "processed");
   const saleStatus: VoiceRecordStatus = needsAttention ? "needs_review" : "processed";
@@ -374,10 +379,6 @@ export async function saveVoiceSale(params: {
     resolvedItems
   });
   const persisted = await persistVoiceSale(supabase, rpcPayload);
-  if (!persisted?.sale_id || !persisted?.voice_record_id) {
-    throw new Error("Voice sale persistence returned no identifiers.");
-  }
-
   const saleId = String(persisted.sale_id);
   const voiceRecordId = String(persisted.voice_record_id);
 
@@ -411,7 +412,7 @@ export async function saveVoiceSale(params: {
     voiceRecordId,
     status: saleStatus,
     totalAmount,
-    itemCount: resolvedItems.length,
+    itemCount: persisted.item_count,
     needsAttention
   };
 }

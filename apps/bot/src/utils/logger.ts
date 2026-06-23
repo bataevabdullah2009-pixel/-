@@ -8,6 +8,25 @@ export function redactSensitiveText(value: string) {
     .replace(/((?:api[_-]?key|token|secret|password)=)[^&\s"']+/gi, "$1[REDACTED]");
 }
 
+export function formatErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return redactSensitiveText(error.message);
+  }
+
+  if (error && typeof error === "object") {
+    const source = error as Record<string, unknown>;
+    const fields = ["code", "message", "details", "hint"]
+      .map((key) => source[key] ? `${key}=${String(source[key])}` : "")
+      .filter(Boolean);
+
+    if (fields.length) {
+      return redactSensitiveText(fields.join("; "));
+    }
+  }
+
+  return redactSensitiveText(String(error));
+}
+
 function redactValue(value: unknown, key?: string): unknown {
   if (key && SENSITIVE_KEY_PATTERN.test(key)) {
     return "[REDACTED]";

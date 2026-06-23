@@ -7,6 +7,7 @@ import {
   displayProductName,
   filterByDateRange,
   getDateRange,
+  isRevenueSaleItemStatus,
   normalizeProductName,
   normalizeUnit
 } from "@voice-sales-log/shared/utils/date-range";
@@ -100,7 +101,7 @@ function logServerError(operation: string, error: unknown) {
 function reportLoadMessage(error: unknown) {
   if (error instanceof OwnerAccessError) {
     if (error.code === "TELEGRAM_INIT_DATA_MISSING" || error.code === "TELEGRAM_INIT_DATA_INVALID") {
-      return null;
+      return "Не удалось подтвердить Telegram-сессию. Откройте отчёт из кнопки бота ещё раз.";
     }
     if (error.code === "SELLER_NOT_LINKED") return "Ваш Telegram не привязан к магазину";
     if (error.code === "SELLER_INACTIVE") return "Доступ к магазину отключён";
@@ -369,6 +370,12 @@ async function writeAuditLog(
   return error?.message ?? null;
 }
 
+function logAuditFailure(action: string, error: string | null) {
+  if (error) {
+    console.error(`[records] ${action} audit log failed`, { error });
+  }
+}
+
 async function recalculateSale(admin: AdminClient, saleId: string, shopId: string): Promise<MutationResult> {
   const context = await getSaleContext(admin, saleId, shopId);
 
@@ -389,11 +396,12 @@ async function recalculateSale(admin: AdminClient, saleId: string, shopId: strin
   const activeItems = saleItems ?? [];
   const totalAmount = Number(
     activeItems
-      .filter((item: any) => item.status === "processed" && item.total !== null)
+      .filter((item: any) => isRevenueSaleItemStatus(String(item.status)) && item.total !== null)
       .reduce((sum: number, item: any) => sum + Number(item.total), 0)
       .toFixed(2)
   );
-  const saleStatus = activeItems.length > 0 && activeItems.every((item: any) => item.status === "processed")
+  const saleStatus = activeItems.length > 0 &&
+    activeItems.every((item: any) => isRevenueSaleItemStatus(String(item.status)))
     ? "processed"
     : "needs_review";
 
@@ -401,7 +409,9 @@ async function recalculateSale(admin: AdminClient, saleId: string, shopId: strin
     .from("sales")
     .update({ total_amount: totalAmount, status: saleStatus })
     .eq("id", saleId)
-    .eq("shop_id", shopId);
+    .eq("shop_id", shopId)
+    .select("id")
+    .single();
 
   if (saleUpdateError) {
     return { ok: false, message: saleUpdateError.message };
@@ -412,7 +422,9 @@ async function recalculateSale(admin: AdminClient, saleId: string, shopId: strin
       .from("voice_records")
       .update({ status: saleStatus })
       .eq("id", context.data.voice_record_id)
-      .eq("shop_id", shopId);
+      .eq("shop_id", shopId)
+      .select("id")
+      .single();
 
     if (voiceRecordUpdateError) {
       return { ok: false, message: voiceRecordUpdateError.message };
@@ -564,10 +576,7 @@ export async function updateSaleItem(params: {
       status: patch.status
     }
   });
-
-  if (auditError) {
-    return { ok: false, message: `Позиция изменена, но audit log не записан: ${auditError}` };
-  }
+  logAuditFailure("sale_item_updated", auditError);
 
   return {
     ok: true,
@@ -621,7 +630,7 @@ export async function confirmSaleItem(itemId: string): Promise<MutationResult> {
 
   requireShopAccess(owner, String(context.data.shop_id));
   const updatedAt = new Date().toISOString();
-  const { error } = await admin
+  const { data: confirmedItem, error } = await admin
     .from("sale_items")
     .update({
       product_name: patch.product_name,
@@ -634,13 +643,15 @@ export async function confirmSaleItem(itemId: string): Promise<MutationResult> {
       updated_at: updatedAt
     })
     .eq("id", itemId)
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .select("sale_id")
+    .single();
 
   if (error) {
     return { ok: false, message: error.message };
   }
 
-  const recalculation = await recalculateSale(admin, item.sale_id, owner.shopId);
+  const recalculation = await recalculateSale(admin, confirmedItem.sale_id, owner.shopId);
   if (!recalculation.ok) {
     return recalculation;
   }
@@ -652,10 +663,8 @@ export async function confirmSaleItem(itemId: string): Promise<MutationResult> {
     price: patch.price,
     total: patch.total
   });
-
-  return auditError
-    ? { ok: false, message: `Позиция подтверждена, но audit log не записан: ${auditError}` }
-    : { ok: true, message: "Позиция подтверждена и учтена в выручке." };
+  logAuditFailure("sale_item_confirmed", auditError);
+  return { ok: true, message: "Позиция подтверждена и учтена в выручке." };
 }
 
 export async function excludeSaleItem(itemId: string): Promise<MutationResult> {
@@ -711,10 +720,8 @@ export async function excludeSaleItem(itemId: string): Promise<MutationResult> {
     deleted_at: patch.deleted_at,
     reason: patch.deleted_reason
   });
-
-  return auditError
-    ? { ok: false, message: `Позиция исключена, но audit log не записан: ${auditError}` }
-    : { ok: true, message: "Позиция исключена из выручки. Её можно восстановить." };
+  logAuditFailure("sale_item_deleted", auditError);
+  return { ok: true, message: "Позиция исключена из выручки. Её можно восстановить." };
 }
 
 export async function restoreSaleItem(itemId: string): Promise<MutationResult> {
@@ -747,7 +754,7 @@ export async function restoreSaleItem(itemId: string): Promise<MutationResult> {
   requireShopAccess(owner, String(context.data.shop_id));
 
   const updatedAt = new Date().toISOString();
-  const { error } = await admin
+  const { data: restoredItem, error } = await admin
     .from("sale_items")
     .update({
       status: item.deleted_previous_status ?? "needs_review",
@@ -757,13 +764,15 @@ export async function restoreSaleItem(itemId: string): Promise<MutationResult> {
       updated_at: updatedAt
     })
     .eq("id", itemId)
-    .not("deleted_at", "is", null);
+    .not("deleted_at", "is", null)
+    .select("sale_id")
+    .single();
 
   if (error) {
     return { ok: false, message: error.message };
   }
 
-  const recalculation = await recalculateSale(admin, item.sale_id, owner.shopId);
+  const recalculation = await recalculateSale(admin, restoredItem.sale_id, owner.shopId);
   if (!recalculation.ok) {
     return recalculation;
   }
@@ -774,10 +783,8 @@ export async function restoreSaleItem(itemId: string): Promise<MutationResult> {
     previous_deleted_at: item.deleted_at,
     previous_reason: item.deleted_reason
   });
-
-  return auditError
-    ? { ok: false, message: `Позиция восстановлена, но audit log не записан: ${auditError}` }
-    : { ok: true, message: "Позиция восстановлена и снова учитывается в отчёте." };
+  logAuditFailure("sale_item_restored", auditError);
+  return { ok: true, message: "Позиция восстановлена и снова учитывается в отчёте." };
 }
 
 export async function resetDay(range: { start: string; end: string }): Promise<MutationResult> {
@@ -831,7 +838,7 @@ export async function resetDay(range: { start: string; end: string }): Promise<M
     const ids = activeItems.filter((item: any) => item.status === status).map((item: any) => item.id);
     if (!ids.length) continue;
 
-    const { error } = await admin
+    const { data: excludedItems, error } = await admin
       .from("sale_items")
       .update({
         status: "excluded",
@@ -841,10 +848,14 @@ export async function resetDay(range: { start: string; end: string }): Promise<M
         updated_at: deletedAt
       })
       .in("id", ids)
-      .is("deleted_at", null);
+      .is("deleted_at", null)
+      .select("id");
 
     if (error) {
       return { ok: false, message: error.message };
+    }
+    if (excludedItems?.length !== ids.length) {
+      return { ok: false, message: "Не все позиции были исключены из отчёта." };
     }
   }
 
@@ -867,9 +878,7 @@ export async function resetDay(range: { start: string; end: string }): Promise<M
     }
   );
 
-  if (auditError) {
-    return { ok: false, message: `День сброшен, но audit log не записан: ${auditError}` };
-  }
+  logAuditFailure("daily_revenue_reset", auditError);
 
   return {
     ok: true,

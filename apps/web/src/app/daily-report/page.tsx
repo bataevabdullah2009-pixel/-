@@ -5,6 +5,7 @@ import { RefreshButton } from "@/components/RefreshButton";
 import { getReport } from "@/features/records/records.api";
 import type { SearchParams } from "@/features/records/records.types";
 import type { SaleItem } from "@voice-sales-log/shared/types";
+import { isRevenueSaleItemStatus } from "@voice-sales-log/shared/utils/date-range";
 import {
   formatCurrency,
   formatQuantity,
@@ -88,8 +89,8 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
   if (date) returnQuery.set("date", date);
   const returnTo = `/daily-report?${returnQuery.toString()}#items`;
   const isSingleDay = period === "today" || period === "yesterday" || period === "custom";
-  const reviewItems = items.filter((item) => item.status === "needs_review" || item.status === "needs_price");
-  const processedItems = items.filter((item) => item.status === "processed");
+  const reviewItems = summary.reviewItems;
+  const processedItems = items.filter((item) => isRevenueSaleItemStatus(item.status));
 
   return (
     <section className="pageStack">
