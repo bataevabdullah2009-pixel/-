@@ -32,4 +32,6 @@ npm run test
 npm run build
 ```
 
+Дополнительный P0-контроль использует фиксированный Telegram Mini App fixture с `signature`, `chat_instance`, `photo_url` и tamper-проверкой. Production smoke проверяет `POST /api/auth/telegram`, session cookie, seller/shop в Vercel logs и совпадение live Supabase counts с rendered report.
+
 Если команда не запускалась или упала, это указывается явно.

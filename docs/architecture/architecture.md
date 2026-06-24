@@ -21,7 +21,7 @@ Telegram mode:
   -> client checks WebApp + raw initData + initDataUnsafe.user.id
   -> apiFetch(x-app-mode=telegram, x-telegram-init-data=<raw initData>)
   -> resolveRequestContext()
-  -> HMAC via TELEGRAM_BOT_TOKEN, all fields except hash
+  -> deterministic key sort + HMAC via TELEGRAM_BOT_TOKEN, all fields except hash
   -> seller lookup by Telegram user id
   -> optional seller creation from active owner binding in the same shop
   -> server-derived shop_id

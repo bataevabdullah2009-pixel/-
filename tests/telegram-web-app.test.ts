@@ -2,6 +2,7 @@ import { createHmac } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { describeTelegramAuthError } from "../apps/web/src/lib/telegram-auth-errors";
 import {
+  buildTelegramDataCheckString,
   requireMatchingShop,
   requireTelegramInitDataHeader,
   TelegramInitDataError,
@@ -33,14 +34,21 @@ function signedInitData(botToken: string, telegramId: number, authDate: number) 
     signature: "telegram-ed25519-signature",
     user: JSON.stringify({ id: telegramId, first_name: "Owner" })
   });
-  const dataCheckString = [...params.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, value]) => `${key}=${value}`)
-    .join("\n");
+  const dataCheckString = buildTelegramDataCheckString(params);
   const secret = createHmac("sha256", "WebAppData").update(botToken).digest();
   params.set("hash", createHmac("sha256", secret).update(dataCheckString).digest("hex"));
   return params.toString();
 }
+
+const telegramFixtureInitData = [
+  "user=%7B%22id%22%3A279058397%2C%22first_name%22%3A%22Vladislav+%2B+-+%3F+%2F%22%2C%22last_name%22%3A%22Kibenko%22%2C%22username%22%3A%22vdkfrost%22%2C%22language_code%22%3A%22ru%22%2C%22is_premium%22%3Atrue%2C%22allows_write_to_pm%22%3Atrue%2C%22photo_url%22%3A%22https%3A%2F%2Ft.me%2Fi%2Fuserpic%2F320%2Fexample.svg%22%7D",
+  "chat_instance=8134722200314281151",
+  "chat_type=private",
+  "auth_date=1733509682",
+  "signature=TYJxVcisqbWjtodPepiJ6ghziUL94-KNpG8Pau-X7oNNLNBM72APCpi_RKiUlBvcqo5L-LAxIc3dnTzcZX_PDg",
+  "hash=fd58ee89d5e4646f39a45a52b77b8a9c9157dd2c4e2813d489a01d787a05b516"
+].join("&");
+const telegramFixtureBotToken = "123456:telegram-fixture-secret";
 
 function lookup(overrides: Partial<TelegramPrincipalLookup> = {}): TelegramPrincipalLookup {
   return {
@@ -180,6 +188,38 @@ describe("Telegram Mini App authentication", () => {
       telegramId: 777,
       shopId: "shop-1",
       role: "seller"
+    });
+  });
+
+  it("accepts a fixed Telegram Mini App fixture containing signature and user photo_url", () => {
+    const result = verifyTelegramInitData(
+      telegramFixtureInitData,
+      telegramFixtureBotToken,
+      { now: new Date(1733509682 * 1000) }
+    );
+
+    expect(result.user).toMatchObject({
+      id: 279058397,
+      first_name: "Vladislav + - ? /",
+      username: "vdkfrost"
+    });
+  });
+
+  it("rejects a tampered fixed Telegram Mini App fixture with 401 mapping", () => {
+    let error: unknown;
+    try {
+      verifyTelegramInitData(
+        telegramFixtureInitData.replace("chat_type=private", "chat_type=group"),
+        telegramFixtureBotToken,
+        { now: new Date(1733509682 * 1000) }
+      );
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(describeTelegramAuthError(error)).toMatchObject({
+      status: 401,
+      code: "TELEGRAM_INIT_DATA_INVALID"
     });
   });
 

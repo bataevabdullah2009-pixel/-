@@ -9,6 +9,8 @@ Auth modes:
 
 Во время bootstrap UI показывает состояние проверки. Ошибка Telegram или сервера отображается явно и не заменяется нулевым отчётом. Если raw initData валиден, production-блокировка «откройте через кнопку бота» не показывается.
 
+Auth log содержит только безопасные признаки: `initDataLength`, Telegram user id, seller id, shop id и error reason. Raw initData, bot token и webhook secret не логируются.
+
 Debug page и кнопка `/debug-telegram` доступны в production только при `DEBUG_TELEGRAM_WEBAPP=true`.
 
 Навигация: отчёт, записи, продавцы.

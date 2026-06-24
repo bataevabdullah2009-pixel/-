@@ -78,6 +78,8 @@ Mini App работает в трёх режимах:
 - Browser fallback mode: initData нет, `apiFetch` отправляет `x-app-mode: fallback`, сервер загружает `DEFAULT_SELLER_ID` из БД и проверяет, что его `shop_id` совпадает с `DEFAULT_SHOP_ID`.
 - Error mode: UI показывает явную причину доступа и не маскирует auth/DB ошибку нулевым отчётом или сообщением «Записей нет».
 
+Production smoke 24 июня 2026 подтвердил полный путь `raw initData → /api/auth/telegram → seller/shop → sales → sale_items`: оба активных seller получили session cookie, а report прочитал 4 продажи и 4 позиции за текущий день из одного `shop_id`.
+
 `TELEGRAM_WEBHOOK_SECRET` используется только для webhook header и не участвует в WebApp HMAC. `/debug-telegram` доступен в production только при `DEBUG_TELEGRAM_WEBAPP=true`.
 
 ## Supabase migrations

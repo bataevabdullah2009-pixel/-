@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-06-24 — P0 production verification hardening
+
+- Сборка Telegram data-check-string переведена на детерминированную ordinal-сортировку ключей; исключается только `hash`.
+- Добавлен фиксированный Telegram Mini App fixture с полями `signature`, `photo_url`, `chat_instance` и проверкой tamper → `401`.
+- Auth API теперь логирует безопасный `initDataLength`, не выводя raw initData или токены.
+- Live Supabase/Vercel smoke подтвердил для обоих активных seller один `shop_id`, `200` auth, session cookie и ненулевой report (`4 sales / 4 sale_items` за 24 июня 2026, Europe/Moscow).
+- Voice/STT/parser/save pipeline и схема базы не изменялись.
+
 ## 2026-06-24 — P0: Telegram WebApp session и shop resolver
 
 - Исправлена HMAC-проверка актуального Telegram `initData`: data-check-string теперь исключает только `hash` и сохраняет поле `signature`.

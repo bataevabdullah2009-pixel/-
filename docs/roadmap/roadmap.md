@@ -24,3 +24,7 @@ Production-oriented MVP голосового журнала продаж:
 ## Не входит в MVP
 
 CRM, склад, касса, онлайн-оплата и клиентская база.
+
+## Production verification
+
+24 июня 2026 server-side smoke подтвердил raw initData auth, session cookie, единый seller shop и ненулевые `sales/sale_items` counts. В backlog остаётся только автоматизация запуска smoke из реального Telegram-клиента после deploy.

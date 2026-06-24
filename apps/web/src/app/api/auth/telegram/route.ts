@@ -15,14 +15,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const receivedInitData = readTelegramInitDataHeader(request.headers);
+
   try {
-    const receivedInitData = readTelegramInitDataHeader(request.headers);
     const context = await resolveRequestContext(request);
     console.info("webapp auth accepted", {
       telegramUserId: context.telegramId,
       sellerId: context.sellerId,
       shopId: context.shopId,
       mode: context.mode,
+      initDataLength: receivedInitData.length,
       errorReason: null
     });
 
@@ -45,6 +47,7 @@ export async function POST(request: Request) {
       console.info("webapp auth rejected", {
         status: details.status,
         code: details.code,
+        initDataLength: receivedInitData.length,
         errorReason: getTelegramAuthErrorReason(error)
       });
     }

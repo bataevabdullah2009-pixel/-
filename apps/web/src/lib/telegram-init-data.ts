@@ -54,6 +54,17 @@ export function requireTelegramInitDataHeader(headers: Pick<Headers, "get">) {
   return initData;
 }
 
+export function buildTelegramDataCheckString(params: URLSearchParams) {
+  return [...params.entries()]
+    .filter(([key]) => key !== "hash")
+    .sort(([left], [right]) => {
+      if (left === right) return 0;
+      return left < right ? -1 : 1;
+    })
+    .map(([key, value]) => `${key}=${value}`)
+    .join("\n");
+}
+
 export function verifyTelegramInitData(
   initData: string,
   botToken: string,
@@ -87,11 +98,7 @@ export function verifyTelegramInitData(
     );
   }
 
-  const dataCheckString = [...params.entries()]
-    .filter(([key]) => key !== "hash")
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, value]) => `${key}=${value}`)
-    .join("\n");
+  const dataCheckString = buildTelegramDataCheckString(params);
   const secretKey = createHmac("sha256", "WebAppData").update(botToken).digest();
   const expectedHash = createHmac("sha256", secretKey).update(dataCheckString).digest();
   const actualHash = Buffer.from(receivedHash, "hex");
