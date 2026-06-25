@@ -2,23 +2,19 @@ import { ConfirmSubmitButton } from "@/components/ConfirmSubmitButton";
 import { DateFilter } from "@/components/DateFilter";
 import { EmptyState } from "@/components/EmptyState";
 import { RefreshButton } from "@/components/RefreshButton";
+import { SaleItemCard } from "@/components/SaleItemCard";
 import { getReport } from "@/features/records/records.api";
 import type { SearchParams } from "@/features/records/records.types";
-import type { SaleItem } from "@voice-sales-log/shared/types";
 import { isRevenueSaleItemStatus } from "@voice-sales-log/shared/utils/date-range";
 import {
   formatCurrency,
   formatQuantity,
   getReportFilters,
-  getStatusLabel,
   getStringParam
 } from "@/features/records/records.utils";
 import {
-  confirmSaleItemAction,
-  excludeSaleItemAction,
   resetDayRevenueAction,
-  restoreSaleItemAction,
-  updateSaleItemAction
+  restoreSaleItemAction
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -26,57 +22,6 @@ export const dynamic = "force-dynamic";
 type DailyReportPageProps = {
   searchParams: Promise<SearchParams>;
 };
-
-function SaleItemEditor({ item, returnTo }: { item: SaleItem; returnTo: string }) {
-  return (
-    <article className={`itemEditorCard ${item.status !== "processed" ? "itemEditorCardAttention" : ""}`}>
-      <div className="itemEditorHeader">
-        <div>
-          <strong>{item.product_name || "Без названия"}</strong>
-          <span>{item.total === null ? "Не входит в выручку" : formatCurrency(item.total)}</span>
-        </div>
-        <span className={`status status-${item.status}`}>{getStatusLabel(item.status)}</span>
-      </div>
-
-      <form action={updateSaleItemAction} className="itemEditForm">
-        <input type="hidden" name="itemId" value={item.id} />
-        <input type="hidden" name="returnTo" value={returnTo} />
-        <label className="productField">
-          <span>Товар</span>
-          <input name="productName" type="text" defaultValue={item.product_name} required />
-        </label>
-        <label>
-          <span>Количество</span>
-          <input name="quantity" type="number" min="0.001" step="0.001" defaultValue={item.quantity} required />
-        </label>
-        <label>
-          <span>Цена, ₽</span>
-          <input name="price" type="number" min="0.01" step="0.01" defaultValue={item.price ?? ""} required />
-        </label>
-        <button type="submit" className="saveButton">Сохранить</button>
-      </form>
-
-      {item.status !== "processed" ? (
-        <form action={confirmSaleItemAction} className="confirmItemForm">
-          <input type="hidden" name="itemId" value={item.id} />
-          <input type="hidden" name="returnTo" value={returnTo} />
-          <button type="submit" className="confirmButton">Подтвердить позицию</button>
-        </form>
-      ) : null}
-
-      <form action={excludeSaleItemAction} className="deleteItemForm">
-        <input type="hidden" name="itemId" value={item.id} />
-        <input type="hidden" name="returnTo" value={returnTo} />
-        <ConfirmSubmitButton
-          className="textDangerButton"
-          confirmMessage={`Исключить «${item.product_name}» из количества и выручки? Позицию можно будет восстановить.`}
-        >
-          Исключить из отчёта
-        </ConfirmSubmitButton>
-      </form>
-    </article>
-  );
-}
 
 export default async function DailyReportPage({ searchParams }: DailyReportPageProps) {
   const params = await searchParams;
@@ -119,7 +64,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
         <div>
           <p className="eyebrow">Сводка магазина</p>
           <h2>Продажи и выручка</h2>
-          <p className="pageLead">Готовые распознанные продажи сразу входят в выручку. Неполные или сомнительные позиции остаются в блоке «Нужно проверить».</p>
+          <p className="pageLead">Редактируйте распознанные товары прямо в карточках — итоги обновятся автоматически.</p>
         </div>
       </div>
 
@@ -170,57 +115,11 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
         includeYesterday
       />
 
-      {summary.rows.length ? (
-        <>
-          <div className="tableShell reportTable">
-            <table>
-              <thead>
-                <tr>
-                  <th>Товар</th>
-                  <th className="numberCell">Количество</th>
-                  <th className="numberCell">Выручка</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.rows.map((row) => (
-                  <tr key={row.key}>
-                    <td>{row.product_name}</td>
-                    <td className="numberCell">
-                      {formatQuantity(row.quantity)} {row.unit}
-                    </td>
-                    <td className="numberCell">{formatCurrency(row.revenue)}</td>
-                  </tr>
-                ))}
-                <tr className="totalRow">
-                  <td>Итого</td>
-                  <td className="numberCell">{formatQuantity(summary.totalQuantity)}</td>
-                  <td className="numberCell">{formatCurrency(summary.totalRevenue)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div className="reportCards">
-            {summary.rows.map((row) => (
-              <article className="reportCard" key={row.key}>
-                <div className="reportCardIcon" aria-hidden="true">{row.product_name.slice(0, 1)}</div>
-                <div>
-                  <h3>{row.product_name}</h3>
-                  <span>{formatQuantity(row.quantity)} {row.unit}</span>
-                </div>
-                <strong>{formatCurrency(row.revenue)}</strong>
-              </article>
-            ))}
-          </div>
-        </>
-      ) : (
-        <EmptyState title="Нет активных продаж за выбранный период" description="Отправьте голосовое боту или восстановите исключённые позиции ниже." />
-      )}
-
       <section className="itemManager" id="items">
         <div className="sectionHeading">
           <div>
-            <p className="eyebrow">Контроль данных</p>
-            <h3>Записанные товары</h3>
+            <p className="eyebrow">Товары за период</p>
+            <h3>Позиции отчёта</h3>
           </div>
           <span className={summary.reviewItems.length ? "attentionPill" : "clearPill"}>
             {summary.reviewItems.length ? `Нужно проверить: ${summary.reviewItems.length}` : "Всё проверено"}
@@ -233,7 +132,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
               <section className="itemEditorGroup" aria-labelledby="review-items-heading">
                 <h4 id="review-items-heading">Нужно проверить</h4>
                 <div className="itemEditorList">
-                  {reviewItems.map((item) => <SaleItemEditor item={item} returnTo={returnTo} key={item.id} />)}
+                  {reviewItems.map((item) => <SaleItemCard item={item} key={item.id} />)}
                 </div>
               </section>
             ) : null}
@@ -241,13 +140,16 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
               <section className="itemEditorGroup" aria-labelledby="processed-items-heading">
                 <h4 id="processed-items-heading">Готовые продажи</h4>
                 <div className="itemEditorList">
-                  {processedItems.map((item) => <SaleItemEditor item={item} returnTo={returnTo} key={item.id} />)}
+                  {processedItems.map((item) => <SaleItemCard item={item} key={item.id} />)}
                 </div>
               </section>
             ) : null}
           </div>
         ) : (
-          <p className="mutedText">Активных товаров за выбранный период нет.</p>
+          <EmptyState
+            title="Нет активных товаров за выбранный период"
+            description="Новые продажи появятся здесь после сохранения ботом. Исключённые позиции можно восстановить ниже."
+          />
         )}
       </section>
 

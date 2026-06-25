@@ -22,6 +22,7 @@ import { getStorageBucket, getSupabaseAdminClient } from "@/lib/supabase";
 import { getTelegramAuthErrorReason } from "@/lib/telegram-auth-errors";
 import type { RecordFilters, RecordListItem, ReportFilters, SellerOption } from "./records.types";
 import {
+  partitionSaleItems,
   scopeReportRows,
   type ReportSaleItemRow,
   type ReportSaleRow
@@ -32,6 +33,18 @@ type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdminClient>>;
 type MutationResult = {
   ok: boolean;
   message: string;
+  item?: {
+    id: string;
+    sale_id: string;
+    product_name: string;
+    quantity: number;
+    unit: string;
+    price: number | null;
+    total: number | null;
+    status: string;
+    updated_at: string;
+  };
+  itemId?: string;
 };
 
 const demoSellers: SellerOption[] = [
@@ -292,14 +305,15 @@ export async function getReport(filters: ReportFilters) {
 
     if (owner.shopId === "demo-shop" && !admin) {
       const items = filterByDateRange(demoSaleItems, range);
+      const partitionedItems = partitionSaleItems(items);
       salesCount = items.length ? 1 : 0;
       saleItemsCount = items.length;
       logReportResult({ owner, range, salesCount, saleItemsCount, error: null });
       return {
         range,
         summary: buildSalesReport(items),
-        items: items.filter((item) => !item.deleted_at),
-        deletedItems: items.filter((item) => Boolean(item.deleted_at)),
+        items: partitionedItems.activeItems,
+        deletedItems: partitionedItems.deletedItems,
         error: null
       };
     }
@@ -337,13 +351,14 @@ export async function getReport(filters: ReportFilters) {
     const sortedItems = scoped.items.sort((left, right) =>
       left.product_name.localeCompare(right.product_name, "ru-RU")
     );
+    const partitionedItems = partitionSaleItems(sortedItems);
     logReportResult({ owner, range, salesCount, saleItemsCount, error: null });
 
     return {
       range,
       summary: buildSalesReport(sortedItems),
-      items: sortedItems.filter((item) => !item.deleted_at),
-      deletedItems: sortedItems.filter((item) => Boolean(item.deleted_at)),
+      items: partitionedItems.activeItems,
+      deletedItems: partitionedItems.deletedItems,
       error: null
     };
   } catch (error) {
@@ -566,7 +581,7 @@ export async function updateSaleItem(params: {
     })
     .eq("id", params.itemId)
     .is("deleted_at", null)
-    .select("sale_id")
+    .select("id, sale_id, product_name, quantity, unit, price, total, status, updated_at")
     .single();
 
   if (error) {
@@ -605,7 +620,18 @@ export async function updateSaleItem(params: {
 
   return {
     ok: true,
-    message: "Изменения сохранены. Позиция учтена в отчёте."
+    message: "Изменения сохранены. Позиция учтена в отчёте.",
+    item: {
+      id: String(item.id),
+      sale_id: String(item.sale_id),
+      product_name: String(item.product_name),
+      quantity: Number(item.quantity),
+      unit: String(item.unit),
+      price: item.price === null ? null : Number(item.price),
+      total: item.total === null ? null : Number(item.total),
+      status: String(item.status),
+      updated_at: String(item.updated_at)
+    }
   };
 }
 
@@ -746,7 +772,11 @@ export async function excludeSaleItem(itemId: string): Promise<MutationResult> {
     reason: patch.deleted_reason
   });
   logAuditFailure("sale_item_deleted", auditError);
-  return { ok: true, message: "Позиция исключена из выручки. Её можно восстановить." };
+  return {
+    ok: true,
+    message: "Позиция удалена из активного отчёта.",
+    itemId: String(item.id)
+  };
 }
 
 export async function restoreSaleItem(itemId: string): Promise<MutationResult> {

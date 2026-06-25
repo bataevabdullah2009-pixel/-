@@ -8,3 +8,4 @@
 - [006 — P0 подтверждённое сохранение и отчёт](./006-p0-confirmed-persistence-and-report.md)
 - [007 — P0 WebApp session и shop resolver](./007-webapp-session-and-shop-resolver.md)
 - [008 — P0 production verification hardening](./008-p0-production-verification-hardening.md)
+- [009 — WebApp sale item product polish](./009-webapp-sale-item-product-polish.md)

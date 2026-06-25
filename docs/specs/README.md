@@ -8,3 +8,11 @@
 - [data](./data/data-model.md)
 
 Главные правила: raw Telegram initData проверяется через bot token, fallback auth включается явно, `shop_id` не принимается от клиента, report читает sale_items только через sales seller shop, уверенные voice-продажи сразу входят в отчёт, спорные позиции уходят в «Нужно проверить».
+
+Ключевые спецификации WebApp:
+
+- [Отчёт](./product/webapp-report.md)
+- [Редактирование товара](./product/sale-item-editing.md)
+- [WebApp API](./technical/webapp-api.md)
+- [База данных](./technical/database.md)
+- [Telegram WebApp session](./technical/telegram-webapp-session.md)

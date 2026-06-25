@@ -43,4 +43,19 @@ Browser fallback mode:
 
 `sales.total_amount` и отчёт считаются по активным `sale_items.status = processed` и `deleted_at is null`. `needs_review` и legacy `needs_price` выводятся в блок «Нужно проверить». Исключение позиции — это `deleted_at = now()`, восстановление — `deleted_at = null`.
 
+## WebApp mutation flow
+
+```text
+SaleItemCard
+  -> updateSaleItemAction / excludeSaleItemAction
+  -> requireOwner()
+  -> sale_items.sale_id -> sales.shop_id access check
+  -> Supabase update + returned row
+  -> recalculate sales.total_amount/status
+  -> revalidate /daily-report and /records
+  -> router.refresh()
+```
+
+Update/delete errors возвращаются в конкретную карточку. Техническая причина логируется на сервере. Активный UI отбрасывает как `deleted_at is not null`, так и `status = excluded`.
+
 Подробности: [technical architecture](../specs/technical/architecture.md), [auth and shop isolation](../specs/technical/auth-and-shop-isolation.md), [report calculation](../specs/technical/report-calculation.md).

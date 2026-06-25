@@ -27,7 +27,8 @@ export function formatCurrency(value: number) {
   return new Intl.NumberFormat("ru-RU", {
     style: "currency",
     currency: "RUB",
-    maximumFractionDigits: 0
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
   }).format(value);
 }
 
@@ -54,6 +55,9 @@ export function buildHref(basePath: string, params: SearchParams, updates: Recor
   const query = new URLSearchParams();
 
   for (const [key, value] of Object.entries(params)) {
+    if (key === "mutation" || key === "message") {
+      continue;
+    }
     const current = getStringParam(value);
     if (current) {
       query.set(key, current);

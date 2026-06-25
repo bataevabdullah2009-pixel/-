@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-06-25 — WebApp: карточки товаров и надёжные update/delete
+
+- Постоянно раскрытая форма заменена мобильной карточкой с названием, количеством, ценой за единицу, суммой, карандашом и корзиной.
+- Update/delete Server Actions возвращают локальное состояние вместо полного redirect; pending/error не очищают карточку.
+- Update читает фактически сохранённую строку Supabase и пересчитывает `sales.total_amount`.
+- Delete выполняет soft delete и локальное подтверждение «Удалить товар из отчёта?».
+- Активный список скрывает строки с `deleted_at` и defensive legacy `status = excluded`.
+- Добавлены empty state, компактные фильтры и suppress hydration warning для CSS variables Telegram SDK.
+- Live schema подтвердила реальные поля `product_name`, `quantity`, `price`, `total`, `status`, `deleted_at`, `updated_at`; migration не потребовалась.
+- Live WebApp проверил quantity/price update, reload persistence, delete и restore. Исходные данные тестовой позиции восстановлены.
+- Voice pipeline, STT, parser, webhook, env-файлы и сохранение голосовых продаж не изменялись.
+- Проверено: `npm run lint` — passed; `npm run test` — 8 файлов, 87 тестов passed; `npm run build` — bot/web/shared passed.
+
 ## 2026-06-24 — P0 production verification hardening
 
 - Сборка Telegram data-check-string переведена на детерминированную ordinal-сортировку ключей; исключается только `hash`.

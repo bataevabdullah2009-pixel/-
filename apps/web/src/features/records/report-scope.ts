@@ -68,3 +68,10 @@ export function scopeReportRows(
     items
   };
 }
+
+export function partitionSaleItems(items: SaleItem[]) {
+  return {
+    activeItems: items.filter((item) => !item.deleted_at && item.status !== "excluded"),
+    deletedItems: items.filter((item) => Boolean(item.deleted_at) || item.status === "excluded")
+  };
+}

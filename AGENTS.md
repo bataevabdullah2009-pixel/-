@@ -17,10 +17,20 @@ AI обязан прочитать по порядку:
 
 Затем нужно прочитать профильные product/technical/data specs и последний релевантный завершённый план. Каноническая карта находится в `docs/INDEX.md`.
 
+Дополнительные обязательные правила:
+
+- Перед любым изменением кода читать `README.md`.
+- Перед изменением WebApp читать `docs/specs/product/webapp-report.md` и `docs/specs/product/sale-item-editing.md`.
+- Перед изменением WebApp API читать `docs/specs/technical/webapp-api.md`.
+- Перед изменением БД читать `docs/specs/technical/database.md`.
+- Перед изменением Telegram logic читать `docs/specs/technical/telegram-webapp-session.md`.
+
 ## Неподвижные границы
 
 - Не добавлять CRM, склад, кассу, оплаты и клиентскую базу.
 - Не ломать Telegram bot, webhook, STT, LLM parser, Supabase и mobile UI.
+- Не трогать рабочий voice pipeline, STT, parser или webhook без прямой задачи.
+- Не делать большие переписывания, если локальное изменение решает задачу.
 - `shop_id` нельзя принимать от клиента. Он определяется только на сервере: по валидному Telegram initData либо через server-side fallback env.
 - `SUPABASE_SERVICE_ROLE_KEY` используется только сервером и никогда не передаётся клиенту.
 - Unknown seller не сохраняется в случайный магазин при `DEMO_MODE=false`.
@@ -57,6 +67,9 @@ AI обязан прочитать по порядку:
    - какие тесты запущены;
    - результат `lint`/`test`/`build`;
    - какие документы обновлены.
+8. Обновить связанные `docs/specs`, `docs/features`, `docs/plans`, `docs/roadmap` и `CHANGELOG.md`.
+9. Не оставлять документы, которые противоречат коду или текущей схеме БД.
+10. Не писать «готово», если обязательные тесты не прошли.
 
 Если реализация и документация расходятся, задача не завершена.
 

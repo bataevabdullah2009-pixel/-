@@ -20,7 +20,10 @@ import {
   initializeTelegramWebApp,
   waitForTelegramWebApp
 } from "../apps/web/src/lib/telegram-api";
-import { scopeReportRows } from "../apps/web/src/features/records/report-scope";
+import {
+  partitionSaleItems,
+  scopeReportRows
+} from "../apps/web/src/features/records/report-scope";
 import { buildSalesReport } from "../packages/shared/utils/date-range";
 import {
   buildTelegramWebhookUrl,
@@ -382,6 +385,56 @@ describe("Telegram Mini App authentication", () => {
     );
 
     expect(buildSalesReport(scoped.items).totalRevenue).toBe(500);
+  });
+
+  it("keeps a sale valid when all of its items are deleted", () => {
+    const scoped = scopeReportRows(
+      [{
+        id: "sale-1",
+        shop_id: "shop-1",
+        created_at: "2026-06-25T10:00:00.000Z"
+      }],
+      [{
+        id: "item-1",
+        sale_id: "sale-1",
+        product_name: "Сникерс",
+        quantity: 5,
+        unit: "шт",
+        price: 50,
+        total: 250,
+        confidence: 1,
+        status: "excluded",
+        deleted_at: "2026-06-25T11:00:00.000Z"
+      }],
+      "shop-1"
+    );
+    const partitioned = partitionSaleItems(scoped.items);
+
+    expect(scoped.salesCount).toBe(1);
+    expect(partitioned.activeItems).toHaveLength(0);
+    expect(partitioned.deletedItems).toHaveLength(1);
+    expect(buildSalesReport(scoped.items)).toMatchObject({
+      totalQuantity: 0,
+      totalRevenue: 0
+    });
+  });
+
+  it("never exposes excluded rows as active items", () => {
+    const partitioned = partitionSaleItems([{
+      id: "legacy-excluded",
+      sale_id: "sale-1",
+      product_name: "Марс",
+      quantity: 1,
+      unit: "шт",
+      price: 70,
+      total: 70,
+      confidence: 1,
+      status: "excluded",
+      created_at: "2026-06-25T10:00:00.000Z"
+    }]);
+
+    expect(partitioned.activeItems).toHaveLength(0);
+    expect(partitioned.deletedItems).toHaveLength(1);
   });
 
   it("rejects report rows from a shop different from the resolved seller shop", () => {

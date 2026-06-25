@@ -12,6 +12,8 @@
 
 После save/confirm/exclude/restore/reset сервер пересчитывает `sales.total_amount` и `sales.status`, затем инвалидирует `/daily-report` и `/records`.
 
+Активный список WebApp дополнительно исключает defensive legacy rows с `status = excluded`, даже если `deleted_at` отсутствует. Если у `sale` нет активных items, она не удаляется; отчёт показывает нулевые итоги и штатное empty state.
+
 Границы периода вычисляются в `Europe/Moscow`; начало включительно, конец не включительно.
 
 Report log содержит `telegramUserId`, `sellerId`, `shopId`, число sales, число sale_items, date range и error reason. InitData и секреты не логируются.

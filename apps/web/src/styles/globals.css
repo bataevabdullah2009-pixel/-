@@ -64,7 +64,7 @@ select {
 button,
 .secondaryButton,
 .correctionButton {
-  min-height: 40px;
+  min-height: 44px;
   border: 1px solid var(--accent);
   border-radius: 10px;
   background: var(--accent);
@@ -102,7 +102,7 @@ select:focus-visible {
 
 input,
 select {
-  min-height: 40px;
+  min-height: 44px;
   max-width: 100%;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -224,14 +224,14 @@ main {
   top: 8px;
   z-index: 10;
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto auto;
+  grid-template-columns: minmax(150px, 1fr) auto auto;
   align-items: center;
-  gap: 24px;
+  gap: 18px;
   border: 1px solid rgba(22, 138, 205, 0.22);
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.94);
   box-shadow: var(--shadow);
-  padding: 13px 14px;
+  padding: 11px 12px;
   backdrop-filter: blur(14px);
 }
 
@@ -256,7 +256,7 @@ main {
 .summaryMetrics {
   display: flex;
   align-items: center;
-  gap: 28px;
+  gap: 20px;
 }
 
 .summaryMetrics strong {
@@ -321,9 +321,9 @@ main {
   min-width: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  padding: 12px 0;
+  padding: 8px 0;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
@@ -382,10 +382,6 @@ th {
   font-weight: 700;
 }
 
-.reportCards {
-  display: none;
-}
-
 .itemManager,
 .deletedItemsPanel {
   border: 1px solid var(--line);
@@ -397,7 +393,6 @@ th {
 }
 
 .sectionHeading,
-.itemEditorHeader,
 .deletedItem {
   min-width: 0;
   display: flex;
@@ -438,7 +433,7 @@ th {
 .itemEditorList,
 .deletedItemsList {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .itemEditorGroups,
@@ -451,84 +446,219 @@ th {
   margin: 0;
 }
 
-.itemEditorCard {
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--surface);
-  padding: 14px;
-}
-
-.itemEditorCardAttention {
-  border-color: #efd58d;
-  box-shadow: inset 3px 0 0 #e1ad24;
-}
-
-.itemEditorHeader {
-  align-items: flex-start;
-  margin-bottom: 12px;
-}
-
-.itemEditorHeader > div,
 .deletedItem > div {
   min-width: 0;
   display: grid;
   gap: 3px;
 }
 
-.itemEditorHeader strong,
 .deletedItem strong {
   overflow-wrap: anywhere;
   font-size: 17px;
 }
 
-.itemEditorHeader div span,
 .deletedItem div span {
   color: var(--muted);
   font-size: 12px;
 }
 
-.itemEditForm {
-  display: grid;
-  grid-template-columns: minmax(200px, 1.4fr) minmax(120px, 0.55fr) minmax(120px, 0.55fr) auto;
-  gap: 10px;
-  align-items: end;
+.saleItemCard {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(25, 57, 82, 0.05);
 }
 
-.itemEditForm label {
+.saleItemCardAttention {
+  border-color: #e8cf88;
+  box-shadow: inset 3px 0 0 #dcae2d, 0 8px 24px rgba(25, 57, 82, 0.05);
+}
+
+.saleItemView {
   min-width: 0;
   display: grid;
-  gap: 5px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  padding: 15px 14px;
 }
 
-.itemEditForm label > span {
+.saleItemContent {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.saleItemTitleRow {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.saleItemTitleRow h4 {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 18px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.saleItemMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.saleItemMeta span + span::before {
+  content: "•";
+  margin-right: 12px;
+  color: #b0bdc9;
+}
+
+.saleItemTotal {
+  color: var(--accent-strong);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.saleItemActions {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.iconButton {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-color: var(--line);
+  border-radius: 13px;
+  background: #f7fafc;
+  color: var(--accent-strong);
+  padding: 0;
+}
+
+.iconButton:hover {
+  border-color: #a8d2e8;
+  background: var(--soft);
+  color: var(--accent-strong);
+}
+
+.iconButton svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.iconButtonDanger {
+  color: var(--danger);
+}
+
+.iconButtonDanger:hover {
+  border-color: #efc2bc;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.saleItemEditForm,
+.saleItemDeletePanel {
+  border-top: 1px solid var(--line);
+  background: #f8fbfd;
+  padding: 14px;
+}
+
+.saleItemEditForm {
+  display: grid;
+  grid-template-columns: minmax(210px, 1.4fr) minmax(120px, 0.6fr) minmax(120px, 0.6fr);
+  gap: 11px;
+}
+
+.saleItemEditForm label {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.saleItemEditForm label > span {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 700;
 }
 
-.saveButton {
-  min-width: 112px;
+.saleItemEditForm input {
+  width: 100%;
+  min-height: 46px;
+  background: var(--surface);
 }
 
-.confirmItemForm {
+.saleItemError {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.saleItemFormActions {
+  grid-column: 1 / -1;
   display: flex;
-  justify-content: flex-end;
-  margin-top: 10px;
+  gap: 8px;
 }
 
-.confirmButton {
-  border-color: #1f8b68;
-  background: #1f8b68;
+.saveButton,
+.secondaryActionButton,
+.deleteConfirmButton {
+  min-height: 44px;
+  min-width: 116px;
 }
 
-.confirmButton:hover {
-  background: #176f53;
+.secondaryActionButton {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--ink);
 }
 
-.deleteItemForm {
+.secondaryActionButton:hover {
+  border-color: #b8c7d4;
+  background: #eef3f7;
+  color: var(--ink);
+}
+
+.saleItemDeletePanel {
+  display: grid;
+  gap: 10px;
+}
+
+.saleItemDeletePanel > p {
+  margin: 0;
+  font-weight: 750;
+}
+
+.saleItemDeleteActions {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 5px;
+  gap: 8px;
+}
+
+.deleteConfirmButton {
+  border-color: var(--danger);
+  background: var(--danger);
+}
+
+.deleteConfirmButton:hover {
+  border-color: #a82d22;
+  background: #a82d22;
 }
 
 .deletedItemsPanel summary {
@@ -968,23 +1098,29 @@ th {
   .filtersRow {
     align-items: stretch;
     flex-direction: column;
-    gap: 8px;
-    padding: 9px 0;
+    gap: 7px;
+    padding: 7px 0;
   }
 
   .segmentedControl {
     width: 100%;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    flex-wrap: nowrap;
     gap: 5px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .segmentedControl::-webkit-scrollbar {
+    display: none;
   }
 
   .segmentedControl a {
-    min-width: 0;
-    padding: 8px 5px;
-    overflow: hidden;
+    flex: 0 0 auto;
+    min-width: 78px;
+    padding: 8px 10px;
     font-size: 12px;
-    text-overflow: ellipsis;
   }
 
   .inlineForm,
@@ -1009,67 +1145,6 @@ th {
 
   .reportTable {
     display: none;
-  }
-
-  .reportCards {
-    min-width: 0;
-    display: grid;
-    gap: 8px;
-  }
-
-  .reportCard {
-    display: grid;
-    grid-template-columns: 38px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 11px;
-    padding: 13px 14px;
-  }
-
-  .reportCard h3 {
-    margin: 0 0 3px;
-    overflow-wrap: anywhere;
-    font-size: 18px;
-    line-height: 1.2;
-  }
-
-  .reportCard > div span {
-    color: var(--muted);
-    font-size: 13px;
-  }
-
-  .reportCard > strong {
-    color: var(--accent-strong);
-    font-size: 17px;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .reportCardIcon {
-    width: 38px;
-    height: 38px;
-    display: grid;
-    place-items: center;
-    border-radius: 12px;
-    background: var(--soft);
-    color: var(--accent-strong);
-    font-weight: 800;
-  }
-
-  .reportCardValues {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 12px;
-  }
-
-  .reportCardValues span {
-    color: var(--muted);
-    font-size: 14px;
-  }
-
-  .reportCardValues strong {
-    color: var(--accent-strong);
-    font-size: 18px;
-    font-variant-numeric: tabular-nums;
   }
 
   .reviewBlock {
@@ -1111,27 +1186,50 @@ th {
     font-size: 20px;
   }
 
-  .itemEditorCard {
+  .saleItemView {
+    gap: 10px;
+    padding: 13px 12px;
+  }
+
+  .saleItemActions {
+    flex-direction: column;
+  }
+
+  .saleItemTitleRow {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .saleItemMeta {
+    display: grid;
+    gap: 3px;
+  }
+
+  .saleItemMeta span + span::before {
+    content: none;
+  }
+
+  .saleItemEditForm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
     padding: 12px;
   }
 
-  .itemEditForm {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 9px;
-  }
-
-  .itemEditForm .productField,
-  .itemEditForm .saveButton {
+  .saleItemProductField {
     grid-column: 1 / -1;
   }
 
-  .itemEditForm input,
-  .itemEditForm button {
-    width: 100%;
+  .saleItemFormActions,
+  .saleItemDeleteActions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .deleteItemForm {
-    justify-content: flex-start;
+  .saleItemFormActions button,
+  .saleItemDeleteActions button {
+    width: 100%;
+    min-width: 0;
   }
 
   .deletedItem {

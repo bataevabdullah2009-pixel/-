@@ -26,6 +26,15 @@ Telegram voice -> STT -> LLM parser -> evidence rules -> Supabase -> report
 
 Затем прочитать профильные specs/features/rules и последний релевантный completed plan.
 
+Для WebApp обязательно прочитать:
+
+- `../../../docs/specs/product/webapp-report.md`;
+- `../../../docs/specs/product/sale-item-editing.md`;
+- `../../../docs/specs/technical/webapp-api.md`.
+
+Для БД обязательно прочитать `../../../docs/specs/technical/database.md`.
+Для Telegram logic обязательно прочитать `../../../docs/specs/technical/telegram-webapp-session.md`.
+
 ## Workflow rules
 
 ### Telegram bot/webhook
@@ -41,6 +50,8 @@ Web App поддерживает:
 - error mode только для реальных ошибок сервера/БД/конфигурации.
 
 Client fetch выполняется через `apiFetch()`, который отправляет `x-app-mode` и, при наличии, `x-telegram-init-data`. Server-side доступ выполняется через `resolveRequestContext()` / `requireOwner()`. `shop_id` нельзя принимать от клиента.
+
+Карточка товара показывает name/quantity/unit price/total и действия карандаш/корзина. Update/delete возвращают локальный pending/error state, а сервер повторно проверяет item → sale → shop. Исключённые rows не показываются активными.
 
 ### Voice pipeline
 

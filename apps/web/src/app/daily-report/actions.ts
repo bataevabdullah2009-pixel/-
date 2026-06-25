@@ -15,6 +15,23 @@ import {
 const UPDATE_ERROR_MESSAGE = "Не удалось сохранить товар. Проверьте данные и попробуйте ещё раз.";
 const EXCLUDE_ERROR_MESSAGE = "Не удалось исключить товар из отчёта.";
 
+export type SaleItemActionState = {
+  status: "idle" | "success" | "error";
+  message: string;
+  item?: {
+    id: string;
+    sale_id: string;
+    product_name: string;
+    quantity: number;
+    unit: string;
+    price: number | null;
+    total: number | null;
+    status: string;
+    updated_at: string;
+  };
+  itemId?: string;
+};
+
 function safeReturnTo(formData: FormData) {
   const candidate = String(formData.get("returnTo") ?? "/daily-report");
   return candidate.startsWith("/daily-report") && !candidate.startsWith("//")
@@ -35,8 +52,15 @@ function finishMutation(returnTo: string, result: { ok: boolean; message: string
   redirectWithResult(returnTo, result);
 }
 
-export async function updateSaleItemAction(formData: FormData) {
-  const returnTo = safeReturnTo(formData);
+function revalidateReports() {
+  revalidatePath("/daily-report");
+  revalidatePath("/records");
+}
+
+export async function updateSaleItemAction(
+  _previousState: SaleItemActionState,
+  formData: FormData
+): Promise<SaleItemActionState> {
   const itemId = String(formData.get("itemId") ?? "");
   const productName = String(formData.get("productName") ?? "").trim();
   const quantity = Number(formData.get("quantity") ?? 1);
@@ -44,39 +68,63 @@ export async function updateSaleItemAction(formData: FormData) {
   const price = Number(priceValue);
 
   if (!itemId || !productName || !Number.isFinite(quantity) || quantity <= 0 || !priceValue || !Number.isFinite(price) || price <= 0) {
-    finishMutation(returnTo, {
-      ok: false,
-      message: UPDATE_ERROR_MESSAGE
-    });
+    return {
+      status: "error",
+      message: "Заполните товар, количество и цену положительными значениями."
+    };
   }
 
-  let result: { ok: boolean; message: string };
   try {
-    result = await updateSaleItem({ itemId, productName, quantity, price });
+    const result = await updateSaleItem({ itemId, productName, quantity, price });
+    if (!result.ok) {
+      console.error("Failed to update sale item", {
+        itemId,
+        reason: result.message
+      });
+      return { status: "error", message: UPDATE_ERROR_MESSAGE };
+    }
+
+    revalidateReports();
+    return {
+      status: "success",
+      message: result.message,
+      item: result.item
+    };
   } catch (error) {
     console.error("Failed to update sale item", error);
-    result = { ok: false, message: UPDATE_ERROR_MESSAGE };
+    return { status: "error", message: UPDATE_ERROR_MESSAGE };
   }
-
-  finishMutation(returnTo, result.ok ? result : { ok: false, message: UPDATE_ERROR_MESSAGE });
 }
 
-export async function excludeSaleItemAction(formData: FormData) {
-  const returnTo = safeReturnTo(formData);
+export async function excludeSaleItemAction(
+  _previousState: SaleItemActionState,
+  formData: FormData
+): Promise<SaleItemActionState> {
   const itemId = String(formData.get("itemId") ?? "");
   if (!itemId) {
-    finishMutation(returnTo, { ok: false, message: EXCLUDE_ERROR_MESSAGE });
+    return { status: "error", message: EXCLUDE_ERROR_MESSAGE };
   }
 
-  let result: { ok: boolean; message: string };
   try {
-    result = await excludeSaleItem(itemId);
+    const result = await excludeSaleItem(itemId);
+    if (!result.ok) {
+      console.error("Failed to exclude sale item", {
+        itemId,
+        reason: result.message
+      });
+      return { status: "error", message: EXCLUDE_ERROR_MESSAGE };
+    }
+
+    revalidateReports();
+    return {
+      status: "success",
+      message: result.message,
+      itemId: result.itemId ?? itemId
+    };
   } catch (error) {
     console.error("Failed to exclude sale item", error);
-    result = { ok: false, message: EXCLUDE_ERROR_MESSAGE };
+    return { status: "error", message: EXCLUDE_ERROR_MESSAGE };
   }
-
-  finishMutation(returnTo, result.ok ? result : { ok: false, message: EXCLUDE_ERROR_MESSAGE });
 }
 
 export async function confirmSaleItemAction(formData: FormData) {

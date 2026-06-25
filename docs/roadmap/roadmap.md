@@ -13,6 +13,8 @@ Production-oriented MVP голосового журнала продаж:
 - Telegram session валидируется по raw initData через bot token, включая актуальное поле `signature`;
 - report и records используют тот же seller shop, в который бот сохраняет продажи, и не маскируют ошибки пустыми данными;
 - есть отчёт, записи, продавцы, корректировка, исключение и восстановление товаров.
+- карточки товара имеют inline update, loading/error state и soft delete через корзину;
+- пустая продажа после исключения всех items остаётся валидной записью и показывает empty state.
 
 ## Backlog
 
@@ -20,6 +22,8 @@ Production-oriented MVP голосового журнала продаж:
 - Улучшение parser prompts на реальных записях.
 - Удобное управление sellers/owners в панели.
 - E2E Telegram smoke check для raw initData, session cookie и report counts после production deploy.
+- E2E WebApp mutations в отдельной тестовой Supabase среде.
+- Метрики latency/error rate для ручных update/delete.
 
 ## Не входит в MVP
 
