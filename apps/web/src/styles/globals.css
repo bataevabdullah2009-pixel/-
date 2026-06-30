@@ -35,7 +35,7 @@ body {
     var(--bg);
   color: var(--ink);
   font-family: "Segoe UI Variable", "Manrope", "Segoe UI", sans-serif;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 .authGate {
@@ -138,7 +138,7 @@ main {
   font-family: "Segoe UI Variable Display", "Manrope", "Segoe UI", sans-serif;
   font-size: clamp(28px, 4vw, 42px);
   line-height: 1.04;
-  letter-spacing: -0.035em;
+  letter-spacing: 0;
 }
 
 .desktopNav {
@@ -283,6 +283,68 @@ main {
   margin: 0;
 }
 
+.reportSummaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.reportSummaryGrid article {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  padding: 14px;
+}
+
+.reportSummaryGrid span,
+.reportToolbar span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.reportSummaryGrid strong {
+  overflow-wrap: anywhere;
+  color: var(--accent-strong);
+  font-size: 24px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.reportSummaryGrid .summaryNeedsReview {
+  border-color: #e8cf88;
+  background: var(--warning-soft);
+}
+
+.reportSummaryGrid .summaryNeedsReview strong {
+  color: var(--warning);
+}
+
+.reportToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
+}
+
+.reportToolbar > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.reportToolbar strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .dangerGhostButton,
 .textDangerButton {
   border-color: #efc2bc;
@@ -408,7 +470,7 @@ th {
 .sectionHeading h3 {
   margin: 0;
   font-size: 22px;
-  letter-spacing: -0.025em;
+  letter-spacing: 0;
 }
 
 .attentionPill,
@@ -431,9 +493,53 @@ th {
 }
 
 .itemEditorList,
-.deletedItemsList {
+.deletedItemsList,
+.topProductsList,
+.recordItemsList {
   display: grid;
   gap: 12px;
+}
+
+.topProductRow,
+.recordItemRow {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.topProductRow:first-child,
+.recordItemRow:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.topProductRow > div,
+.recordItemRow > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.topProductRow strong,
+.recordItemRow strong {
+  overflow-wrap: anywhere;
+}
+
+.topProductRow span,
+.recordItemRow span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.topProductRow b,
+.recordItemRow b {
+  color: var(--accent-strong);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .itemEditorGroups,
@@ -503,7 +609,7 @@ th {
   overflow-wrap: anywhere;
   font-size: 18px;
   line-height: 1.2;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .saleItemMeta {
@@ -818,6 +924,23 @@ th {
   align-items: center;
 }
 
+.recordStatusStack {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.telegramReviewBadge {
+  border-radius: 999px;
+  background: var(--warning-soft);
+  color: var(--warning);
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
 .recordDate {
   color: var(--muted);
   font-size: 12px;
@@ -844,6 +967,70 @@ th {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.recordItemsDisclosure {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.recordItemsDisclosure summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  font-weight: 750;
+  list-style: none;
+}
+
+.recordItemsDisclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.recordItemsDisclosure summary span {
+  min-width: 26px;
+  border-radius: 999px;
+  background: #eef2f6;
+  padding: 4px 8px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+}
+
+.recordItemsList {
+  margin-top: 10px;
+}
+
+.sellerStatsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.sellerMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.sellerMetrics span {
+  min-width: 96px;
+  display: grid;
+  gap: 3px;
+  border-radius: 12px;
+  background: #f2f7fb;
+  padding: 8px 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sellerMetrics b {
+  color: var(--accent-strong);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
 }
 
 .correctionButton {
@@ -877,6 +1064,12 @@ th {
 .status-pending {
   color: var(--warning);
   background: var(--warning-soft);
+}
+
+.status-cancelled,
+.status-excluded {
+  color: var(--muted);
+  background: #eef2f6;
 }
 
 .status-failed {
@@ -1088,6 +1281,26 @@ th {
     font-size: 17px;
   }
 
+  .reportSummaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .reportSummaryGrid article {
+    border-radius: 12px;
+    padding: 11px;
+  }
+
+  .reportSummaryGrid strong {
+    font-size: 19px;
+  }
+
+  .reportToolbar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
   .refreshButton {
     min-height: 36px;
     padding: 7px 10px;
@@ -1247,6 +1460,14 @@ th {
     gap: 9px;
   }
 
+  .recordStatusStack {
+    align-items: flex-start;
+  }
+
+  .telegramReviewBadge {
+    white-space: normal;
+  }
+
   .recordCard h2 {
     font-size: 16px;
   }
@@ -1276,6 +1497,28 @@ th {
 
   .recordAmount {
     font-size: 18px;
+  }
+
+  .recordItemRow,
+  .topProductRow,
+  .sellerStatsRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .recordItemRow b,
+  .topProductRow b {
+    white-space: normal;
+  }
+
+  .sellerMetrics {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sellerMetrics span {
+    min-width: 0;
   }
 
   .emptyState {

@@ -3,6 +3,7 @@ import type { SaleItem } from "@voice-sales-log/shared/types";
 export type ReportSaleRow = {
   id: unknown;
   shop_id: unknown;
+  status?: unknown;
   created_at: unknown;
 };
 
@@ -26,13 +27,17 @@ export type ReportSaleItemRow = {
 export function scopeReportRows(
   sales: ReportSaleRow[],
   saleItems: ReportSaleItemRow[],
-  shopId: string
+  shopId: string,
+  options: { includeInactiveSales?: boolean } = {}
 ) {
   const saleCreatedAt = new Map<string, string>();
 
   for (const sale of sales) {
     if (String(sale.shop_id) !== shopId) {
       throw new Error("Report shop scope mismatch.");
+    }
+    if (!options.includeInactiveSales && (sale.status === "cancelled" || sale.status === "failed")) {
+      continue;
     }
     saleCreatedAt.set(String(sale.id), String(sale.created_at));
   }

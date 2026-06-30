@@ -5,13 +5,13 @@ import { RefreshButton } from "@/components/RefreshButton";
 import { SaleItemCard } from "@/components/SaleItemCard";
 import { getReport } from "@/features/records/records.api";
 import type { SearchParams } from "@/features/records/records.types";
-import { isRevenueSaleItemStatus } from "@voice-sales-log/shared/utils/date-range";
 import {
   formatCurrency,
   formatQuantity,
   getReportFilters,
   getStringParam
 } from "@/features/records/records.utils";
+import { isRevenueSaleItemStatus } from "@voice-sales-log/shared/utils/date-range";
 import {
   resetDayRevenueAction,
   restoreSaleItemAction
@@ -29,21 +29,22 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
   const { period, date } = filters;
   const mutation = getStringParam(params.mutation);
   const message = getStringParam(params.message);
-  const { range, summary, items, deletedItems, error } = await getReport(filters);
+  const { range, salesCount, summary, items, deletedItems, error } = await getReport(filters);
   const returnQuery = new URLSearchParams({ period });
   if (date) returnQuery.set("date", date);
   const returnTo = `/daily-report?${returnQuery.toString()}#items`;
   const isSingleDay = period === "today" || period === "yesterday" || period === "custom";
   const reviewItems = summary.reviewItems;
   const processedItems = items.filter((item) => isRevenueSaleItemStatus(item.status));
+  const topRows = [...summary.rows].sort((left, right) => right.revenue - left.revenue).slice(0, 5);
 
   if (error) {
     return (
       <section className="pageStack">
         <div className="pageTitle">
           <div>
-            <p className="eyebrow">Сводка магазина</p>
-            <h2>Продажи и выручка</h2>
+            <h2>Голосовой журнал продаж</h2>
+            <p className="pageLead">Сводка магазина</p>
           </div>
         </div>
         <div className="actionNotice actionNotice-error" role="alert">{error}</div>
@@ -62,9 +63,8 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
     <section className="pageStack">
       <div className="pageTitle">
         <div>
-          <p className="eyebrow">Сводка магазина</p>
-          <h2>Продажи и выручка</h2>
-          <p className="pageLead">Редактируйте распознанные товары прямо в карточках — итоги обновятся автоматически.</p>
+          <h2>Голосовой журнал продаж</h2>
+          <p className="pageLead">Сводка магазина</p>
         </div>
       </div>
 
@@ -74,20 +74,29 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
         </div>
       ) : null}
 
-      <aside className="summaryBar" aria-label="Итоги за выбранный период">
-        <div className="summaryPeriod">
+      <section className="reportSummaryGrid" aria-label="Итоги за выбранный период">
+        <article>
+          <span>Выручка</span>
+          <strong>{formatCurrency(summary.totalRevenue)}</strong>
+        </article>
+        <article>
+          <span>Количество товаров</span>
+          <strong>{formatQuantity(summary.totalQuantity)}</strong>
+        </article>
+        <article>
+          <span>Записей</span>
+          <strong>{salesCount}</strong>
+        </article>
+        <article className={reviewItems.length ? "summaryNeedsReview" : undefined}>
+          <span>Нужно проверить</span>
+          <strong>{reviewItems.length}</strong>
+        </article>
+      </section>
+
+      <div className="reportToolbar" aria-label="Действия отчёта">
+        <div>
           <span>Период</span>
           <strong>{range.label}</strong>
-        </div>
-        <div className="summaryMetrics">
-          <div>
-            <span>Выручка</span>
-            <strong>{formatCurrency(summary.totalRevenue)}</strong>
-          </div>
-          <div>
-            <span>Количество</span>
-            <strong>{formatQuantity(summary.totalQuantity)}</strong>
-          </div>
         </div>
         <div className="summaryActions">
           <RefreshButton />
@@ -105,7 +114,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
             </form>
           ) : null}
         </div>
-      </aside>
+      </div>
 
       <DateFilter
         basePath="/daily-report"
@@ -115,43 +124,68 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
         includeYesterday
       />
 
-      <section className="itemManager" id="items">
+      <section className="itemManager" aria-labelledby="top-products-heading">
         <div className="sectionHeading">
           <div>
-            <p className="eyebrow">Товары за период</p>
-            <h3>Позиции отчёта</h3>
+            <p className="eyebrow">Топ товаров</p>
+            <h3 id="top-products-heading">Топ товаров</h3>
           </div>
-          <span className={summary.reviewItems.length ? "attentionPill" : "clearPill"}>
-            {summary.reviewItems.length ? `Нужно проверить: ${summary.reviewItems.length}` : "Всё проверено"}
-          </span>
         </div>
 
-        {items.length ? (
-          <div className="itemEditorGroups">
-            {reviewItems.length ? (
-              <section className="itemEditorGroup" aria-labelledby="review-items-heading">
-                <h4 id="review-items-heading">Нужно проверить</h4>
-                <div className="itemEditorList">
-                  {reviewItems.map((item) => <SaleItemCard item={item} key={item.id} />)}
+        {topRows.length ? (
+          <div className="topProductsList">
+            {topRows.map((row) => (
+              <div className="topProductRow" key={row.key}>
+                <div>
+                  <strong>{row.product_name}</strong>
+                  <span>{formatQuantity(row.quantity)} {row.unit}</span>
                 </div>
-              </section>
-            ) : null}
-            {processedItems.length ? (
-              <section className="itemEditorGroup" aria-labelledby="processed-items-heading">
-                <h4 id="processed-items-heading">Готовые продажи</h4>
-                <div className="itemEditorList">
-                  {processedItems.map((item) => <SaleItemCard item={item} key={item.id} />)}
-                </div>
-              </section>
-            ) : null}
+                <b>{formatCurrency(row.revenue)}</b>
+              </div>
+            ))}
           </div>
         ) : (
           <EmptyState
             title="Нет активных товаров за выбранный период"
-            description="Новые продажи появятся здесь после сохранения ботом. Исключённые позиции можно восстановить ниже."
+            description="В топ попадают только подтверждённые позиции, которые входят в выручку."
           />
         )}
       </section>
+
+      <section className="itemManager" id="items" aria-labelledby="period-sales-heading">
+        <div className="sectionHeading">
+          <div>
+            <p className="eyebrow">Продажи за период</p>
+            <h3 id="period-sales-heading">Продажи за период</h3>
+          </div>
+        </div>
+
+        {processedItems.length ? (
+          <div className="itemEditorList">
+            {processedItems.map((item) => <SaleItemCard item={item} key={item.id} />)}
+          </div>
+        ) : (
+          <EmptyState
+            title="Нет активных продаж"
+            description="Подтверждённые голосовые записи появятся здесь после обработки ботом."
+          />
+        )}
+      </section>
+
+      {reviewItems.length ? (
+        <section className="itemManager reviewItemsSection" aria-labelledby="review-items-heading">
+          <div className="sectionHeading">
+            <div>
+              <p className="eyebrow">Нужно проверить</p>
+              <h3 id="review-items-heading">Нужно проверить</h3>
+            </div>
+            <span className="attentionPill">Подтвердить в Telegram</span>
+          </div>
+          <div className="itemEditorList">
+            {reviewItems.map((item) => <SaleItemCard item={item} key={item.id} />)}
+          </div>
+        </section>
+      ) : null}
 
       {deletedItems.length ? (
         <details className="deletedItemsPanel">

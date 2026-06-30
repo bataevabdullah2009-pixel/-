@@ -16,6 +16,7 @@ describe("sales report", () => {
   it("never exposes raw technical statuses to users", () => {
     expect(getStatusLabel("processed")).toBe("Готово");
     expect(getStatusLabel("needs_review")).toBe("Нужно проверить");
+    expect(getStatusLabel("cancelled")).toBe("Исключено");
     expect(getStatusLabel("failed")).toBe("Нужно проверить");
     expect(getStatusLabel("needs_price")).toBe("Нужно проверить");
     expect(getStatusLabel("unexpected_internal_status")).toBe("Нужно проверить");

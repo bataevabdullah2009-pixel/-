@@ -1,6 +1,6 @@
 # Голосовой журнал продаж
 
-«Голосовой журнал продаж» — продукт для малого бизнеса: продавец диктует продажу в Telegram, система распознаёт товар, количество и цену, сохраняет запись в Supabase и показывает владельцу мобильный отчёт по выручке.
+«Голосовой журнал продаж» — MVP-продукт для малого бизнеса. Продавец диктует продажу в Telegram, бот распознаёт товар, количество и цену, сохраняет данные в Supabase, а владелец смотрит отчёт, записи и продавцов в мобильном WebApp.
 
 ## Как работает
 
@@ -9,22 +9,58 @@ Telegram voice
   -> download/audio preparation
   -> STT
   -> LLM parser + deterministic evidence rules
-  -> Supabase sale/voice_records/sale_items
+  -> Supabase voice_records/sales/sale_items
+  -> Telegram confirm/cancel for review sales
   -> Telegram Mini App или browser fallback
-  -> отчёт, записи, продавцы и корректировка товаров
+  -> отчёт, записи, продавцы, edit/delete товаров
 ```
 
-Если распознаны товар, количество, цена и `confidence >= 0.80`, позиция сразу получает внутренний статус `processed`, показывается как «Готово» и входит в отчёт. Если нет цены/количества, confidence ниже порога, текст странный или часть позиций неполная, такие позиции показываются как «Нужно проверить» и не входят в выручку до исправления. Исключённые позиции показываются как «Исключено» и не учитываются.
+Уверенная запись сразу получает `processed` и входит в выручку. Сомнительная запись получает `needs_review`, не входит в выручку и решается под сообщением бота кнопками `✅ Подтвердить` и `❌ Отмена`. Отмена переводит запись в `cancelled` и soft-delete её активные товары.
 
-`shop_id` никогда не приходит от клиента. Сервер валидирует raw Telegram `initData`, находит seller по `user.id` и использует `seller.shop_id`. Browser fallback разрешён только явной server-side конфигурацией.
-
-Бот отвечает `✅ Запись сохранена` только после успешного `save_voice_sale` и read-back проверки созданной продажи и точного количества `sale_items`. Ошибка Supabase даёт ответ `⚠️ Не удалось сохранить запись. Попробуйте ещё раз.` без ложного success.
+WebApp не подтверждает сомнительную voice-запись. Он показывает, что запись нужно подтвердить в Telegram, и остаётся панелью просмотра и управления товарами. Редактирование товара сохраняет поля; если родительская запись ещё `needs_review`, позиция не входит в выручку до Telegram confirm.
 
 ## Роли
 
-- `seller` — отправляет голосовые продажи в Telegram и должен быть активным в своём магазине.
-- `owner` — открывает Mini App, смотрит отчёт, записи и продавцов, исправляет, сохраняет, исключает и восстанавливает позиции.
-- `system` — обрабатывает аудио, определяет статусы, сохраняет данные и пересчитывает отчёт.
+- `seller` — отправляет voice-продажи и может подтвердить/отменить свою сомнительную запись в Telegram.
+- `owner` — открывает WebApp, смотрит отчёт, записи, продавцов, редактирует и исключает товары.
+- `system` — валидирует Telegram, сохраняет Supabase rows, пересчитывает отчёт и пишет безопасные logs.
+
+## Статусы
+
+- `processed` — запись подтверждена или уверенно распознана, входит в отчёт.
+- `needs_review` — запись сохранена, но ждёт решения в Telegram.
+- `cancelled` — пользователь отменил запись, она не входит в отчёт.
+- `failed` — voice pipeline не смог завершить обработку.
+- `sale_items.status = excluded` + `deleted_at` — товар исключён через soft delete.
+
+## WebApp
+
+Нижняя навигация:
+
+- Отчёт.
+- Записи.
+- Продавцы.
+
+Отчёт показывает четыре метрики: выручка, количество товаров, записи и «Нужно проверить». Ниже идут компактные фильтры периода, топ товаров, продажи за период и review-блок, если он есть.
+
+Журнал записей показывает дату/время, продавца, распознанный текст, статус, сумму, кнопку прослушивания аудио и раскрытие «Товары».
+
+Страница продавцов показывает активность, количество записей и выручку за выбранный период.
+
+## Auth и безопасность
+
+`shop_id` никогда не приходит от клиента. Сервер определяет магазин по валидному raw Telegram `initData` либо через явно включённый server-side fallback.
+
+Telegram WebApp HMAC:
+
+- использует `TELEGRAM_BOT_TOKEN`;
+- исключает только `hash`;
+- сохраняет `signature`;
+- не использует `TELEGRAM_WEBHOOK_SECRET`.
+
+`SUPABASE_SERVICE_ROLE_KEY` используется только сервером.
+
+Production diagnostics доступны только при `DEBUG_TELEGRAM_WEBAPP=true`.
 
 ## Локальный запуск
 
@@ -43,80 +79,63 @@ Telegram voice
    npm run dev
    ```
 
-Отдельно доступны `npm run bot:dev` и `npm run web:dev`.
+Отдельно доступны:
+
+```bash
+npm run bot:dev
+npm run web:dev
+```
 
 ## Переменные окружения
 
 | Переменная | Назначение |
 | --- | --- |
-| `TELEGRAM_BOT_TOKEN` | Токен бота; используется также для HMAC проверки Telegram initData. |
-| `TELEGRAM_WEBHOOK_SECRET` | Secret header Telegram webhook. |
-| `NEXT_PUBLIC_APP_URL` | Публичный HTTPS URL Web App. |
-| `PUBLIC_WEBHOOK_URL` | Необязательная отдельная HTTPS база или полный URL webhook; иначе используется `NEXT_PUBLIC_APP_URL`. |
+| `TELEGRAM_BOT_TOKEN` | Токен бота и секрет HMAC для WebApp initData. |
+| `TELEGRAM_WEBHOOK_SECRET` | Только secret header Telegram webhook. |
+| `NEXT_PUBLIC_APP_URL` | Публичный HTTPS URL WebApp. |
+| `PUBLIC_WEBHOOK_URL` | Необязательная отдельная база или полный URL webhook. |
 | `SUPABASE_URL` | URL проекта Supabase. |
 | `SUPABASE_ANON_KEY` | Public key Supabase. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Только server-side bot/Web App. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Только server-side bot/WebApp. |
 | `SUPABASE_STORAGE_BUCKET` | Приватный bucket voice records. |
 | `STT_API_KEY`, `STT_API_URL`, `STT_MODEL` | STT provider. |
 | `LLM_API_KEY`, `LLM_API_URL`, `LLM_MODEL` | Parser provider. |
-| `DEMO_MODE` | Явно включает demo behavior для локальной разработки. |
-| `DEMO_OWNER_TELEGRAM_ID` | Owner для demo mode. |
-| `DEFAULT_SHOP_NAME` | Имя demo shop при `DEMO_MODE=true`. |
-| `ALLOW_WEBAPP_FALLBACK` | Если `true`, Mini App может открыться без Telegram initData. |
-| `DEFAULT_SHOP_ID` | Shop id для browser fallback; читается только сервером. |
-| `DEFAULT_SELLER_ID` | Seller id для browser fallback; читается только сервером. |
-| `DEBUG_TELEGRAM_WEBAPP` | Показывает `/debug-telegram` и кнопку диагностики; в production по умолчанию выключен. |
-
-Секреты не должны иметь префикс `NEXT_PUBLIC_` и не коммитятся.
-
-## Web App auth
-
-Mini App работает в трёх режимах:
-
-- Telegram mode: клиент проверяет `window.Telegram.WebApp`, непустой raw `initData` и `initDataUnsafe.user.id`; `apiFetch` отправляет raw строку в `x-telegram-init-data`. Сервер проверяет HMAC через `TELEGRAM_BOT_TOKEN` этого же бота, включая поле `signature` и исключая только `hash`.
-- Seller/shop resolution: сервер сначала ищет seller по Telegram user id. Если seller отсутствует, но существует active owner binding, seller создаётся в том же `shop_id`. Отчёт читает `sales` по этому `shop_id`, а `sale_items` — только по найденным sale IDs.
-- Browser fallback mode: initData нет, `apiFetch` отправляет `x-app-mode: fallback`, сервер загружает `DEFAULT_SELLER_ID` из БД и проверяет, что его `shop_id` совпадает с `DEFAULT_SHOP_ID`.
-- Error mode: UI показывает явную причину доступа и не маскирует auth/DB ошибку нулевым отчётом или сообщением «Записей нет».
-
-Production smoke 24 июня 2026 подтвердил полный путь `raw initData → /api/auth/telegram → seller/shop → sales → sale_items`: оба активных seller получили session cookie, а report прочитал 4 продажи и 4 позиции за текущий день из одного `shop_id`.
-
-`TELEGRAM_WEBHOOK_SECRET` используется только для webhook header и не участвует в WebApp HMAC. `/debug-telegram` доступен в production только при `DEBUG_TELEGRAM_WEBAPP=true`.
+| `DEMO_MODE` | Явно включает demo behavior для разработки. |
+| `DEFAULT_SHOP_NAME` | Demo shop при `DEMO_MODE=true`. |
+| `ALLOW_WEBAPP_FALLBACK` | Разрешает browser fallback. |
+| `DEFAULT_SHOP_ID` | Shop id для fallback, только server-side. |
+| `DEFAULT_SELLER_ID` | Seller id для fallback, только server-side. |
+| `DEBUG_TELEGRAM_WEBAPP` | Включает diagnostics route и кнопку. |
 
 ## Supabase migrations
 
-Migrations создают shops, sellers, products, voice_records, sales, sale_items, audit_logs, soft-delete поля `sale_items.deleted_at`, `deleted_reason`, `deleted_previous_status`, `updated_at`, таблицу `owners` и функцию `save_voice_sale`. Миграция `repair_complete_single_item_sales` исправляет старые однозначные single-item записи, которые были ошибочно сохранены в review. Исключение товара использует `deleted_at = now()`, восстановление — `deleted_at = null`.
+Migrations создают shops, sellers, owners, products, voice_records, sales, sale_items, audit_logs, Storage bucket, soft-delete поля и RPC `save_voice_sale`.
 
-Пример назначения ролей:
+Актуальная схема допускает `cancelled` для `sales` и `voice_records`. Товары исключаются только через `sale_items.deleted_at`, не через физический delete.
 
-```sql
-insert into public.owners (shop_id, telegram_id, name)
-values ('<shop-uuid>', <owner-telegram-id>, 'Владелец');
+## Проверка продукта
 
-insert into public.sellers (shop_id, telegram_id, name)
-values ('<shop-uuid>', <seller-telegram-id>, 'Продавец');
-```
-
-## Telegram webhook
-
-Webhook endpoint: `/api/telegram/webhook`. После deploy задайте публичный URL и secret, затем выполните:
-
-```bash
-npm run telegram:set-webhook
-npm run telegram:webhook-info
-```
-
-`/start` отправляет reply и inline `web_app` кнопки «Открыть отчёт» и задаёт `MenuButtonWebApp`. Кнопка «Диагностика Telegram» добавляется только при `DEBUG_TELEGRAM_WEBAPP=true`.
-
-## Проверка продажи
-
-1. Бот сохраняет voice record, sale и распознанные позиции.
-2. Полная уверенная позиция сразу видна в отчёте как «Готово».
-3. Неполная позиция попадает в «Нужно проверить».
-4. Владелец нажимает карандаш в карточке, меняет товар, количество или цену и нажимает «Сохранить».
-5. Карточка показывает loading, закрывается после подтверждённого update и обновляет сумму позиции, количество и выручку без ручного reload.
-6. Корзина открывает подтверждение «Удалить товар из отчёта?» и выполняет soft delete; исключённые позиции можно восстановить.
-
-Фактические поля `sale_items`: `product_name`, `quantity`, `unit`, `price`, `total`, `status`, `deleted_at`, `updated_at`. Поля `unit_price` и `total_price` в текущей схеме не используются.
+1. Уверенная запись: `Сникерс, 5 штук по 100 рублей`.
+   - status `processed`;
+   - входит в выручку;
+   - видна в WebApp.
+2. Сомнительная запись:
+   - status `needs_review`;
+   - не входит в выручку;
+   - под сообщением есть только `✅ Подтвердить` и `❌ Отмена`.
+3. Confirm:
+   - sale становится `processed`;
+   - товары входят в отчёт.
+4. Cancel:
+   - sale становится `cancelled`;
+   - товары soft-deleted и не входят в отчёт.
+5. Edit товара:
+   - сохраняет `product_name`, `quantity`, `price`;
+   - пересчитывает `total`;
+   - processed sale пересчитывает выручку.
+6. Delete товара:
+   - soft-delete row;
+   - после reload row не возвращается в active list.
 
 ## Качество
 
@@ -124,17 +143,23 @@ npm run telegram:webhook-info
 npm run lint
 npm run test
 npm run build
+npm run web:build
 ```
 
 Не заявляйте, что проект работает, если эти команды или внешние smoke checks не запускались.
 
 ## Документация
 
-Карта находится в [`docs/INDEX.md`](./docs/INDEX.md). Канонические спецификации — в `docs/specs`, функции — в `docs/features`, правила — в `docs/rules`, планы — в `docs/plans`.
+Карта находится в [`docs/INDEX.md`](./docs/INDEX.md).
 
-Перед изменением WebApp обязательны:
+Главный spec: [`docs/specs/global.md`](./docs/specs/global.md).
 
+Ключевые specs:
+
+- [`docs/specs/product/telegram-confirmation-flow.md`](./docs/specs/product/telegram-confirmation-flow.md);
 - [`docs/specs/product/webapp-report.md`](./docs/specs/product/webapp-report.md);
 - [`docs/specs/product/sale-item-editing.md`](./docs/specs/product/sale-item-editing.md);
+- [`docs/specs/technical/database.md`](./docs/specs/technical/database.md);
 - [`docs/specs/technical/webapp-api.md`](./docs/specs/technical/webapp-api.md);
-- [`docs/specs/technical/database.md`](./docs/specs/technical/database.md).
+- [`docs/specs/technical/telegram-webhook.md`](./docs/specs/technical/telegram-webhook.md);
+- [`docs/specs/technical/telegram-webapp-session.md`](./docs/specs/technical/telegram-webapp-session.md).

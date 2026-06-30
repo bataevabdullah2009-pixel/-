@@ -1,18 +1,62 @@
 # Архитектура Voice Sales Log
 
+## Основной поток
+
 ```text
 Telegram voice
-  -> bot webhook / process-update
+  -> POST /api/telegram/webhook
+  -> processTelegramUpdate
+  -> seller resolution
   -> audio preparation
   -> Russian STT
   -> LLM parser + evidence rules
-  -> Supabase save_voice_sale
+  -> save_voice_sale RPC
   -> sales/sale_items read-back verification
-  -> Next.js App Router Web App
+  -> Telegram success or review decision buttons
+  -> Next.js App Router WebApp
   -> report / records / sellers / item mutations
 ```
 
-## Web App auth
+## Telegram bot
+
+Bot работает через Telegraf.
+
+Webhook защищён `TELEGRAM_WEBHOOK_SECRET`.
+
+Bot success после voice save возможен только после Supabase read-back.
+
+Уверенная продажа получает обычный success message.
+
+Сомнительная продажа получает inline callback keyboard:
+
+```text
+✅ Подтвердить
+❌ Отмена
+```
+
+В review-message нет `web_app` кнопки.
+
+## Confirm/cancel service
+
+Callback flow:
+
+```text
+callback data
+  -> seller from ctx.from.id
+  -> sales by sale_id + seller_id + shop_id
+  -> confirm or cancel mutation
+  -> editMessageText or fallback reply
+```
+
+Confirm переводит sale/voice в `processed` и валидные items в `processed`.
+
+Cancel переводит sale/voice в `cancelled` и soft-delete active items.
+
+Callback не принимает client `shop_id`.
+
+Повторные callback идемпотентны.
+
+## WebApp auth
 
 ```text
 Telegram mode:
@@ -21,29 +65,57 @@ Telegram mode:
   -> client checks WebApp + raw initData + initDataUnsafe.user.id
   -> apiFetch(x-app-mode=telegram, x-telegram-init-data=<raw initData>)
   -> resolveRequestContext()
-  -> deterministic key sort + HMAC via TELEGRAM_BOT_TOKEN, all fields except hash
+  -> HMAC via TELEGRAM_BOT_TOKEN
   -> seller lookup by Telegram user id
-  -> optional seller creation from active owner binding in the same shop
+  -> optional seller creation from active owner binding
   -> server-derived shop_id
-  -> sales filtered by shop_id
-  -> sale_items filtered by resolved sale IDs
-
-Browser fallback mode:
-  no initData
-  -> apiFetch(x-app-mode=fallback)
-  -> resolveRequestContext()
-  -> ALLOW_WEBAPP_FALLBACK=true
-  -> DEFAULT_SHOP_ID / DEFAULT_SELLER_ID from server env
-  -> seller row lookup and shop_id equality check
 ```
 
-`TELEGRAM_WEBHOOK_SECRET` не участвует в WebApp auth. `shop_id` не является частью доверенного client contract. Отчёт, записи, продавцы и Server Actions используют только server-derived context.
+```text
+Browser fallback:
+  no initData
+  -> apiFetch(x-app-mode=fallback)
+  -> ALLOW_WEBAPP_FALLBACK=true
+  -> DEFAULT_SHOP_ID / DEFAULT_SELLER_ID from server env
+  -> seller lookup
+  -> shop_id equality check
+```
 
-## Data flow
+`TELEGRAM_WEBHOOK_SECRET` не участвует в WebApp auth.
 
-`sales.total_amount` и отчёт считаются по активным `sale_items.status = processed` и `deleted_at is null`. `needs_review` и legacy `needs_price` выводятся в блок «Нужно проверить». Исключение позиции — это `deleted_at = now()`, восстановление — `deleted_at = null`.
+## WebApp data flow
 
-## WebApp mutation flow
+Report:
+
+```text
+requireOwner()
+  -> sales by shop_id and period
+  -> sale_items by sale ids
+  -> scopeReportRows()
+  -> buildSalesReport()
+```
+
+Records:
+
+```text
+requireOwner()
+  -> sales by shop_id and period
+  -> signed audio url
+  -> sale_items by sale ids
+  -> RecordCard + details "Товары"
+```
+
+Sellers:
+
+```text
+requireOwner()
+  -> sellers by shop_id
+  -> sales by period
+  -> sale_items by sale ids
+  -> recordsCount + revenue
+```
+
+## Item mutation flow
 
 ```text
 SaleItemCard
@@ -56,6 +128,44 @@ SaleItemCard
   -> router.refresh()
 ```
 
-Update/delete errors возвращаются в конкретную карточку. Техническая причина логируется на сервере. Активный UI отбрасывает как `deleted_at is not null`, так и `status = excluded`.
+Processed sale item edit keeps item processed and updates revenue.
 
-Подробности: [technical architecture](../specs/technical/architecture.md), [auth and shop isolation](../specs/technical/auth-and-shop-isolation.md), [report calculation](../specs/technical/report-calculation.md).
+Review sale item edit saves fields but keeps item review until Telegram confirm.
+
+Delete is soft delete:
+
+```text
+status = excluded
+deleted_at = now()
+deleted_reason = excluded_by_owner
+```
+
+## Revenue architecture
+
+Revenue is derived from active processed items:
+
+```text
+sale_items.status = processed
+and deleted_at is null
+and price is not null
+and total is not null
+```
+
+`needs_review`, `cancelled`, `failed`, `excluded` and deleted rows do not participate.
+
+## Diagnostics
+
+Diagnostics route `/debug-telegram` is separate from the main product UI.
+
+Production access requires `DEBUG_TELEGRAM_WEBAPP=true`.
+
+Diagnostics never prints raw initData or secrets.
+
+## References
+
+- [Global spec](../specs/global.md)
+- [Telegram confirmation flow](../specs/product/telegram-confirmation-flow.md)
+- [WebApp report](../specs/product/webapp-report.md)
+- [Sale item editing](../specs/product/sale-item-editing.md)
+- [Database](../specs/technical/database.md)
+- [WebApp API](../specs/technical/webapp-api.md)

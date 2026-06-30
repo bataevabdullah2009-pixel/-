@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-06-30 — Telegram confirm/cancel и продуктовый WebApp
+
+- Сомнительные voice-записи теперь получают только две Telegram inline-кнопки: `✅ Подтвердить` и `❌ Отмена`.
+- Review-message больше не содержит кнопку «Открыть отчёт» и не смешивает отчёт с confirm/cancel flow.
+- Confirm callback переводит sale/voice в `processed`, валидные active items — в `processed`, и добавляет их в выручку.
+- Cancel callback переводит sale/voice в `cancelled`, soft-delete active items и оставляет выручку нулевой.
+- Callback flow идемпотентный: повторное нажатие не создаёт дубли и не откатывает уже принятое решение.
+- Добавлен `cancelled` в shared types/schema и Supabase constraints через migration `20260630120000_add_cancelled_voice_sale_status.sql`.
+- WebApp убрал legacy item-confirm path: review-запись больше не подтверждается из карточки.
+- WebApp edit review item сохраняет поля, но item остаётся `needs_review` до Telegram confirm.
+- Экран отчёта перестроен под продуктовый мобильный UI: 4 метрики, компактные фильтры, топ товаров, продажи за период и review-блок.
+- Экран записей показывает раскрытие «Товары» и бейдж «Нужно подтвердить в Telegram».
+- Экран продавцов показывает активность, количество записей и выручку за выбранный период.
+- Обновлены specs, features, plans, roadmap, AGENTS и Codex skill под фактическое состояние.
+- Проверено: `npm.cmd run lint` — passed; `npm.cmd run test` — 8 файлов, 90 тестов passed; `npm.cmd run build` — bot/web/shared passed; `npm.cmd run web:build` — passed.
+
 ## 2026-06-25 — WebApp: карточки товаров и надёжные update/delete
 
 - Постоянно раскрытая форма заменена мобильной карточкой с названием, количеством, ценой за единицу, суммой, карандашом и корзиной.

@@ -1,6 +1,8 @@
 import { Markup, Telegraf } from "telegraf";
 import type { AppEnv } from "../config/env";
 
+export const VOICE_SALE_REVIEW_CALLBACK_PREFIX = "voice_sale_review";
+
 export function createTelegramBot(env: AppEnv) {
   return new Telegraf(env.TELEGRAM_BOT_TOKEN);
 }
@@ -33,12 +35,32 @@ export function createReportMenuButton(appUrl: string) {
   };
 }
 
+export function createVoiceSaleReviewCallbackData(action: "confirm" | "cancel", saleId: string) {
+  return `${VOICE_SALE_REVIEW_CALLBACK_PREFIX}:${action}:${saleId}`;
+}
+
+export function createVoiceSaleReviewKeyboard(saleId: string) {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback("✅ Подтвердить", createVoiceSaleReviewCallbackData("confirm", saleId)),
+      Markup.button.callback("❌ Отмена", createVoiceSaleReviewCallbackData("cancel", saleId))
+    ]
+  ]);
+}
+
+function punctuateRecognizedText(recognizedText: string) {
+  const text = recognizedText.trim();
+  return /[.!?…]$/u.test(text) ? text : `${text}.`;
+}
+
 export function createVoiceSaleUserMessage(recognizedText: string, needsAttention: boolean) {
+  const text = punctuateRecognizedText(recognizedText);
+
   if (needsAttention) {
-    return `⚠️ Запись сохранена, но нужно проверить товары и цены.\nРаспознано: ${recognizedText}`;
+    return `⚠️ Запись сохранена, но нужно подтвердить товары и цены.\nРаспознано: ${text}`;
   }
 
-  return `✅ Запись сохранена: ${recognizedText}`;
+  return `✅ Запись сохранена: ${text}`;
 }
 
 export function createVoiceSaveFailureMessage() {

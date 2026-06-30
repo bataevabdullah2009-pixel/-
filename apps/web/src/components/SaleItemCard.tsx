@@ -102,8 +102,8 @@ export function SaleItemCard({ item }: SaleItemCardProps) {
 
   const total = item.total === null ? "Не входит в выручку" : formatCurrency(item.total);
   const price = item.price === null
-    ? "Цена не указана"
-    : `${formatCurrency(item.price)}/${item.unit}`;
+    ? `${formatQuantity(item.quantity)} ${item.unit}, цена не указана`
+    : `${formatQuantity(item.quantity)} ${item.unit} × ${formatCurrency(item.price)}`;
 
   return (
     <article className={`saleItemCard ${item.status !== "processed" ? "saleItemCardAttention" : ""}`}>
@@ -116,7 +116,6 @@ export function SaleItemCard({ item }: SaleItemCardProps) {
             ) : null}
           </div>
           <div className="saleItemMeta">
-            <span>{formatQuantity(item.quantity)} {item.unit}</span>
             <span>{price}</span>
           </div>
           <strong className="saleItemTotal">{total}</strong>

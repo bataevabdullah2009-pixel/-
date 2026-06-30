@@ -43,6 +43,7 @@ export function getStatusLabel(status: string) {
     pending: "Нужно проверить",
     processed: "Готово",
     needs_review: "Нужно проверить",
+    cancelled: "Исключено",
     failed: "Нужно проверить",
     needs_price: "Нужно проверить",
     excluded: "Исключено"

@@ -1,7 +1,9 @@
 import { createHmac } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  cancelVoiceSaleWithClient,
   buildVoiceSaleRpcPayload,
+  confirmVoiceSaleWithClient,
   ensureReviewableSaleItems,
   persistVoiceSale,
   resolveSellerAccess,
@@ -13,6 +15,7 @@ import {
   createReportMenuButton,
   createReportReplyKeyboard,
   createVoiceSaveFailureMessage,
+  createVoiceSaleReviewKeyboard,
   createVoiceSaleUserMessage
 } from "../apps/bot/src/services/telegram.service";
 import { buildExcludedSaleItemPatch, buildManualSaleItemPatch, buildSalesReport } from "../packages/shared/utils/date-range";
@@ -52,6 +55,88 @@ function signedInitData(botToken: string, telegramId: number, authDate: number) 
   const secret = createHmac("sha256", "WebAppData").update(botToken).digest();
   params.set("hash", createHmac("sha256", secret).update(check).digest("hex"));
   return params.toString();
+}
+
+function createReviewDecisionClient() {
+  const state = {
+    sales: [{
+      id: "sale-1",
+      shop_id: "shop-1",
+      seller_id: "seller-1",
+      voice_record_id: "voice-1",
+      status: "needs_review",
+      total_amount: 0
+    }],
+    voice_records: [{
+      id: "voice-1",
+      shop_id: "shop-1",
+      seller_id: "seller-1",
+      status: "needs_review"
+    }],
+    sale_items: [{
+      id: "item-1",
+      sale_id: "sale-1",
+      product_name: "Сникерс",
+      quantity: 5,
+      unit: "шт",
+      price: 100,
+      total: 500,
+      confidence: 0.62,
+      status: "needs_review",
+      deleted_at: null
+    }]
+  };
+
+  const client = {
+    from: vi.fn((tableName: keyof typeof state) => {
+      const filters: Array<{ field: string; value: unknown; type: "eq" | "is" }> = [];
+      let patch: Record<string, unknown> | null = null;
+      const rows = state[tableName] as Array<Record<string, unknown>>;
+      const applyFilters = () => rows.filter((row) =>
+        filters.every((filter) => {
+          if (filter.type === "is") return row[filter.field] === filter.value;
+          return row[filter.field] === filter.value;
+        })
+      );
+      const payload = () => {
+        if (patch) {
+          const matches = applyFilters();
+          for (const row of matches) Object.assign(row, patch);
+          return { data: matches.length === 1 ? matches[0] : matches, error: null };
+        }
+        return { data: applyFilters(), error: null };
+      };
+      const query = {
+        select: vi.fn(() => query),
+        eq: vi.fn((field: string, value: unknown) => {
+          filters.push({ field, value, type: "eq" });
+          return query;
+        }),
+        is: vi.fn((field: string, value: unknown) => {
+          filters.push({ field, value, type: "is" });
+          return query;
+        }),
+        update: vi.fn((value: Record<string, unknown>) => {
+          patch = value;
+          return query;
+        }),
+        maybeSingle: vi.fn(async () => {
+          const matches = applyFilters();
+          return { data: matches[0] ?? null, error: null };
+        }),
+        single: vi.fn(async () => {
+          const result = payload();
+          const data = Array.isArray(result.data) ? result.data[0] : result.data;
+          return { data: data ?? null, error: data ? null : { message: "not found" } };
+        }),
+        then: (resolve: (value: { data: unknown; error: null }) => unknown, reject: (reason?: unknown) => unknown) =>
+          Promise.resolve(payload()).then(resolve, reject)
+      };
+      return query;
+    })
+  };
+
+  return { client, state };
 }
 
 describe("sales flow stabilization", () => {
@@ -178,6 +263,74 @@ describe("sales flow stabilization", () => {
     expect(button).not.toHaveProperty("url");
   });
 
+  it("uses only confirm and cancel callback buttons for a review sale", () => {
+    const keyboard = createVoiceSaleReviewKeyboard("550e8400-e29b-41d4-a716-446655440000");
+    const buttons = keyboard.reply_markup.inline_keyboard[0];
+
+    expect(buttons).toHaveLength(2);
+    expect(buttons?.[0]).toMatchObject({
+      text: "✅ Подтвердить",
+      callback_data: "voice_sale_review:confirm:550e8400-e29b-41d4-a716-446655440000"
+    });
+    expect(buttons?.[1]).toMatchObject({
+      text: "❌ Отмена",
+      callback_data: "voice_sale_review:cancel:550e8400-e29b-41d4-a716-446655440000"
+    });
+    expect(JSON.stringify(keyboard.reply_markup)).not.toContain("web_app");
+    expect(JSON.stringify(keyboard.reply_markup)).not.toContain("Открыть отчёт");
+  });
+
+  it("confirms a review sale and includes valid items in revenue", async () => {
+    const { client, state } = createReviewDecisionClient();
+    const seller = { id: "seller-1", shopId: "shop-1" };
+
+    const result = await confirmVoiceSaleWithClient(client as never, seller, "sale-1");
+    const repeat = await confirmVoiceSaleWithClient(client as never, seller, "sale-1");
+    const report = buildSalesReport(state.sale_items.map((row) => ({
+      ...row,
+      created_at: "2026-06-30T09:00:00.000Z"
+    })) as SaleItem[]);
+
+    expect(result).toMatchObject({
+      ok: true,
+      status: "processed",
+      message: "✅ Запись подтверждена и добавлена в отчёт."
+    });
+    expect(repeat).toMatchObject({ ok: true, status: "unchanged" });
+    expect(state.sales[0]).toMatchObject({ status: "processed", total_amount: 500 });
+    expect(state.voice_records[0]).toMatchObject({ status: "processed" });
+    expect(state.sale_items[0]).toMatchObject({ status: "processed", confidence: 1 });
+    expect(report.totalRevenue).toBe(500);
+  });
+
+  it("cancels a review sale with soft delete and zero revenue", async () => {
+    const { client, state } = createReviewDecisionClient();
+    const seller = { id: "seller-1", shopId: "shop-1" };
+
+    const result = await cancelVoiceSaleWithClient(client as never, seller, "sale-1");
+    const repeat = await cancelVoiceSaleWithClient(client as never, seller, "sale-1");
+    const report = buildSalesReport(state.sale_items.map((row) => ({
+      ...row,
+      created_at: "2026-06-30T09:00:00.000Z"
+    })) as SaleItem[]);
+
+    expect(result).toMatchObject({
+      ok: true,
+      status: "cancelled",
+      message: "❌ Запись отменена и не входит в отчёт."
+    });
+    expect(repeat).toMatchObject({ ok: true, status: "unchanged" });
+    expect(state.sales[0]).toMatchObject({ status: "cancelled", total_amount: 0 });
+    expect(state.voice_records[0]).toMatchObject({ status: "cancelled" });
+    expect(state.sale_items[0]).toMatchObject({
+      status: "excluded",
+      deleted_reason: "excluded_by_owner",
+      deleted_previous_status: "needs_review"
+    });
+    expect(state.sale_items[0].deleted_at).toBeTruthy();
+    expect(report.totalRevenue).toBe(0);
+  });
+
   it("does not use the old Telegram-only blocking message for missing initData", () => {
     expect(() => requireTelegramInitDataHeader(new Headers())).toThrow(
       "Telegram initData is missing."
@@ -198,7 +351,7 @@ describe("sales flow stabilization", () => {
 
     expect(normal).toContain("✅ Запись сохранена: Сникерс, 4 штуки по 100 рублей");
     expect(normal).not.toContain("Проверьте");
-    expect(warning).toContain("⚠️ Запись сохранена, но нужно проверить товары и цены.");
+    expect(warning).toContain("⚠️ Запись сохранена, но нужно подтвердить товары и цены.");
     expect(warning).toContain("Распознано: Сникерс");
     for (const message of [normal, warning]) {
       expect(message).not.toMatch(/processed|needs_review|pending|failed/);

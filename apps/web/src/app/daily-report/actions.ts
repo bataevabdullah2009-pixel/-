@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { getDateRange } from "@voice-sales-log/shared/utils/date-range";
 import type { DateRangePreset } from "@voice-sales-log/shared/types";
 import {
-  confirmSaleItem,
   excludeSaleItem,
   resetDay,
   restoreSaleItem,
@@ -125,22 +124,6 @@ export async function excludeSaleItemAction(
     console.error("Failed to exclude sale item", error);
     return { status: "error", message: EXCLUDE_ERROR_MESSAGE };
   }
-}
-
-export async function confirmSaleItemAction(formData: FormData) {
-  const returnTo = safeReturnTo(formData);
-  const itemId = String(formData.get("itemId") ?? "");
-  let result = { ok: false, message: "Не удалось подтвердить позицию." };
-
-  if (itemId) {
-    try {
-      result = await confirmSaleItem(itemId);
-    } catch (error) {
-      console.error("Failed to confirm sale item", error);
-    }
-  }
-
-  finishMutation(returnTo, result.ok ? result : { ok: false, message: result.message });
 }
 
 export async function restoreSaleItemAction(formData: FormData) {

@@ -14,8 +14,8 @@ import {
 } from "../services/records.service";
 import { uploadVoiceAudio } from "../services/storage.service";
 import {
-  createReportKeyboard,
   createVoiceSaveFailureMessage,
+  createVoiceSaleReviewKeyboard,
   createVoiceSaleUserMessage,
   downloadTelegramVoice
 } from "../services/telegram.service";
@@ -201,10 +201,12 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
 
       stage = "telegram_reply";
       const responseText = parsedSale.cleaned_text || "Текст требует ручной проверки.";
-      await ctx.reply(
-        createVoiceSaleUserMessage(responseText, result.needsAttention),
-        createReportKeyboard(env.NEXT_PUBLIC_APP_URL)
-      );
+      const userMessage = createVoiceSaleUserMessage(responseText, result.needsAttention);
+      if (result.needsAttention) {
+        await ctx.reply(userMessage, createVoiceSaleReviewKeyboard(result.saleId));
+      } else {
+        await ctx.reply(userMessage);
+      }
     } catch (error) {
       const errorMessage = formatErrorMessage(error);
       logger.error("voice_failed", {
