@@ -23,6 +23,7 @@ export type SellerOption = {
 export type SellerStats = SellerOption & {
   recordsCount: number;
   revenue: number;
+  lastActivity: string | null;
 };
 
 export type RecordListItem = {

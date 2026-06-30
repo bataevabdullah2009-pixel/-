@@ -5,14 +5,14 @@
 ## Частично
 
 - Автоматизированный production smoke после deploy: серверные проверки существуют, запуск из реального Telegram-клиента пока ручной.
-- Наблюдаемость WebApp mutations: server logs есть, отдельные метрики latency/error rate не реализованы.
+- Наблюдаемость WebApp mutations: `statusCode`/`code` и server logs есть, отдельные метрики latency/error rate не реализованы.
 - Визуальная регрессия WebApp: CSS уплотнён для мобильного UI, но нет автоматических screenshot-сравнений.
 
 ## Запланировано
 
 - Удобное управление seller/owner bindings из панели.
 - E2E-тесты WebApp с отдельной тестовой Supabase средой.
-- E2E Telegram сценарий confirm/cancel на тестовом боте и тестовой БД.
+- E2E Telegram/WebApp сценарий confirm/cancel на тестовом боте и тестовой БД.
 - Улучшение доступности и визуальная регрессия для нескольких мобильных viewport.
 
 ## Не планируется в текущем продукте

@@ -203,7 +203,7 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
       const responseText = parsedSale.cleaned_text || "Текст требует ручной проверки.";
       const userMessage = createVoiceSaleUserMessage(responseText, result.needsAttention);
       if (result.needsAttention) {
-        await ctx.reply(userMessage, createVoiceSaleReviewKeyboard(result.saleId));
+        await ctx.reply(userMessage, createVoiceSaleReviewKeyboard(result.saleId, env.NEXT_PUBLIC_APP_URL));
       } else {
         await ctx.reply(userMessage);
       }

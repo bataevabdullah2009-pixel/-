@@ -224,7 +224,7 @@ Bot после RPC выполняет read-back:
 
 ## Confirm voice sale
 
-Telegram confirm:
+Telegram/WebApp confirm:
 
 1. Читает sale по `sale_id`, `seller_id`, `shop_id`.
 2. Читает active items.
@@ -234,11 +234,11 @@ Telegram confirm:
 6. Voice record получает `status = processed`.
 7. `total_amount` становится суммой валидных items.
 
-Callback не принимает `shop_id`.
+Callback/WebApp action не принимает `shop_id`.
 
 ## Cancel voice sale
 
-Telegram cancel:
+Telegram/WebApp cancel:
 
 1. Читает sale по `sale_id`, `seller_id`, `shop_id`.
 2. Soft-delete active items.
@@ -294,6 +294,7 @@ Report читает:
 4. `20260620135556_stabilize_sales_flow.sql` — owners, RPC, hardening.
 5. `20260623221651_repair_complete_single_item_sales.sql` — repair старых single-item продаж.
 6. `20260630120000_add_cancelled_voice_sale_status.sql` — `cancelled` для sale/voice statuses.
+7. `20260630153000_ensure_sale_item_soft_delete_columns.sql` — idempotent гарантия `deleted_at`, `deleted_reason`, `deleted_previous_status`, `updated_at` и soft-delete constraints.
 
 Миграции не должны удалять production data.
 

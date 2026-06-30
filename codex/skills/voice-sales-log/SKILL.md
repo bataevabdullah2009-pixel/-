@@ -54,13 +54,13 @@ Client fetch выполняется через `apiFetch()`, который от
 
 Карточка товара показывает name/quantity/unit price/total и действия карандаш/корзина. Update/delete возвращают локальный pending/error state, а сервер повторно проверяет item → sale → shop. Исключённые rows не показываются активными.
 
-WebApp не подтверждает сомнительную voice-запись. Edit review item сохраняет поля, но item остаётся review до Telegram confirm.
+WebApp подтверждает или отменяет сомнительную voice-запись только во вкладке «Проверка». Edit review item сохраняет поля, но item остаётся review до явного confirm.
 
 ### Telegram confirm/cancel
 
-Сомнительная voice-запись получает только две inline callback-кнопки: `✅ Подтвердить` и `❌ Отмена`. В этом сообщении не добавлять `web_app` кнопку «Открыть отчёт».
+Сомнительная voice-запись получает inline-кнопки: `✅ Подтвердить`, `❌ Отмена` и `Открыть отчёт`. `Открыть отчёт` должен быть только `web_app` кнопкой. Новые callback data: `confirm:<record_id>` и `cancel:<record_id>`.
 
-Confirm переводит sale/voice в `processed` и добавляет валидные active items в выручку. Cancel переводит sale/voice в `cancelled` и soft-delete active items. Callback не принимает `shop_id`, повторно разрешает seller по Telegram user id и должен быть идемпотентным.
+Confirm переводит sale/voice в `processed` и добавляет валидные active items в выручку. Cancel переводит sale/voice в `cancelled` и soft-delete active items. Callback не принимает `shop_id`, повторно разрешает seller по Telegram user id и должен быть идемпотентным. WebApp review actions используют `requireOwner()` и sale -> shop проверку.
 
 ### Voice pipeline
 
