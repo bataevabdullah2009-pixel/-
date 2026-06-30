@@ -3,7 +3,8 @@ import { DateFilter } from "@/components/DateFilter";
 import { EmptyState } from "@/components/EmptyState";
 import { RefreshButton } from "@/components/RefreshButton";
 import { SaleItemCard } from "@/components/SaleItemCard";
-import { getReport } from "@/features/records/records.api";
+import Link from "next/link";
+import { getCurrentShopName, getReport } from "@/features/records/records.api";
 import type { SearchParams } from "@/features/records/records.types";
 import {
   formatCurrency,
@@ -29,6 +30,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
   const { period, date } = filters;
   const mutation = getStringParam(params.mutation);
   const message = getStringParam(params.message);
+  const shopName = await getCurrentShopName();
   const { range, salesCount, summary, items, deletedItems, error } = await getReport(filters);
   const returnQuery = new URLSearchParams({ period });
   if (date) returnQuery.set("date", date);
@@ -36,15 +38,26 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
   const isSingleDay = period === "today" || period === "yesterday" || period === "custom";
   const reviewItems = summary.reviewItems;
   const processedItems = items.filter((item) => isRevenueSaleItemStatus(item.status));
+  const latestItems = [...processedItems].sort((left, right) =>
+    new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+  );
   const topRows = [...summary.rows].sort((left, right) => right.revenue - left.revenue).slice(0, 5);
+  const revenueByDay = new Map<string, number>();
+  for (const item of processedItems) {
+    const label = new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "2-digit" })
+      .format(new Date(item.created_at));
+    revenueByDay.set(label, Number(((revenueByDay.get(label) ?? 0) + (item.total ?? 0)).toFixed(2)));
+  }
+  const sparklineRows = [...revenueByDay.entries()].map(([label, revenue]) => ({ label, revenue }));
+  const maxSparklineRevenue = Math.max(1, ...sparklineRows.map((row) => row.revenue));
 
   if (error) {
     return (
       <section className="pageStack">
         <div className="pageTitle">
           <div>
-            <h2>Голосовой журнал продаж</h2>
-            <p className="pageLead">Сводка магазина</p>
+            <p className="eyebrow">{shopName}</p>
+            <h2>Отчёт</h2>
           </div>
         </div>
         <div className="actionNotice actionNotice-error" role="alert">{error}</div>
@@ -63,8 +76,8 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
     <section className="pageStack">
       <div className="pageTitle">
         <div>
-          <h2>Голосовой журнал продаж</h2>
-          <p className="pageLead">Сводка магазина</p>
+          <p className="eyebrow">{shopName}</p>
+          <h2>Отчёт</h2>
         </div>
       </div>
 
@@ -124,6 +137,30 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
         includeYesterday
       />
 
+      <section className="reportCard" aria-labelledby="sparkline-heading">
+        <div className="sectionHeading">
+          <div>
+            <p className="eyebrow">Динамика</p>
+            <h3 id="sparkline-heading">Продажи по дням</h3>
+          </div>
+        </div>
+        {sparklineRows.length ? (
+          <div className="sparklineBars" aria-label="Мини-график выручки по дням">
+            {sparklineRows.map((row) => (
+              <div className="sparklineBar" key={row.label}>
+                <span style={{ height: `${Math.max(10, (row.revenue / maxSparklineRevenue) * 100)}%` }} />
+                <b>{row.label}</b>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="Нет данных для графика"
+            description="График строится по подтверждённым продажам выбранного периода."
+          />
+        )}
+      </section>
+
       <section className="itemManager" aria-labelledby="top-products-heading">
         <div className="sectionHeading">
           <div>
@@ -156,13 +193,13 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
         <div className="sectionHeading">
           <div>
             <p className="eyebrow">Продажи за период</p>
-            <h3 id="period-sales-heading">Продажи за период</h3>
+            <h3 id="period-sales-heading">Последние продажи</h3>
           </div>
         </div>
 
-        {processedItems.length ? (
+        {latestItems.length ? (
           <div className="itemEditorList">
-            {processedItems.map((item) => <SaleItemCard item={item} key={item.id} />)}
+            {latestItems.map((item) => <SaleItemCard item={item} key={item.id} />)}
           </div>
         ) : (
           <EmptyState
@@ -179,7 +216,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
               <p className="eyebrow">Нужно проверить</p>
               <h3 id="review-items-heading">Нужно проверить</h3>
             </div>
-            <span className="attentionPill">Подтвердить в Telegram</span>
+            <Link className="attentionPill" href="/review">Открыть проверку</Link>
           </div>
           <div className="itemEditorList">
             {reviewItems.map((item) => <SaleItemCard item={item} key={item.id} />)}

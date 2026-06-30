@@ -4,11 +4,11 @@
 
 ## Цель
 
-Зафиксировать серверный контракт WebApp для чтения отчёта, журнала, продавцов и мутаций `sale_items`.
+Зафиксировать серверный контракт WebApp для чтения отчёта, журнала, проверки, продавцов и мутаций `sale_items`.
 
-WebApp не подтверждает сомнительную voice-запись.
+WebApp подтверждает или отменяет сомнительную voice-запись только во вкладке «Проверка» через server-side actions.
 
-Confirm/cancel находится в Telegram callback flow.
+Telegram confirm/cancel остаётся быстрым flow под сообщением бота.
 
 ## Доверенная граница
 
@@ -18,6 +18,7 @@ Confirm/cancel находится в Telegram callback flow.
 4. Records API проверяет item -> sale -> shop.
 5. Supabase service role доступен только server-side.
 6. UI не является security boundary.
+7. Review confirm/cancel повторно проверяет sale -> shop.
 
 ## `getReport(filters)`
 
@@ -81,6 +82,16 @@ Confirm/cancel находится в Telegram callback flow.
 8. sale items для раскрытия «Товары».
 
 Records не показывает пустое состояние при auth/DB error.
+
+## Review records
+
+Вкладка «Проверка» использует `getRecords(filters)`, затем показывает только:
+
+1. `sales.status = needs_review`;
+2. records с `sale_items.status = needs_review`;
+3. legacy `needs_price`.
+
+Confirm/cancel не принимает `shop_id`.
 
 ## `getSellers()`
 
@@ -153,7 +164,7 @@ Records не показывает пустое состояние при auth/DB
 7. Изменённая строка читается через `.select().single()`.
 8. Processed sale сохраняет item как `processed`.
 9. Review sale сохраняет item как `needs_review`.
-10. Review edit не добавляет выручку до Telegram confirm.
+10. Review edit не добавляет выручку до явного confirm.
 
 После успеха:
 
@@ -204,13 +215,34 @@ Records не показывает пустое состояние при auth/DB
 
 `confirmSaleItemAction` больше не используется и не является частью WebApp contract.
 
+## Review decision actions
+
+`confirmReviewSaleAction(formData)`:
+
+1. Принимает `saleId`.
+2. Вызывает `requireOwner()`.
+3. Читает sale по `saleId` и server-derived `shop_id`.
+4. Проверяет активные items.
+5. Переводит sale/voice/items в `processed`.
+6. Revalidate `/daily-report`, `/records`, `/review`, `/sellers`.
+
+`cancelReviewSaleAction(formData)`:
+
+1. Принимает `saleId`.
+2. Вызывает `requireOwner()`.
+3. Читает sale по `saleId` и server-derived `shop_id`.
+4. Soft-delete active items.
+5. Переводит sale/voice в `cancelled`.
+6. Revalidate `/daily-report`, `/records`, `/review`, `/sellers`.
+
 ## Error contract
 
 1. Server logs получает technical reason.
 2. UI получает стабильное русскоязычное сообщение.
-3. Internal Supabase message не отдаётся напрямую для update/delete action.
-4. Auth errors отображаются отдельно.
-5. DB loading error не превращается в empty state.
+3. Internal Supabase message не отдаётся напрямую для update/delete/review actions.
+4. Mutations возвращают `statusCode`/`code`: 401 session, 403 access, 404 not found, 422 invalid data, 500 server error.
+5. Auth errors отображаются отдельно.
+6. DB loading error не превращается в empty state.
 
 ## Таблицы
 
@@ -248,4 +280,4 @@ Records не показывает пустое состояние при auth/DB
 2. Client-side service role.
 3. GraphQL.
 4. Массовые операции.
-5. Подтверждение voice-записи в WebApp.
+5. Client-side подтверждение voice-записи без server action.

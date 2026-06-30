@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-06-30 — Release stabilization: callbacks, review page and premium WebApp
+
+- Telegram review-message теперь использует короткие callback data `confirm:<record_id>` / `cancel:<record_id>` и добавляет `Открыть отчёт` как `web_app` кнопку.
+- Callback handler принимает новые короткие data и legacy `voice_sale_review:<action>:<id>`, всегда отвечает `answerCbQuery`, логирует `callback_received` и `callback_action` с `record_id`, `telegram_user_id`, `old_status`, `new_status`.
+- Confirm/cancel защищены shop/seller scope; чужой seller/shop не может изменить review-запись.
+- Добавлена вкладка WebApp «Проверка» для needs_review записей: parsed text, товары, edit/delete, confirm/cancel в рамках server-derived магазина.
+- WebApp редизайн переведён на dark premium dashboard: graphite/navy surfaces, amber accent, KPI, sparkline продаж по дням, топ товаров, последние продажи и 4-tab bottom nav.
+- Карточка товара использует карандаш/корзину, edit mode с «Сохранить/Отмена» и soft-delete confirm «Исключить товар из отчёта?».
+- Mutation results получают `statusCode`/`code` для 401/403/404/422/500 сценариев, а UI показывает стабильные русские сообщения.
+- Добавлена idempotent migration `20260630153000_ensure_sale_item_soft_delete_columns.sql`, чтобы live-схема гарантированно имела `sale_items.deleted_at` и soft-delete metadata.
+- Экран продавцов показывает последнюю активность за выбранный период.
+- Regression tests обновлены под короткие callback data, WebApp report rules, cancelled records и cross-shop callback denial.
+- Проверено во время разработки: `npm.cmd run test` — 8 файлов, 92 теста passed; `npm.cmd run build` — bot/web/shared passed.
+
 ## 2026-06-30 — Telegram confirm/cancel и продуктовый WebApp
 
 - Сомнительные voice-записи теперь получают только две Telegram inline-кнопки: `✅ Подтвердить` и `❌ Отмена`.

@@ -22,4 +22,4 @@ status = coalesce(previous_status, 'needs_review')
 
 Reset дня использует `deleted_reason = 'day_reset'`. Любая строка с `deleted_at is not null` не участвует в количестве и выручке.
 
-Колонка `deleted_at` уже добавлена идемпотентными migrations; новая migration для текущего hotfix не потребовалась.
+Колонка `deleted_at` добавлена идемпотентными migrations. Дополнительная migration `20260630153000_ensure_sale_item_soft_delete_columns.sql` повторно гарантирует soft-delete поля и constraints для live-схемы.

@@ -419,6 +419,35 @@ describe("Telegram Mini App authentication", () => {
     });
   });
 
+  it("does not count processed-looking items from a cancelled sale", () => {
+    const scoped = scopeReportRows(
+      [{
+        id: "sale-cancelled",
+        shop_id: "shop-1",
+        status: "cancelled",
+        created_at: "2026-06-25T10:00:00.000Z"
+      }],
+      [{
+        id: "item-cancelled",
+        sale_id: "sale-cancelled",
+        product_name: "Сникерс",
+        quantity: 5,
+        unit: "шт",
+        price: 100,
+        total: 500,
+        confidence: 1,
+        status: "processed"
+      }],
+      "shop-1"
+    );
+
+    expect(scoped.saleItemsCount).toBe(0);
+    expect(buildSalesReport(scoped.items)).toMatchObject({
+      totalQuantity: 0,
+      totalRevenue: 0
+    });
+  });
+
   it("never exposes excluded rows as active items", () => {
     const partitioned = partitionSaleItems([{
       id: "legacy-excluded",

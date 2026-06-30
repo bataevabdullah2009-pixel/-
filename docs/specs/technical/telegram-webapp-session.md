@@ -128,6 +128,8 @@ Telegram confirm/cancel callback не использует WebApp session.
 
 Callback использует Telegram update user id.
 
+Вкладка WebApp «Проверка» использует обычную WebApp session через `requireOwner()` и повторно проверяет sale -> shop.
+
 WebApp после refresh видит результат:
 
 1. `processed` после confirm.

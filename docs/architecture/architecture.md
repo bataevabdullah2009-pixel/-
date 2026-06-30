@@ -12,9 +12,9 @@ Telegram voice
   -> LLM parser + evidence rules
   -> save_voice_sale RPC
   -> sales/sale_items read-back verification
-  -> Telegram success or review decision buttons
+  -> Telegram success or review decision/report buttons
   -> Next.js App Router WebApp
-  -> report / records / sellers / item mutations
+  -> report / records / review / sellers / item mutations
 ```
 
 ## Telegram bot
@@ -27,21 +27,22 @@ Bot success после voice save возможен только после Supab
 
 Уверенная продажа получает обычный success message.
 
-Сомнительная продажа получает inline callback keyboard:
+Сомнительная продажа получает inline keyboard:
 
 ```text
 ✅ Подтвердить
 ❌ Отмена
+Открыть отчёт
 ```
 
-В review-message нет `web_app` кнопки.
+`Открыть отчёт` создаётся только как `web_app` кнопка.
 
 ## Confirm/cancel service
 
 Callback flow:
 
 ```text
-callback data
+confirm:<sale_id> / cancel:<sale_id>
   -> seller from ctx.from.id
   -> sales by sale_id + seller_id + shop_id
   -> confirm or cancel mutation
@@ -55,6 +56,8 @@ Cancel переводит sale/voice в `cancelled` и soft-delete active items.
 Callback не принимает client `shop_id`.
 
 Повторные callback идемпотентны.
+
+Handler также принимает legacy `voice_sale_review:<action>:<sale_id>` для уже отправленных сообщений, но новые сообщения создаются только с короткими callback data.
 
 ## WebApp auth
 
@@ -115,6 +118,17 @@ requireOwner()
   -> recordsCount + revenue
 ```
 
+Review:
+
+```text
+requireOwner()
+  -> records by shop_id and period
+  -> filter needs_review
+  -> SaleItemCard edit/delete
+  -> confirmReviewSale / cancelReviewSale
+  -> revalidate report / records / review / sellers
+```
+
 ## Item mutation flow
 
 ```text
@@ -130,7 +144,7 @@ SaleItemCard
 
 Processed sale item edit keeps item processed and updates revenue.
 
-Review sale item edit saves fields but keeps item review until Telegram confirm.
+Review sale item edit saves fields but keeps item review until explicit confirm.
 
 Delete is soft delete:
 

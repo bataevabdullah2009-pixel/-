@@ -108,25 +108,26 @@ Bot отвечает:
 Распознано: <распознанный текст>.
 ```
 
-Под сообщением ровно две inline callback-кнопки:
+Под сообщением inline-кнопки:
 
 1. `✅ Подтвердить`.
 2. `❌ Отмена`.
+3. `Открыть отчёт`.
 
 В этом сообщении запрещены:
 
-1. `web_app` кнопки.
-2. URL-кнопки.
-3. «Открыть отчёт».
-4. Diagnostics.
-5. Любая третья кнопка.
+1. URL-кнопки.
+2. Diagnostics.
+3. Любая неописанная кнопка.
+
+`Открыть отчёт` разрешена только как Telegram `web_app` кнопка.
 
 ## Callback handler
 
 Callback pattern:
 
 ```text
-voice_sale_review:(confirm|cancel):<sale_id>
+(confirm|cancel):<sale_id>
 ```
 
 Handler регистрируется в bot перед общими text handlers.
@@ -141,6 +142,14 @@ Handler регистрируется в bot перед общими text handler
 6. Отвечает `answerCbQuery`.
 7. Пытается `editMessageText`.
 8. Если edit не удался, отправляет обычный reply.
+
+Handler также принимает legacy `voice_sale_review:(confirm|cancel):<sale_id>` для старых сообщений.
+
+Logs:
+
+1. `callback_received`.
+2. `callback_action`.
+3. Поля: `record_id`, `telegram_user_id`, `old_status`, `new_status`, `error`.
 
 ## Confirm callback
 
@@ -191,11 +200,12 @@ Cancel:
 
 ## WebApp buttons
 
-Кнопка «Открыть отчёт» остаётся:
+Кнопка «Открыть отчёт» доступна:
 
 1. В `/start` reply keyboard.
 2. В `/start` inline keyboard.
 3. В menu button.
+4. В review-message после сомнительной voice-записи.
 
 Она создаётся только как `web_app`.
 
@@ -231,9 +241,10 @@ Production route возвращает 404 без `DEBUG_TELEGRAM_WEBAPP=true`.
 2. `/start` создаёт web_app кнопки.
 3. Diagnostics скрыта по умолчанию.
 4. Уверенная запись не получает review keyboard.
-5. Сомнительная запись получает только confirm/cancel.
-6. Confirm переводит sale в processed.
-7. Cancel переводит sale в cancelled.
+5. Сомнительная запись получает confirm/cancel callback buttons.
+6. Сомнительная запись получает `Открыть отчёт` как `web_app`.
+7. Confirm переводит sale в processed.
+8. Cancel переводит sale в cancelled.
 8. Repeat callback не ломает данные.
 9. Bot success не отправляется до read-back.
 10. Voice pipeline logs содержат named stages.

@@ -17,6 +17,8 @@ const EXCLUDE_ERROR_MESSAGE = "Не удалось исключить товар
 export type SaleItemActionState = {
   status: "idle" | "success" | "error";
   message: string;
+  statusCode?: 401 | 403 | 404 | 422 | 500;
+  code?: string;
   item?: {
     id: string;
     sale_id: string;
@@ -30,6 +32,14 @@ export type SaleItemActionState = {
   };
   itemId?: string;
 };
+
+function actionError(
+  message: string,
+  statusCode: NonNullable<SaleItemActionState["statusCode"]>,
+  code: string
+): SaleItemActionState {
+  return { status: "error", message, statusCode, code };
+}
 
 function safeReturnTo(formData: FormData) {
   const candidate = String(formData.get("returnTo") ?? "/daily-report");
@@ -69,7 +79,9 @@ export async function updateSaleItemAction(
   if (!itemId || !productName || !Number.isFinite(quantity) || quantity <= 0 || !priceValue || !Number.isFinite(price) || price <= 0) {
     return {
       status: "error",
-      message: "Заполните товар, количество и цену положительными значениями."
+      message: "Заполните товар, количество и цену положительными значениями.",
+      statusCode: 422,
+      code: "INVALID_ITEM_DATA"
     };
   }
 
@@ -78,9 +90,10 @@ export async function updateSaleItemAction(
     if (!result.ok) {
       console.error("Failed to update sale item", {
         itemId,
-        reason: result.message
+        statusCode: result.statusCode,
+        code: result.code
       });
-      return { status: "error", message: UPDATE_ERROR_MESSAGE };
+      return actionError(result.message || UPDATE_ERROR_MESSAGE, result.statusCode ?? 500, result.code ?? "ITEM_UPDATE_FAILED");
     }
 
     revalidateReports();
@@ -91,7 +104,7 @@ export async function updateSaleItemAction(
     };
   } catch (error) {
     console.error("Failed to update sale item", error);
-    return { status: "error", message: UPDATE_ERROR_MESSAGE };
+    return actionError(UPDATE_ERROR_MESSAGE, 500, "ITEM_UPDATE_FAILED");
   }
 }
 
@@ -101,7 +114,7 @@ export async function excludeSaleItemAction(
 ): Promise<SaleItemActionState> {
   const itemId = String(formData.get("itemId") ?? "");
   if (!itemId) {
-    return { status: "error", message: EXCLUDE_ERROR_MESSAGE };
+    return actionError(EXCLUDE_ERROR_MESSAGE, 422, "ITEM_ID_MISSING");
   }
 
   try {
@@ -109,9 +122,10 @@ export async function excludeSaleItemAction(
     if (!result.ok) {
       console.error("Failed to exclude sale item", {
         itemId,
-        reason: result.message
+        statusCode: result.statusCode,
+        code: result.code
       });
-      return { status: "error", message: EXCLUDE_ERROR_MESSAGE };
+      return actionError(result.message || EXCLUDE_ERROR_MESSAGE, result.statusCode ?? 500, result.code ?? "ITEM_EXCLUDE_FAILED");
     }
 
     revalidateReports();
@@ -122,7 +136,7 @@ export async function excludeSaleItemAction(
     };
   } catch (error) {
     console.error("Failed to exclude sale item", error);
-    return { status: "error", message: EXCLUDE_ERROR_MESSAGE };
+    return actionError(EXCLUDE_ERROR_MESSAGE, 500, "ITEM_EXCLUDE_FAILED");
   }
 }
 

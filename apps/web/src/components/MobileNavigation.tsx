@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const navigationItems = [
   { href: "/daily-report", label: "Отчёт", icon: "chart" },
   { href: "/records", label: "Записи", icon: "voice" },
+  { href: "/review", label: "Проверка", icon: "check" },
   { href: "/sellers", label: "Продавцы", icon: "people" }
 ] as const;
 
@@ -16,6 +17,10 @@ function NavigationIcon({ name }: { name: (typeof navigationItems)[number]["icon
 
   if (name === "voice") {
     return <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Zm-7 9a7 7 0 0 0 14 0M12 19v3m-4 0h8" />;
+  }
+
+  if (name === "check") {
+    return <path d="m4 12 5 5L20 6M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" />;
   }
 
   return <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m7-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm13 10v-2a4 4 0 0 0-3-3.87m-2-11.96a4 4 0 0 1 0 7.75" />;
