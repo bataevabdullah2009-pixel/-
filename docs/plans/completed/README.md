@@ -10,3 +10,4 @@
 - [008 — P0 production verification hardening](./008-p0-production-verification-hardening.md)
 - [009 — WebApp sale item product polish](./009-webapp-sale-item-product-polish.md)
 - [010 — Telegram confirmation and product WebApp polish](./010-telegram-confirmation-and-product-webapp-polish.md)
+- [011 — Release stabilization: callbacks, review page and premium WebApp](./011-release-stabilization-callbacks-review-premium-webapp.md)

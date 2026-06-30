@@ -67,11 +67,11 @@ Review items показываются отдельно.
 
 Они не добавляются в `totalQuantity`.
 
-Если WebApp edit сохранил поля review item, item остаётся review, пока Telegram callback не подтвердит sale.
+Если WebApp edit сохранил поля review item, item остаётся review, пока Telegram callback или WebApp review action не подтвердит sale.
 
-## Confirm callback
+## Confirm decision
 
-После Telegram `✅ Подтвердить`:
+После Telegram `✅ Подтвердить` или WebApp `Подтвердить`:
 
 1. Валидные items становятся `processed`.
 2. Sale становится `processed`.
@@ -79,9 +79,9 @@ Review items показываются отдельно.
 4. `sales.total_amount` пересчитывается.
 5. Следующий report refresh включает items в выручку.
 
-## Cancel callback
+## Cancel decision
 
-После Telegram `❌ Отмена`:
+После Telegram `❌ Отмена` или WebApp `Отмена`:
 
 1. Sale становится `cancelled`.
 2. Voice record становится `cancelled`.
@@ -101,7 +101,7 @@ Review items показываются отдельно.
 
 Processed item update меняет выручку.
 
-Review item update сохраняет поля, но не меняет выручку до Telegram confirm.
+Review item update сохраняет поля, но не меняет выручку до явного confirm.
 
 Soft delete уменьшает выручку, если item входил в неё.
 

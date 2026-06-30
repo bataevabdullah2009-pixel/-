@@ -18,9 +18,9 @@
 - RPC persistence с обязательной read-back проверкой sale и sale_items;
 - автоматический `processed` для уверенных voice-позиций;
 - review только для реальных проблем распознавания;
-- Telegram confirm/cancel для `needs_review` voice-записей;
+- Telegram/WebApp confirm/cancel для `needs_review` voice-записей;
 - `cancelled` для отменённых voice-записей;
-- WebApp без confirm/cancel controls для review-записи;
+- WebApp confirm/cancel controls только во вкладке «Проверка»;
 - WebApp edit review item без скрытого подтверждения;
 - soft delete, restore и reset day;
 - records с раскрытием товаров;

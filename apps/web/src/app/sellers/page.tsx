@@ -6,6 +6,7 @@ import {
   formatCurrency,
   getReportFilters
 } from "@/features/records/records.utils";
+import { formatDate, formatTime } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,13 @@ export default async function SellersPage({ searchParams }: SellersPageProps) {
             <article key={seller.id} className="sellerRow sellerStatsRow">
               <div>
                 <strong>{seller.name}</strong>
-                <p>{seller.is_active ? "Активен" : "Отключён"}</p>
+                <p>
+                  {seller.is_active ? "Активен" : "Отключён"}
+                  {" · "}
+                  {seller.lastActivity
+                    ? `${formatDate(seller.lastActivity)} ${formatTime(seller.lastActivity)}`
+                    : "нет активности"}
+                </p>
               </div>
               <div className="sellerMetrics">
                 <span>

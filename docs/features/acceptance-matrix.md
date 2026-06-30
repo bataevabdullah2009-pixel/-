@@ -1,0 +1,21 @@
+# Acceptance Matrix
+
+Актуально на 30 июня 2026.
+
+| Область | Acceptance criteria | Статус |
+| --- | --- | --- |
+| Voice processed | Полная запись с товаром, количеством, ценой, total и `confidence >= 0.80` сохраняется как `processed` и входит в отчёт. | Покрыто тестами parser/report. |
+| Voice review | Неполная или низкоуверенная запись сохраняется как `needs_review` и не входит в выручку. | Покрыто тестами report/status. |
+| Telegram callback | Review-message содержит `✅ Подтвердить`, `❌ Отмена`, `Открыть отчёт`; callback data `confirm:<id>` / `cancel:<id>`. | Покрыто keyboard regression. |
+| Confirm | Confirm переводит sale/voice/items в `processed`, пересчитывает `total_amount` и добавляет выручку. | Покрыто service regression. |
+| Cancel | Cancel переводит sale/voice в `cancelled`, items в `excluded` + `deleted_at`, выручка остаётся 0. | Покрыто service regression. |
+| Isolation | Callback чужого seller/shop не меняет запись. | Покрыто regression test. |
+| Report | Отчёт считает только active `processed` rows с `deleted_at is null`, ценой и total. | Покрыто report tests. |
+| WebApp edit | Карточка открывает edit mode, сохраняет `product_name`, `quantity`, `price`, не очищает форму при ошибке. | Реализовано в `SaleItemCard`. |
+| WebApp delete | Корзина показывает confirm «Исключить товар из отчёта?», soft-delete без физического удаления. | Реализовано и покрыто patch/report tests. |
+| Review page | `/review` показывает needs_review записи, parsed text, товары и server-side confirm/cancel. | Реализовано, build проверен. |
+| Shop auth | `shop_id` не принимается от клиента; WebApp и callback используют server-derived context. | Покрыто auth/scope tests. |
+| Diagnostics | `/debug-telegram` скрыт без `DEBUG_TELEGRAM_WEBAPP=true`. | Покрыто auth tests. |
+
+Внешние smoke checks реального Telegram-клиента и Vercel logs остаются post-deploy backlog.
+

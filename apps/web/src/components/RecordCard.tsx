@@ -19,7 +19,7 @@ export function RecordCard({ record }: RecordCardProps) {
         <div className="recordStatusStack">
           <span className={`status status-${record.status}`}>{getStatusLabel(record.status)}</span>
           {needsTelegramConfirmation ? (
-            <span className="telegramReviewBadge">Нужно подтвердить в Telegram</span>
+            <span className="telegramReviewBadge">Нужно проверить</span>
           ) : null}
         </div>
       </div>
