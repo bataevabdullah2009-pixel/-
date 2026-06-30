@@ -20,6 +20,11 @@ export type SellerOption = {
   is_active: boolean;
 };
 
+export type SellerStats = SellerOption & {
+  recordsCount: number;
+  revenue: number;
+};
+
 export type RecordListItem = {
   id: string;
   created_at: string;
@@ -29,6 +34,7 @@ export type RecordListItem = {
   status: VoiceRecordStatus | "needs_price";
   total_amount: number;
   audioUrl: string | null;
+  items: SaleItem[];
 };
 
 export type EditableReviewItem = SaleItem & {

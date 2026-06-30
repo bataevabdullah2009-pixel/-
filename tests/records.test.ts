@@ -7,15 +7,29 @@ import {
   calculateItemTotal,
   normalizeSaleItemFields
 } from "../packages/shared/utils/date-range";
-import { getStatusLabel } from "../apps/web/src/features/records/records.utils";
+import {
+  buildHref,
+  getStatusLabel
+} from "../apps/web/src/features/records/records.utils";
 
 describe("sales report", () => {
   it("never exposes raw technical statuses to users", () => {
     expect(getStatusLabel("processed")).toBe("Готово");
     expect(getStatusLabel("needs_review")).toBe("Нужно проверить");
+    expect(getStatusLabel("cancelled")).toBe("Исключено");
     expect(getStatusLabel("failed")).toBe("Нужно проверить");
     expect(getStatusLabel("needs_price")).toBe("Нужно проверить");
     expect(getStatusLabel("unexpected_internal_status")).toBe("Нужно проверить");
+  });
+
+  it("does not carry mutation notices into period filter links", () => {
+    expect(buildHref("/daily-report", {
+      period: "yesterday",
+      mutation: "success",
+      message: "Сохранено"
+    }, {
+      period: "week"
+    })).toBe("/daily-report?period=week");
   });
 
   it("normalizes bread quantity and unit from parsed text", () => {
@@ -189,6 +203,43 @@ describe("sales report", () => {
     });
   });
 
+  it("persists edited name, quantity and unit price in the update patch", () => {
+    const patch = buildManualSaleItemPatch({
+      productName: "Сникерс",
+      quantity: 10,
+      unit: "шт",
+      price: 100
+    });
+
+    expect(patch).toMatchObject({
+      product_name: "Сникерс",
+      quantity: 10,
+      price: 100,
+      total: 1000,
+      status: "processed"
+    });
+  });
+
+  it("recalculates report totals after an item update", () => {
+    const patch = buildManualSaleItemPatch({
+      productName: "Сникерс",
+      quantity: 10,
+      unit: "шт",
+      price: 50
+    });
+    const report = buildSalesReport([{
+      id: "updated-item",
+      sale_id: "sale-1",
+      ...patch,
+      created_at: "2026-06-25T08:00:00.000Z"
+    }]);
+
+    expect(report).toMatchObject({
+      totalQuantity: 10,
+      totalRevenue: 500
+    });
+  });
+
   it("builds a soft-delete patch with excluded status", () => {
     const patch = buildExcludedSaleItemPatch("processed", "2026-06-19T10:00:00.000Z");
 
@@ -243,6 +294,44 @@ describe("sales report", () => {
     expect(report.totalQuantity).toBe(2);
     expect(report.totalRevenue).toBe(80);
     expect(report.reviewItems).toHaveLength(0);
+  });
+
+  it("recalculates report totals after deleting one item", () => {
+    const deletedPatch = buildExcludedSaleItemPatch(
+      "processed",
+      "2026-06-25T09:00:00.000Z"
+    );
+    const report = buildSalesReport([
+      {
+        id: "active",
+        sale_id: "sale-1",
+        product_name: "Сникерс",
+        quantity: 2,
+        unit: "шт",
+        price: 50,
+        total: 100,
+        confidence: 1,
+        status: "processed",
+        created_at: "2026-06-25T08:00:00.000Z"
+      },
+      {
+        id: "deleted",
+        sale_id: "sale-1",
+        product_name: "Марс",
+        quantity: 3,
+        unit: "шт",
+        price: 50,
+        total: 150,
+        confidence: 1,
+        created_at: "2026-06-25T08:10:00.000Z",
+        ...deletedPatch
+      }
+    ]);
+
+    expect(report).toMatchObject({
+      totalQuantity: 2,
+      totalRevenue: 100
+    });
   });
 
   it("does not include needs_price items in revenue", () => {

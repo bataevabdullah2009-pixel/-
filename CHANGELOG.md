@@ -1,5 +1,34 @@
 # Changelog
 
+## 2026-06-30 — Telegram confirm/cancel и продуктовый WebApp
+
+- Сомнительные voice-записи теперь получают только две Telegram inline-кнопки: `✅ Подтвердить` и `❌ Отмена`.
+- Review-message больше не содержит кнопку «Открыть отчёт» и не смешивает отчёт с confirm/cancel flow.
+- Confirm callback переводит sale/voice в `processed`, валидные active items — в `processed`, и добавляет их в выручку.
+- Cancel callback переводит sale/voice в `cancelled`, soft-delete active items и оставляет выручку нулевой.
+- Callback flow идемпотентный: повторное нажатие не создаёт дубли и не откатывает уже принятое решение.
+- Добавлен `cancelled` в shared types/schema и Supabase constraints через migration `20260630120000_add_cancelled_voice_sale_status.sql`.
+- WebApp убрал legacy item-confirm path: review-запись больше не подтверждается из карточки.
+- WebApp edit review item сохраняет поля, но item остаётся `needs_review` до Telegram confirm.
+- Экран отчёта перестроен под продуктовый мобильный UI: 4 метрики, компактные фильтры, топ товаров, продажи за период и review-блок.
+- Экран записей показывает раскрытие «Товары» и бейдж «Нужно подтвердить в Telegram».
+- Экран продавцов показывает активность, количество записей и выручку за выбранный период.
+- Обновлены specs, features, plans, roadmap, AGENTS и Codex skill под фактическое состояние.
+- Проверено: `npm.cmd run lint` — passed; `npm.cmd run test` — 8 файлов, 90 тестов passed; `npm.cmd run build` — bot/web/shared passed; `npm.cmd run web:build` — passed.
+
+## 2026-06-25 — WebApp: карточки товаров и надёжные update/delete
+
+- Постоянно раскрытая форма заменена мобильной карточкой с названием, количеством, ценой за единицу, суммой, карандашом и корзиной.
+- Update/delete Server Actions возвращают локальное состояние вместо полного redirect; pending/error не очищают карточку.
+- Update читает фактически сохранённую строку Supabase и пересчитывает `sales.total_amount`.
+- Delete выполняет soft delete и локальное подтверждение «Удалить товар из отчёта?».
+- Активный список скрывает строки с `deleted_at` и defensive legacy `status = excluded`.
+- Добавлены empty state, компактные фильтры и suppress hydration warning для CSS variables Telegram SDK.
+- Live schema подтвердила реальные поля `product_name`, `quantity`, `price`, `total`, `status`, `deleted_at`, `updated_at`; migration не потребовалась.
+- Live WebApp проверил quantity/price update, reload persistence, delete и restore. Исходные данные тестовой позиции восстановлены.
+- Voice pipeline, STT, parser, webhook, env-файлы и сохранение голосовых продаж не изменялись.
+- Проверено: `npm run lint` — passed; `npm run test` — 8 файлов, 87 тестов passed; `npm run build` — bot/web/shared passed.
+
 ## 2026-06-24 — P0 production verification hardening
 
 - Сборка Telegram data-check-string переведена на детерминированную ordinal-сортировку ключей; исключается только `hash`.

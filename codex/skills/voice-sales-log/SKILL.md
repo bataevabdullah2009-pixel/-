@@ -26,6 +26,16 @@ Telegram voice -> STT -> LLM parser -> evidence rules -> Supabase -> report
 
 Затем прочитать профильные specs/features/rules и последний релевантный completed plan.
 
+Для WebApp обязательно прочитать:
+
+- `../../../docs/specs/product/webapp-report.md`;
+- `../../../docs/specs/product/sale-item-editing.md`;
+- `../../../docs/specs/product/telegram-confirmation-flow.md`;
+- `../../../docs/specs/technical/webapp-api.md`.
+
+Для БД обязательно прочитать `../../../docs/specs/technical/database.md`.
+Для Telegram logic обязательно прочитать `../../../docs/specs/technical/telegram-webapp-session.md`.
+
 ## Workflow rules
 
 ### Telegram bot/webhook
@@ -42,13 +52,23 @@ Web App поддерживает:
 
 Client fetch выполняется через `apiFetch()`, который отправляет `x-app-mode` и, при наличии, `x-telegram-init-data`. Server-side доступ выполняется через `resolveRequestContext()` / `requireOwner()`. `shop_id` нельзя принимать от клиента.
 
+Карточка товара показывает name/quantity/unit price/total и действия карандаш/корзина. Update/delete возвращают локальный pending/error state, а сервер повторно проверяет item → sale → shop. Исключённые rows не показываются активными.
+
+WebApp не подтверждает сомнительную voice-запись. Edit review item сохраняет поля, но item остаётся review до Telegram confirm.
+
+### Telegram confirm/cancel
+
+Сомнительная voice-запись получает только две inline callback-кнопки: `✅ Подтвердить` и `❌ Отмена`. В этом сообщении не добавлять `web_app` кнопку «Открыть отчёт».
+
+Confirm переводит sale/voice в `processed` и добавляет валидные active items в выручку. Cancel переводит sale/voice в `cancelled` и soft-delete active items. Callback не принимает `shop_id`, повторно разрешает seller по Telegram user id и должен быть идемпотентным.
+
 ### Voice pipeline
 
 Не ломать STT/LLM flow. Уверенная позиция (`product_name`, `quantity > 0`, `price > 0`, `confidence >= 0.80`) сохраняется как `processed` и сразу входит в отчёт. Неполные, низкоуверенные или странные позиции сохраняются как `needs_review`. Невалидный LLM JSON создаёт fallback review item.
 
 ### Data
 
-Service role только server-side. Исключение товара — soft delete через `deleted_at`; восстановление очищает `deleted_at`. Отчёт считает только active `processed`.
+Service role только server-side. Исключение товара — soft delete через `deleted_at`; восстановление очищает `deleted_at`. Отчёт считает только active `processed`. Отменённая voice-запись хранится как `sales.status = cancelled` / `voice_records.status = cancelled`.
 
 ### Documentation
 

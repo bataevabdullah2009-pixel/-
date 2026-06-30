@@ -11,4 +11,10 @@
 
 Report сначала выбирает `sales` по seller `shop_id`, затем `sale_items` по найденным sale IDs. Ошибка auth/DB остаётся ошибкой и не преобразуется в нулевой отчёт.
 
+WebApp mutations выполняются Server Actions. Клиентская карточка хранит только UI-состояние раскрытия/pending/error; доверенная проверка item → sale → shop повторяется на сервере. Успешный update возвращает сохранённую строку, пересчитывает `sales.total_amount`, инвалидирует report/records и запускает `router.refresh()`.
+
+WebApp не подтверждает сомнительную voice-запись. Если родительская sale ещё `needs_review`, update сохраняет товар, количество и цену, но item остаётся `needs_review` и не входит в выручку до Telegram confirm.
+
 Voice sale сохраняется только через RPC `save_voice_sale`. После RPC приложение проверяет sale и точное количество sale_items чтением из Supabase. Если RPC отсутствует или read-back не подтверждает строки, бот возвращает ошибку сохранения и не пишет success.
+
+Сомнительная voice sale получает Telegram callback keyboard из двух кнопок: `✅ Подтвердить` и `❌ Отмена`. Confirm переводит sale/voice в `processed` и добавляет валидные items в выручку. Cancel переводит sale/voice в `cancelled` и soft-delete active items. Callback заново разрешает seller по Telegram user id и не принимает `shop_id`.

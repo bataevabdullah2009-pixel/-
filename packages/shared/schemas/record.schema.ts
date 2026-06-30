@@ -4,6 +4,7 @@ export const voiceRecordStatusSchema = z.enum([
   "pending",
   "processed",
   "needs_review",
+  "cancelled",
   "failed"
 ]);
 

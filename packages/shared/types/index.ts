@@ -1,4 +1,4 @@
-export type VoiceRecordStatus = "pending" | "processed" | "needs_review" | "failed";
+export type VoiceRecordStatus = "pending" | "processed" | "needs_review" | "cancelled" | "failed";
 
 export type SaleItemStatus = "processed" | "needs_price" | "needs_review" | "failed" | "excluded";
 

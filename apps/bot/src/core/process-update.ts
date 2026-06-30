@@ -3,6 +3,7 @@ import type { Update } from "telegraf/types";
 import { getEnv } from "../config/env";
 import { registerStartHandler } from "../handlers/start.handler";
 import { registerTextHandler } from "../handlers/text.handler";
+import { registerReviewHandler } from "../handlers/review.handler";
 import { registerVoiceHandler } from "../handlers/voice.handler";
 import { createTelegramBot } from "../services/telegram.service";
 import { logger } from "../utils/logger";
@@ -15,6 +16,7 @@ export function getTelegramUpdateBot() {
 
     bot = createTelegramBot(env);
     registerStartHandler(bot, env);
+    registerReviewHandler(bot, env);
     registerVoiceHandler(bot, env);
     registerTextHandler(bot);
 

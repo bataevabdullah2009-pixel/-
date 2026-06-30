@@ -1,14 +1,13 @@
-import Link from "next/link";
-import { dateInputValue, formatDate, formatTime } from "@/lib/date";
+import { formatDate, formatTime } from "@/lib/date";
 import type { RecordListItem } from "@/features/records/records.types";
-import { formatCurrency, getStatusLabel } from "@/features/records/records.utils";
+import { formatCurrency, formatQuantity, getStatusLabel } from "@/features/records/records.utils";
 
 type RecordCardProps = {
   record: RecordListItem;
 };
 
 export function RecordCard({ record }: RecordCardProps) {
-  const recordDate = dateInputValue(record.created_at);
+  const needsTelegramConfirmation = record.status === "needs_review" || record.status === "needs_price";
 
   return (
     <article className="recordCard">
@@ -17,7 +16,12 @@ export function RecordCard({ record }: RecordCardProps) {
           <div className="recordDate">{formatDate(record.created_at)} · {formatTime(record.created_at)}</div>
           <h2>{record.sellerName}</h2>
         </div>
-        <span className={`status status-${record.status}`}>{getStatusLabel(record.status)}</span>
+        <div className="recordStatusStack">
+          <span className={`status status-${record.status}`}>{getStatusLabel(record.status)}</span>
+          {needsTelegramConfirmation ? (
+            <span className="telegramReviewBadge">Нужно подтвердить в Telegram</span>
+          ) : null}
+        </div>
       </div>
 
       <p className="recordText">{record.cleaned_text || record.raw_text || "Текст требует проверки."}</p>
@@ -30,11 +34,28 @@ export function RecordCard({ record }: RecordCardProps) {
               Прослушать аудио
             </a>
           ) : null}
-          <Link href={`/daily-report?period=custom&date=${recordDate}#items`} className="correctionButton">
-            Товары и цены
-          </Link>
         </div>
       </div>
+
+      {record.items.length ? (
+        <details className="recordItemsDisclosure">
+          <summary>Товары <span>{record.items.length}</span></summary>
+          <div className="recordItemsList">
+            {record.items.map((item) => (
+              <div className="recordItemRow" key={item.id}>
+                <div>
+                  <strong>{item.product_name || "Без названия"}</strong>
+                  <span>
+                    {formatQuantity(item.quantity)} {item.unit}
+                    {item.price === null ? "" : ` × ${formatCurrency(item.price)}`}
+                  </span>
+                </div>
+                <b>{item.total === null ? "Не входит" : formatCurrency(item.total)}</b>
+              </div>
+            ))}
+          </div>
+        </details>
+      ) : null}
     </article>
   );
 }

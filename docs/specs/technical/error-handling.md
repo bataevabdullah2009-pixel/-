@@ -6,6 +6,14 @@ Mini App показывает состояние session bootstrap. Direct brows
 
 Ошибки Telegram auth и Supabase не маскируются под успешный пустой результат. Report не показывает нулевые метрики, а records не показывает «Записей нет», если чтение завершилось ошибкой.
 
+WebApp mutations:
+
+- validation error остаётся внутри раскрытой карточки;
+- pending блокирует повторный submit;
+- Supabase reason логируется server-side вместе с operation и item id;
+- пользователь получает стабильное сообщение без имени таблицы, колонок и PostgREST details;
+- карточка не очищается и отчёт не заменяется пустым состоянием при неуспешном update/delete.
+
 Voice pipeline:
 
 - Storage upload best-effort и не блокирует продажу.

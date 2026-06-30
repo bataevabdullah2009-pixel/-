@@ -18,7 +18,13 @@
 - RPC persistence с обязательной read-back проверкой sale и sale_items;
 - автоматический `processed` для уверенных voice-позиций;
 - review только для реальных проблем распознавания;
+- Telegram confirm/cancel для `needs_review` voice-записей;
+- `cancelled` для отменённых voice-записей;
+- WebApp без confirm/cancel controls для review-записи;
+- WebApp edit review item без скрытого подтверждения;
 - soft delete, restore и reset day;
+- records с раскрытием товаров;
+- sellers со статистикой за период;
 - русские UI labels без internal enum;
 - regression tests.
 
@@ -27,9 +33,12 @@ Release gate:
 - `npm run lint`;
 - `npm run test`;
 - `npm run build`;
+- `npm run web:build`;
 - прямое открытие Web App в fallback mode;
 - открытие через Telegram кнопку;
 - отсутствие `401 TELEGRAM_INIT_DATA_INVALID` при непустом актуальном initData;
 - совпадение seller/shop в auth log и report log;
-- два voice smoke сценария: готовая продажа и неполная продажа;
-- ручное save/exclude/restore с пересчётом отчёта.
+- два voice smoke сценария: готовая продажа и сомнительная продажа;
+- confirm сомнительной записи;
+- cancel сомнительной записи;
+- ручное edit/delete/restore с пересчётом отчёта.

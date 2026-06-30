@@ -1,7 +1,9 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
+  buildExcludedSaleItemPatch,
   calculateItemTotal,
   displayProductName,
+  isMeaningfulProductName,
   normalizeProductName,
   normalizeSaleItemFields,
   normalizeUnit,
@@ -331,6 +333,292 @@ function calculateProcessedTotal(items: ResolvedSaleItem[]) {
       .reduce((sum, item) => sum + Number(item.total), 0)
       .toFixed(2)
   );
+}
+
+type ReviewSaleRow = {
+  id: string;
+  shop_id: string;
+  seller_id: string | null;
+  voice_record_id: string | null;
+  status: string;
+};
+
+type ReviewSaleItemRow = {
+  id: string;
+  product_name: string;
+  quantity: number | string;
+  price: number | string | null;
+  total: number | string | null;
+  status: string;
+  deleted_at?: string | null;
+};
+
+export type VoiceSaleReviewResult = {
+  ok: boolean;
+  message: string;
+  status: "processed" | "cancelled" | "unchanged" | "error";
+  itemCount?: number;
+};
+
+async function getReviewSale(
+  supabase: SupabaseClient,
+  seller: SellerContext,
+  saleId: string
+): Promise<ReviewSaleRow | null> {
+  const { data, error } = await supabase
+    .from("sales")
+    .select("id, shop_id, seller_id, voice_record_id, status")
+    .eq("id", saleId)
+    .eq("shop_id", seller.shopId)
+    .eq("seller_id", seller.id)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data as ReviewSaleRow | null;
+}
+
+async function getActiveReviewItems(supabase: SupabaseClient, saleId: string) {
+  const { data, error } = await supabase
+    .from("sale_items")
+    .select("id, product_name, quantity, price, total, status, deleted_at")
+    .eq("sale_id", saleId)
+    .is("deleted_at", null);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as ReviewSaleItemRow[];
+}
+
+function toConfirmableItem(item: ReviewSaleItemRow) {
+  const quantity = Number(item.quantity);
+  const price = item.price === null ? Number.NaN : Number(item.price);
+  const total = calculateItemTotal(quantity, price);
+
+  if (
+    item.status === "excluded" ||
+    !isMeaningfulProductName(item.product_name) ||
+    !Number.isFinite(quantity) ||
+    quantity <= 0 ||
+    !Number.isFinite(price) ||
+    price <= 0 ||
+    total === null
+  ) {
+    return null;
+  }
+
+  return {
+    id: String(item.id),
+    total
+  };
+}
+
+async function setSaleAndVoiceStatus(
+  supabase: SupabaseClient,
+  sale: ReviewSaleRow,
+  seller: SellerContext,
+  status: "processed" | "cancelled",
+  totalAmount: number
+) {
+  const { error: saleError } = await supabase
+    .from("sales")
+    .update({ status, total_amount: totalAmount })
+    .eq("id", sale.id)
+    .eq("shop_id", seller.shopId)
+    .eq("seller_id", seller.id)
+    .select("id")
+    .single();
+
+  if (saleError) {
+    throw saleError;
+  }
+
+  if (sale.voice_record_id) {
+    const { error: voiceError } = await supabase
+      .from("voice_records")
+      .update({ status })
+      .eq("id", sale.voice_record_id)
+      .eq("shop_id", seller.shopId)
+      .eq("seller_id", seller.id)
+      .select("id")
+      .single();
+
+    if (voiceError) {
+      throw voiceError;
+    }
+  }
+}
+
+function normalizePreviousItemStatus(status: string): Exclude<SaleItemStatus, "excluded"> {
+  if (status === "processed" || status === "needs_price" || status === "needs_review" || status === "failed") {
+    return status;
+  }
+
+  return "needs_review";
+}
+
+export async function confirmVoiceSaleWithClient(
+  supabase: SupabaseClient,
+  seller: SellerContext,
+  saleId: string
+): Promise<VoiceSaleReviewResult> {
+  const sale = await getReviewSale(supabase, seller, saleId);
+
+  if (!sale) {
+    return { ok: false, status: "error", message: "Запись не найдена." };
+  }
+
+  if (sale.status === "processed") {
+    return { ok: true, status: "unchanged", message: "✅ Запись уже подтверждена и входит в отчёт." };
+  }
+
+  if (sale.status === "cancelled") {
+    return { ok: true, status: "unchanged", message: "❌ Запись уже отменена и не входит в отчёт." };
+  }
+
+  if (sale.status === "failed") {
+    return { ok: false, status: "error", message: "Не удалось подтвердить неуспешную запись." };
+  }
+
+  const activeItems = await getActiveReviewItems(supabase, sale.id);
+  const confirmableItems = activeItems.flatMap((item) => {
+    const confirmable = toConfirmableItem(item);
+    return confirmable ? [confirmable] : [];
+  });
+
+  if (!confirmableItems.length) {
+    return {
+      ok: false,
+      status: "error",
+      message: "Перед подтверждением нужны товар, количество и цена хотя бы в одной позиции."
+    };
+  }
+
+  for (const item of confirmableItems) {
+    const { error } = await supabase
+      .from("sale_items")
+      .update({
+        status: "processed",
+        confidence: 1,
+        total: item.total,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", item.id)
+      .is("deleted_at", null)
+      .select("id")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  const totalAmount = Number(
+    confirmableItems.reduce((sum, item) => sum + item.total, 0).toFixed(2)
+  );
+  await setSaleAndVoiceStatus(supabase, sale, seller, "processed", totalAmount);
+
+  return {
+    ok: true,
+    status: "processed",
+    message: "✅ Запись подтверждена и добавлена в отчёт.",
+    itemCount: confirmableItems.length
+  };
+}
+
+export async function cancelVoiceSaleWithClient(
+  supabase: SupabaseClient,
+  seller: SellerContext,
+  saleId: string
+): Promise<VoiceSaleReviewResult> {
+  const sale = await getReviewSale(supabase, seller, saleId);
+
+  if (!sale) {
+    return { ok: false, status: "error", message: "Запись не найдена." };
+  }
+
+  if (sale.status === "cancelled") {
+    return { ok: true, status: "unchanged", message: "❌ Запись уже отменена и не входит в отчёт." };
+  }
+
+  if (sale.status === "processed") {
+    return { ok: true, status: "unchanged", message: "✅ Запись уже подтверждена и входит в отчёт." };
+  }
+
+  const activeItems = await getActiveReviewItems(supabase, sale.id);
+  const deletedAt = new Date().toISOString();
+  let excludedCount = 0;
+
+  for (const item of activeItems) {
+    if (item.status === "excluded") {
+      continue;
+    }
+
+    const { error } = await supabase
+      .from("sale_items")
+      .update(buildExcludedSaleItemPatch(normalizePreviousItemStatus(item.status), deletedAt))
+      .eq("id", item.id)
+      .is("deleted_at", null)
+      .select("id")
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    excludedCount += 1;
+  }
+
+  await setSaleAndVoiceStatus(supabase, sale, seller, "cancelled", 0);
+
+  return {
+    ok: true,
+    status: "cancelled",
+    message: "❌ Запись отменена и не входит в отчёт.",
+    itemCount: excludedCount
+  };
+}
+
+export async function confirmVoiceSale(params: {
+  env: AppEnv;
+  seller: SellerContext;
+  saleId: string;
+}) {
+  const result = await confirmVoiceSaleWithClient(getSupabase(params.env), params.seller, params.saleId);
+
+  if (result.ok && result.status === "processed") {
+    await tryWriteAuditLog(params.env, {
+      shopId: params.seller.shopId,
+      sellerId: params.seller.id,
+      action: "voice_sale_confirmed",
+      details: { sale_id: params.saleId, item_count: result.itemCount ?? 0 }
+    });
+  }
+
+  return result;
+}
+
+export async function cancelVoiceSale(params: {
+  env: AppEnv;
+  seller: SellerContext;
+  saleId: string;
+}) {
+  const result = await cancelVoiceSaleWithClient(getSupabase(params.env), params.seller, params.saleId);
+
+  if (result.ok && result.status === "cancelled") {
+    await tryWriteAuditLog(params.env, {
+      shopId: params.seller.shopId,
+      sellerId: params.seller.id,
+      action: "voice_sale_cancelled",
+      details: { sale_id: params.saleId, item_count: result.itemCount ?? 0 }
+    });
+  }
+
+  return result;
 }
 
 export async function saveVoiceSale(params: {

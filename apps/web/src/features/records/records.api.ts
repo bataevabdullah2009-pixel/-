@@ -20,8 +20,9 @@ import {
 } from "@/lib/owner-auth";
 import { getStorageBucket, getSupabaseAdminClient } from "@/lib/supabase";
 import { getTelegramAuthErrorReason } from "@/lib/telegram-auth-errors";
-import type { RecordFilters, RecordListItem, ReportFilters, SellerOption } from "./records.types";
+import type { RecordFilters, RecordListItem, ReportFilters, SellerOption, SellerStats } from "./records.types";
 import {
+  partitionSaleItems,
   scopeReportRows,
   type ReportSaleItemRow,
   type ReportSaleRow
@@ -32,6 +33,18 @@ type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdminClient>>;
 type MutationResult = {
   ok: boolean;
   message: string;
+  item?: {
+    id: string;
+    sale_id: string;
+    product_name: string;
+    quantity: number;
+    unit: string;
+    price: number | null;
+    total: number | null;
+    status: string;
+    updated_at: string;
+  };
+  itemId?: string;
 };
 
 const demoSellers: SellerOption[] = [
@@ -43,19 +56,6 @@ const demoSellers: SellerOption[] = [
 ];
 
 const now = new Date().toISOString();
-
-const demoRecords: RecordListItem[] = [
-  {
-    id: "demo-sale",
-    created_at: now,
-    sellerName: "Магомед",
-    cleaned_text: "Хлеб — 3 штуки по 40 рублей, молоко — 2 штуки по 90 рублей.",
-    raw_text: "хлеб 3 по 40 молоко 2 по 90",
-    status: "processed",
-    total_amount: 300,
-    audioUrl: null
-  }
-];
 
 const demoSaleItems: SaleItem[] = [
   {
@@ -93,6 +93,20 @@ const demoSaleItems: SaleItem[] = [
     confidence: 0.7,
     status: "needs_price",
     created_at: now
+  }
+];
+
+const demoRecords: RecordListItem[] = [
+  {
+    id: "demo-sale",
+    created_at: now,
+    sellerName: "Магомед",
+    cleaned_text: "Хлеб — 3 штуки по 40 рублей, молоко — 2 штуки по 90 рублей.",
+    raw_text: "хлеб 3 по 40 молоко 2 по 90",
+    status: "processed",
+    total_amount: 300,
+    audioUrl: null,
+    items: demoSaleItems
   }
 ];
 
@@ -209,6 +223,110 @@ export async function getSellers(): Promise<SellerOption[]> {
   }
 }
 
+export async function getSellerStats(
+  filters: ReportFilters
+): Promise<{ sellers: SellerStats[]; error: string | null }> {
+  const range = getDateRange(filters.period, { date: filters.date });
+
+  try {
+    const owner = await requireOwner();
+    const admin = getSupabaseAdminClient();
+
+    if (owner.shopId === "demo-shop" && !admin) {
+      const demoItems = filterByDateRange(demoSaleItems, range);
+      const demoRecordCount = filterByDateRange(demoRecords, range).length;
+      const demoReport = buildSalesReport(demoItems);
+      return {
+        sellers: demoSellers.map((seller) => ({
+          ...seller,
+          recordsCount: demoRecordCount,
+          revenue: demoReport.totalRevenue
+        })),
+        error: null
+      };
+    }
+
+    if (!admin) throw new Error("Supabase admin client is not configured.");
+
+    const { data: sellers, error: sellersError } = await admin
+      .from("sellers")
+      .select("id, name, is_active")
+      .eq("shop_id", owner.shopId)
+      .order("name", { ascending: true });
+
+    if (sellersError) throw sellersError;
+
+    const { data: sales, error: salesError } = await admin
+      .from("sales")
+      .select("id, shop_id, seller_id, status, created_at")
+      .eq("shop_id", owner.shopId)
+      .gte("created_at", range.start)
+      .lt("created_at", range.end);
+
+    if (salesError) throw salesError;
+
+    const saleIds = (sales ?? []).map((sale: any) => String(sale.id));
+    const saleSellerById = new Map<string, string | null>();
+    const recordsCountBySeller = new Map<string, number>();
+
+    for (const sale of sales ?? []) {
+      const saleId = String((sale as any).id);
+      const sellerId = (sale as any).seller_id ? String((sale as any).seller_id) : null;
+      saleSellerById.set(saleId, sellerId);
+      if (sellerId) {
+        recordsCountBySeller.set(sellerId, (recordsCountBySeller.get(sellerId) ?? 0) + 1);
+      }
+    }
+
+    const revenueBySeller = new Map<string, number>();
+    if (saleIds.length) {
+      const { data: saleItems, error: itemsError } = await admin
+        .from("sale_items")
+        .select(
+          "id, sale_id, product_id, product_name, quantity, unit, price, total, confidence, status, updated_at, deleted_at, deleted_reason, deleted_previous_status"
+        )
+        .in("sale_id", saleIds);
+
+      if (itemsError) throw itemsError;
+
+      const scoped = scopeReportRows(
+        (sales ?? []) as ReportSaleRow[],
+        (saleItems ?? []) as ReportSaleItemRow[],
+        owner.shopId
+      );
+
+      for (const item of scoped.items) {
+        if (item.deleted_at || !isRevenueSaleItemStatus(item.status) || item.total === null || item.price === null) {
+          continue;
+        }
+        const sellerId = saleSellerById.get(item.sale_id);
+        if (!sellerId) continue;
+        revenueBySeller.set(
+          sellerId,
+          Number(((revenueBySeller.get(sellerId) ?? 0) + item.total).toFixed(2))
+        );
+      }
+    }
+
+    return {
+      sellers: (sellers ?? []).map((seller: any) => {
+        const sellerId = String(seller.id);
+        return {
+          id: sellerId,
+          name: seller.name || "Без имени",
+          is_active: Boolean(seller.is_active),
+          recordsCount: recordsCountBySeller.get(sellerId) ?? 0,
+          revenue: revenueBySeller.get(sellerId) ?? 0
+        };
+      }),
+      error: null
+    };
+  } catch (error) {
+    logServerError("getSellerStats", error);
+    return { sellers: [], error: reportLoadMessage(error) };
+  }
+}
+
 export async function getRecords(
   filters: RecordFilters
 ): Promise<{ records: RecordListItem[]; error: string | null }> {
@@ -234,6 +352,7 @@ export async function getRecords(
       .select(
         `
         id,
+        shop_id,
         raw_text,
         cleaned_text,
         total_amount,
@@ -257,6 +376,31 @@ export async function getRecords(
     const { data, error } = await query;
     if (error) throw error;
 
+    const saleIds = (data ?? []).map((sale: any) => String(sale.id));
+    const saleItemsBySaleId = new Map<string, SaleItem[]>();
+    if (saleIds.length) {
+      const { data: saleItems, error: saleItemsError } = await admin
+        .from("sale_items")
+        .select(
+          "id, sale_id, product_id, product_name, quantity, unit, price, total, confidence, status, updated_at, deleted_at, deleted_reason, deleted_previous_status"
+        )
+        .in("sale_id", saleIds);
+
+      if (saleItemsError) throw saleItemsError;
+
+      const scopedItems = scopeReportRows(
+        (data ?? []) as ReportSaleRow[],
+        (saleItems ?? []) as ReportSaleItemRow[],
+        owner.shopId,
+        { includeInactiveSales: true }
+      ).items;
+      for (const item of scopedItems) {
+        const current = saleItemsBySaleId.get(item.sale_id) ?? [];
+        current.push(item);
+        saleItemsBySaleId.set(item.sale_id, current);
+      }
+    }
+
     const records = await Promise.all(
       (data ?? []).map(async (sale: any) => {
         const seller = Array.isArray(sale.sellers) ? sale.sellers[0] : sale.sellers;
@@ -270,7 +414,8 @@ export async function getRecords(
           raw_text: sale.raw_text,
           status: sale.status,
           total_amount: Number(sale.total_amount ?? 0),
-          audioUrl: await createSignedAudioUrl(voiceRecord?.audio_path ?? null, voiceRecord?.audio_url ?? null)
+          audioUrl: await createSignedAudioUrl(voiceRecord?.audio_path ?? null, voiceRecord?.audio_url ?? null),
+          items: saleItemsBySaleId.get(String(sale.id)) ?? []
         };
       })
     );
@@ -292,14 +437,16 @@ export async function getReport(filters: ReportFilters) {
 
     if (owner.shopId === "demo-shop" && !admin) {
       const items = filterByDateRange(demoSaleItems, range);
+      const partitionedItems = partitionSaleItems(items);
       salesCount = items.length ? 1 : 0;
       saleItemsCount = items.length;
       logReportResult({ owner, range, salesCount, saleItemsCount, error: null });
       return {
         range,
+        salesCount,
         summary: buildSalesReport(items),
-        items: items.filter((item) => !item.deleted_at),
-        deletedItems: items.filter((item) => Boolean(item.deleted_at)),
+        items: partitionedItems.activeItems,
+        deletedItems: partitionedItems.deletedItems,
         error: null
       };
     }
@@ -307,7 +454,7 @@ export async function getReport(filters: ReportFilters) {
     if (!admin) throw new Error("Supabase admin client is not configured.");
     const { data: sales, error: salesError } = await admin
       .from("sales")
-      .select("id, shop_id, created_at")
+      .select("id, shop_id, status, created_at")
       .eq("shop_id", owner.shopId)
       .gte("created_at", range.start)
       .lt("created_at", range.end);
@@ -337,13 +484,15 @@ export async function getReport(filters: ReportFilters) {
     const sortedItems = scoped.items.sort((left, right) =>
       left.product_name.localeCompare(right.product_name, "ru-RU")
     );
+    const partitionedItems = partitionSaleItems(sortedItems);
     logReportResult({ owner, range, salesCount, saleItemsCount, error: null });
 
     return {
       range,
+      salesCount,
       summary: buildSalesReport(sortedItems),
-      items: sortedItems.filter((item) => !item.deleted_at),
-      deletedItems: sortedItems.filter((item) => Boolean(item.deleted_at)),
+      items: partitionedItems.activeItems,
+      deletedItems: partitionedItems.deletedItems,
       error: null
     };
   } catch (error) {
@@ -351,6 +500,7 @@ export async function getReport(filters: ReportFilters) {
     logReportResult({ owner, range, salesCount, saleItemsCount, error });
     return {
       range,
+      salesCount: 0,
       summary: buildSalesReport([]),
       items: [],
       deletedItems: [],
@@ -367,7 +517,7 @@ export async function getReviewItems(filters: ReportFilters) {
 async function getSaleContext(admin: AdminClient, saleId: string, shopId: string) {
   const { data, error } = await admin
     .from("sales")
-    .select("id, shop_id, seller_id, voice_record_id")
+    .select("id, shop_id, seller_id, voice_record_id, status")
     .eq("id", saleId)
     .eq("shop_id", shopId)
     .single();
@@ -530,6 +680,8 @@ export async function updateSaleItem(params: {
   }
 
   requireShopAccess(owner, String(saleContext.data.shop_id));
+  const saleStatus = String(saleContext.data.status);
+  const nextItemStatus = saleStatus === "processed" ? patch.status : "needs_review";
 
   const { data: products, error: productsError } = await admin
     .from("products")
@@ -560,13 +712,13 @@ export async function updateSaleItem(params: {
       unit,
       price: patch.price,
       total: patch.total,
-      status: patch.status,
+      status: nextItemStatus,
       confidence: patch.confidence,
       updated_at: updatedAt
     })
     .eq("id", params.itemId)
     .is("deleted_at", null)
-    .select("sale_id")
+    .select("id, sale_id, product_name, quantity, unit, price, total, status, updated_at")
     .single();
 
   if (error) {
@@ -598,98 +750,28 @@ export async function updateSaleItem(params: {
       unit,
       price: patch.price,
       total: patch.total,
-      status: patch.status
+      status: nextItemStatus
     }
   });
   logAuditFailure("sale_item_updated", auditError);
 
   return {
     ok: true,
-    message: "Изменения сохранены. Позиция учтена в отчёте."
+    message: nextItemStatus === "processed"
+      ? "Изменения сохранены. Позиция учтена в отчёте."
+      : "Изменения сохранены. Подтвердите запись в Telegram.",
+    item: {
+      id: String(item.id),
+      sale_id: String(item.sale_id),
+      product_name: String(item.product_name),
+      quantity: Number(item.quantity),
+      unit: String(item.unit),
+      price: item.price === null ? null : Number(item.price),
+      total: item.total === null ? null : Number(item.total),
+      status: String(item.status),
+      updated_at: String(item.updated_at)
+    }
   };
-}
-
-export async function confirmSaleItem(itemId: string): Promise<MutationResult> {
-  const owner = await requireOwner();
-  const admin = getSupabaseAdminClient();
-
-  if (!admin) {
-    return { ok: false, message: "Не удалось подтвердить позицию." };
-  }
-
-  const { data: item, error: itemError } = await admin
-    .from("sale_items")
-    .select("id, sale_id, product_name, quantity, unit, price, total, status, deleted_at")
-    .eq("id", itemId)
-    .single();
-
-  if (itemError) {
-    return { ok: false, message: itemError.message };
-  }
-
-  if (item.deleted_at) {
-    return { ok: false, message: "Сначала восстановите исключённую позицию." };
-  }
-
-  if (item.status === "processed") {
-    return { ok: true, message: "Позиция уже подтверждена." };
-  }
-
-  const quantity = Number(item.quantity);
-  const price = item.price === null ? Number.NaN : Number(item.price);
-  const patch = buildManualSaleItemPatch({
-    productName: String(item.product_name),
-    quantity,
-    unit: item.unit,
-    price
-  });
-
-  if (!patch.normalized_product_name || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(price) || price <= 0) {
-    return { ok: false, message: "Перед подтверждением укажите товар, количество и цену." };
-  }
-
-  const context = await getSaleContext(admin, item.sale_id, owner.shopId);
-  if (!context.data) {
-    return { ok: false, message: context.error ?? "Продажа не найдена." };
-  }
-
-  requireShopAccess(owner, String(context.data.shop_id));
-  const updatedAt = new Date().toISOString();
-  const { data: confirmedItem, error } = await admin
-    .from("sale_items")
-    .update({
-      product_name: patch.product_name,
-      quantity: patch.quantity,
-      unit: patch.unit,
-      price: patch.price,
-      total: patch.total,
-      status: "processed",
-      confidence: 1,
-      updated_at: updatedAt
-    })
-    .eq("id", itemId)
-    .is("deleted_at", null)
-    .select("sale_id")
-    .single();
-
-  if (error) {
-    return { ok: false, message: error.message };
-  }
-
-  const recalculation = await recalculateSale(admin, confirmedItem.sale_id, owner.shopId);
-  if (!recalculation.ok) {
-    return recalculation;
-  }
-
-  const auditError = await writeAuditLog(admin, context.data, "sale_item_confirmed", {
-    item_id: item.id,
-    product_name: patch.product_name,
-    quantity: patch.quantity,
-    price: patch.price,
-    total: patch.total
-  });
-  logAuditFailure("sale_item_confirmed", auditError);
-  return { ok: true, message: "Позиция подтверждена и учтена в выручке." };
 }
 
 export async function excludeSaleItem(itemId: string): Promise<MutationResult> {
@@ -746,7 +828,11 @@ export async function excludeSaleItem(itemId: string): Promise<MutationResult> {
     reason: patch.deleted_reason
   });
   logAuditFailure("sale_item_deleted", auditError);
-  return { ok: true, message: "Позиция исключена из выручки. Её можно восстановить." };
+  return {
+    ok: true,
+    message: "Позиция удалена из активного отчёта.",
+    itemId: String(item.id)
+  };
 }
 
 export async function restoreSaleItem(itemId: string): Promise<MutationResult> {

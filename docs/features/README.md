@@ -8,3 +8,5 @@
 - [Records journal](./records-journal.md)
 - [Sellers](./sellers.md)
 - [Mobile Web App](./mobile-web-app.md)
+- [Реализованные функции](./implemented.md)
+- [Планируемые функции](./planned.md)
