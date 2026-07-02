@@ -9,8 +9,8 @@
 - voice pipeline сохраняет уверенные продажи как `processed`;
 - сомнительные продажи сохраняются как `needs_review`;
 - Telegram review-message содержит только `✅ Подтвердить` и `❌ Отмена`;
-- WebApp показывает `Отчёт`, `Записи`, `Продавцы`;
-- WebApp не подтверждает и не отменяет review voice-записи;
+- WebApp показывает `Отчёт`, `Проверка`, `Записи`, `Продавцы`;
+- WebApp `/review` подтверждает и отменяет review voice-записи через server actions;
 - edit/delete товаров сохраняются в Supabase и пересчитывают отчёт;
 - soft delete исключает товары из active revenue;
 - диагностика Telegram скрыта от обычного пользователя.
@@ -30,7 +30,7 @@
 
 ## Near-term backlog
 
-- Реальный Telegram smoke для confirm/cancel после deploy.
+- Реальный Telegram smoke для confirm/cancel после deploy и просмотра `telegram_update_received`.
 - Проверка логов Vercel и Supabase после первых production voice messages.
 - Экспорт отчёта в CSV/XLSX.
 - Более подробная аналитика parser confidence.
@@ -38,7 +38,6 @@
 
 ## Out of scope for current release
 
-- WebApp confirm/cancel для review voice-записей.
 - Замена STT provider.
 - Замена parser/LLM contract.
 - Большой desktop admin dashboard.
@@ -48,7 +47,7 @@
 
 2026-07-02:
 
-- Review decision вынесен только в Telegram.
+- Review decision доступен в Telegram и на WebApp вкладке `Проверка`.
 - Третья кнопка `Открыть отчёт` удалена из review-message.
-- `/review` как пользовательский экран superseded и перенаправляет на `/records`.
+- `/review` снова является пользовательским экраном для active `needs_review`.
 - Revenue защищён от processed-looking items внутри `needs_review` sale.

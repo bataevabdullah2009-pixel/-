@@ -6,7 +6,7 @@
 2. Server должен проверять raw Telegram initData.
 3. Server должен вывести shop access из базы.
 4. Client не должен передавать authoritative shop id.
-5. Session нужна для report, records, sellers и sale item mutations.
+5. Session нужна для report, review, records, sellers и sale item mutations.
 6. Session не используется Telegram callback confirm/cancel.
 
 ## 2. Основные файлы
@@ -61,11 +61,12 @@
 ## 7. Report access
 
 1. `getReport` requires owner/seller session.
-2. `getRecords` requires owner/seller session.
-3. `getSellerStats` requires owner/seller session.
-4. `getSellers` requires owner/seller session.
-5. Fallback demo mode is explicit.
-6. Without allowed fallback, missing session shows access notice.
+2. `getReviewItems` requires owner/seller session.
+3. `getRecords` requires owner/seller session.
+4. `getSellerStats` requires owner/seller session.
+5. `getSellers` requires owner/seller session.
+6. Fallback demo mode is explicit.
+7. Without allowed fallback, missing session shows access notice.
 
 ## 8. Mutation access
 
@@ -73,9 +74,12 @@
 2. `excludeSaleItem` requires session.
 3. `restoreSaleItem` requires session.
 4. `resetDay` requires session.
-5. Mutations resolve shop server-side.
-6. Mutations verify parent sale belongs to resolved shop.
-7. Mutations do not trust hidden form shop fields.
+5. `confirmReviewSaleAction` requires session.
+6. `cancelReviewSaleAction` requires session.
+7. `confirmAllReviewSalesAction` requires session.
+8. Mutations resolve shop server-side.
+9. Mutations verify parent sale belongs to resolved shop.
+10. Mutations do not trust hidden form shop fields.
 
 ## 9. Telegram confirm/cancel relation
 
@@ -84,7 +88,7 @@
 3. Callback resolves seller in bot service.
 4. Callback filters sale by seller and shop.
 5. WebApp shows updated result after refresh.
-6. WebApp displays review status but does not decide it.
+6. WebApp `/review` can decide review sales through server actions using the same shop isolation.
 
 ## 10. Diagnostics
 
@@ -120,10 +124,10 @@
 ## 13. Routes
 
 1. `/daily-report` requires session.
-2. `/records` requires session.
-3. `/sellers` requires session.
-4. `/` renders report.
-5. `/review` redirects to `/records`.
+2. `/review` requires session.
+3. `/records` requires session.
+4. `/sellers` requires session.
+5. `/` renders report.
 6. `/debug-telegram` is dev/debug gated.
 7. `/api/auth/telegram` establishes session.
 8. `/api/telegram/webhook` is bot webhook and not WebApp auth.
@@ -150,12 +154,11 @@
 6. Update/delete cannot mutate another shop.
 7. Debug page is hidden in production without flag.
 8. Telegram callback works without WebApp session.
-9. WebApp has no review confirm/cancel controls.
+9. WebApp `/review` confirm/cancel works only with verified WebApp session.
 
 ## 16. Out of scope
 
 1. Password login.
 2. OAuth login outside Telegram.
 3. Multi-shop switcher.
-4. WebApp review decision flow.
-5. Client-side direct Supabase writes.
+4. Client-side direct Supabase writes.

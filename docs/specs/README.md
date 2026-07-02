@@ -4,7 +4,7 @@
 
 ## Product specs
 
-- [WebApp report](./product/webapp-report.md) - мобильный интерфейс, отчёт, записи, продавцы, review visibility.
+- [WebApp report](./product/webapp-report.md) - мобильный интерфейс, отчёт, проверка, записи, продавцы.
 - [Telegram confirmation flow](./product/telegram-confirmation-flow.md) - `processed`, `needs_review`, `cancelled`, callback buttons.
 - [Sale item editing](./product/sale-item-editing.md) - compact edit, delete, Supabase persistence, recalculation.
 - [Seller voice flow](./product/seller-voice-flow.md) - voice сценарий продавца.
@@ -27,7 +27,7 @@
 - `shop_id` не принимается от клиента как источник прав.
 - Report читает sale_items только через sales текущего shop.
 - Уверенные voice-продажи сразу входят в отчёт.
-- Сомнительные voice-записи решаются только Telegram `✅ Подтвердить` / `❌ Отмена`.
-- WebApp не содержит пользовательского confirm/cancel для review voice-записей.
+- Сомнительные voice-записи решаются Telegram `✅ Подтвердить` / `❌ Отмена` или WebApp `/review`.
+- WebApp review actions выполняются только через server actions и server-derived shop context.
 - В review-message нет кнопки `Открыть отчёт`.
 - Выручка считается только из parent sale `processed` и active item `processed`.

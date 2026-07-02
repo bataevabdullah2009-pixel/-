@@ -56,8 +56,8 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
         <div className="pageTitle">
           <div>
             <p className="eyebrow">{shopName}</p>
-            <h2>Голосовой журнал продаж</h2>
-            <p className="pageLead">Сводка магазина</p>
+            <h2>Сводка магазина</h2>
+            <p className="pageLead">Период: {range.label}</p>
           </div>
         </div>
         <div className="actionNotice actionNotice-error" role="alert">{error}</div>
@@ -77,8 +77,8 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
       <div className="pageTitle">
         <div>
           <p className="eyebrow">{shopName}</p>
-          <h2>Голосовой журнал продаж</h2>
-          <p className="pageLead">Сводка магазина</p>
+          <h2>Сводка магазина</h2>
+          <p className="pageLead">Период: {range.label}</p>
         </div>
       </div>
 
@@ -151,6 +151,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
               <div className="sparklineBar" key={row.label}>
                 <span style={{ height: `${Math.max(10, (row.revenue / maxSparklineRevenue) * 100)}%` }} />
                 <b>{row.label}</b>
+                <small>{formatCurrency(row.revenue)}</small>
               </div>
             ))}
           </div>
@@ -217,7 +218,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
               <p className="eyebrow">Нужно проверить</p>
               <h3 id="review-items-heading">Нужно проверить</h3>
             </div>
-            <span className="attentionPill">Подтвердите в Telegram</span>
+            <span className="attentionPill">Откройте Проверку</span>
           </div>
           <div className="itemEditorList">
             {reviewItems.map((item) => <SaleItemCard item={item} key={item.id} />)}

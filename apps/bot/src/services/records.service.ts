@@ -560,7 +560,7 @@ export async function confirmVoiceSaleWithClient(
     status: "processed",
     oldStatus: sale.status,
     newStatus: "processed",
-    message: "✅ Запись подтверждена и добавлена в отчёт.",
+    message: "✅ Запись подтверждена и добавлена в выручку.",
     itemCount: confirmableItems.length
   };
 }

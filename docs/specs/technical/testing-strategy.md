@@ -32,8 +32,8 @@ Regression tests покрывают:
 - отсутствие debug button без `DEBUG_TELEGRAM_WEBAPP`;
 - отсутствие client `shop_id`;
 - Web App buttons;
-- bot reply без internal enum.
-- отсутствие WebApp review confirm/cancel и cross-shop callback denial.
+- bot reply без internal enum;
+- WebApp `/review` decision surface и cross-shop callback denial.
 
 Перед финальным ответом запускаются:
 
@@ -45,6 +45,6 @@ npm run build
 
 Дополнительный P0-контроль использует фиксированный Telegram Mini App fixture с `signature`, `chat_instance`, `photo_url` и tamper-проверкой. Production smoke проверяет `POST /api/auth/telegram`, session cookie, seller/shop в Vercel logs и совпадение live Supabase counts с rendered report.
 
-Ручной WebApp smoke 25 июня 2026 проверил update quantity, update price, reload persistence, soft delete, reload после delete и restore. После проверки исходные значения позиции восстановлены. 2 июля 2026 локальные tests покрыли короткий callback contract, confirm/cancel, cancelled report filtering, `needs_review` parent sale filtering, отсутствие третьей review-кнопки и отсутствие WebApp decision surface; реальный Telegram smoke остаётся backlog после deploy.
+Ручной WebApp smoke 25 июня 2026 проверил update quantity, update price, reload persistence, soft delete, reload после delete и restore. После проверки исходные значения позиции восстановлены. 2 июля 2026 локальные tests покрыли короткий callback contract, confirm/cancel, cancelled report filtering, `needs_review` parent sale filtering, отсутствие третьей review-кнопки, parser split и WebApp `/review` route; реальный Telegram smoke остаётся backlog после deploy.
 
 Если команда не запускалась или упала, это указывается явно.

@@ -13,8 +13,8 @@ Report сначала выбирает `sales` по seller `shop_id`, затем
 
 WebApp mutations выполняются Server Actions. Клиентская карточка хранит только UI-состояние раскрытия/pending/error; доверенная проверка item → sale → shop повторяется на сервере. Успешный update возвращает сохранённую строку, пересчитывает `sales.total_amount`, инвалидирует report/records и запускает `router.refresh()`.
 
-WebApp не подтверждает и не отменяет сомнительную voice-запись. Если родительская sale ещё `needs_review`, обычный item update сохраняет товар, количество и цену, но item остаётся `needs_review` и не входит в выручку до Telegram confirm.
+WebApp `/review` подтверждает и отменяет сомнительную voice-запись через server actions. Если родительская sale ещё `needs_review`, обычный item update сохраняет товар, количество и цену, но item остаётся `needs_review` и не входит в выручку до явного confirm.
 
 Voice sale сохраняется только через RPC `save_voice_sale`. После RPC приложение проверяет sale и точное количество sale_items чтением из Supabase. Если RPC отсутствует или read-back не подтверждает строки, бот возвращает ошибку сохранения и не пишет success.
 
-Сомнительная voice sale получает Telegram keyboard только с `✅ Подтвердить` и `❌ Отмена`. Новые callback data: `confirm:<record_id>` и `cancel:<record_id>`. Confirm переводит sale/voice в `processed` и добавляет валидные items в выручку. Cancel переводит sale/voice в `cancelled` и soft-delete active items. Callback заново разрешает seller по Telegram user id и не принимает `shop_id`.
+Сомнительная voice sale получает Telegram keyboard только с `✅ Подтвердить` и `❌ Отмена`. Новые callback data: `confirm:<record_id>` и `cancel:<record_id>`. Production webhook должен быть установлен с `allowed_updates: ["message", "callback_query"]`. Confirm переводит sale/voice в `processed` и добавляет валидные items в выручку. Cancel переводит sale/voice в `cancelled` и soft-delete active items. Callback заново разрешает seller по Telegram user id и не принимает `shop_id`.
