@@ -28,3 +28,19 @@ Telegram mode требует `window.Telegram.WebApp`, непустой raw `ini
 Auth logs не содержат initData или токены. Они фиксируют user/seller/shop и reason: `missing_init_data`, `invalid_hash`, `expired_auth_date`, `missing_bot_token`, `user_not_linked` и другие безопасные коды.
 
 `shop_id` из query, form или JSON не используется для tenant selection. Текущие чтения и мутации реализованы Server Components/Server Actions; отдельных `/api/report`, `/api/records`, `/api/sellers`, `/api/sale-items/*`, `/api/reset-day` и `/api/refresh` routes нет.
+
+## Review and callback isolation
+
+Telegram callback:
+
+1. Читает Telegram user id из callback update.
+2. Повторно ищет active seller.
+3. Читает sale по `sale_id`, `seller_id` и `shop_id`.
+4. Чужой seller/shop не меняет запись.
+
+WebApp review visibility:
+
+1. Использует `requireOwner()`.
+2. Читает review records/items только через server-derived `shop_id`.
+3. Не принимает `shop_id` от клиента.
+4. Не предоставляет confirm/cancel controls; решения выполняет Telegram callback.

@@ -4,9 +4,11 @@ import {
   buildExcludedSaleItemPatch,
   buildManualSaleItemPatch,
   buildSalesReport,
+  calculateItemTotal,
   displayProductName,
   filterByDateRange,
   getDateRange,
+  isMeaningfulProductName,
   isRevenueSaleItemStatus,
   normalizeProductName,
   normalizeUnit
@@ -33,6 +35,8 @@ type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdminClient>>;
 type MutationResult = {
   ok: boolean;
   message: string;
+  statusCode?: 401 | 403 | 404 | 422 | 500;
+  code?: string;
   item?: {
     id: string;
     sale_id: string;
@@ -46,6 +50,34 @@ type MutationResult = {
   };
   itemId?: string;
 };
+
+function mutationError(
+  message: string,
+  statusCode: NonNullable<MutationResult["statusCode"]>,
+  code: string
+): MutationResult {
+  return { ok: false, message, statusCode, code };
+}
+
+function authMutationError(error: unknown): MutationResult | null {
+  if (!(error instanceof OwnerAccessError)) {
+    return null;
+  }
+
+  if (error.code === "TELEGRAM_INIT_DATA_MISSING" || error.code === "TELEGRAM_INIT_DATA_INVALID") {
+    return mutationError("Telegram-сессия недействительна. Откройте WebApp заново.", 401, error.code);
+  }
+
+  if (error.code === "SELLER_NOT_LINKED" || error.code === "SELLER_INACTIVE" || error.code === "SHOP_NOT_FOUND") {
+    return mutationError("Нет доступа к этому магазину.", 403, error.code);
+  }
+
+  return mutationError("Не удалось выполнить действие.", 500, error.code);
+}
+
+function isSupabaseNotFound(error: { code?: string; message?: string } | null | undefined) {
+  return error?.code === "PGRST116" || error?.message?.toLocaleLowerCase("en-US").includes("0 rows");
+}
 
 const demoSellers: SellerOption[] = [
   {
@@ -223,6 +255,31 @@ export async function getSellers(): Promise<SellerOption[]> {
   }
 }
 
+export async function getCurrentShopName() {
+  try {
+    const owner = await requireOwner();
+    const admin = getSupabaseAdminClient();
+
+    if (owner.shopId === "demo-shop" && !admin) {
+      return "Демо-магазин";
+    }
+
+    if (!admin) throw new Error("Supabase admin client is not configured.");
+    const { data, error } = await admin
+      .from("shops")
+      .select("name")
+      .eq("id", owner.shopId)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    return data?.name ? String(data.name) : "Магазин";
+  } catch (error) {
+    logServerError("getCurrentShopName", error);
+    return "Магазин";
+  }
+}
+
 export async function getSellerStats(
   filters: ReportFilters
 ): Promise<{ sellers: SellerStats[]; error: string | null }> {
@@ -240,7 +297,8 @@ export async function getSellerStats(
         sellers: demoSellers.map((seller) => ({
           ...seller,
           recordsCount: demoRecordCount,
-          revenue: demoReport.totalRevenue
+          revenue: demoReport.totalRevenue,
+          lastActivity: demoRecordCount ? now : null
         })),
         error: null
       };
@@ -268,6 +326,7 @@ export async function getSellerStats(
     const saleIds = (sales ?? []).map((sale: any) => String(sale.id));
     const saleSellerById = new Map<string, string | null>();
     const recordsCountBySeller = new Map<string, number>();
+    const lastActivityBySeller = new Map<string, string>();
 
     for (const sale of sales ?? []) {
       const saleId = String((sale as any).id);
@@ -275,6 +334,11 @@ export async function getSellerStats(
       saleSellerById.set(saleId, sellerId);
       if (sellerId) {
         recordsCountBySeller.set(sellerId, (recordsCountBySeller.get(sellerId) ?? 0) + 1);
+        const createdAt = String((sale as any).created_at);
+        const previous = lastActivityBySeller.get(sellerId);
+        if (!previous || new Date(createdAt).getTime() > new Date(previous).getTime()) {
+          lastActivityBySeller.set(sellerId, createdAt);
+        }
       }
     }
 
@@ -316,7 +380,8 @@ export async function getSellerStats(
           name: seller.name || "Без имени",
           is_active: Boolean(seller.is_active),
           recordsCount: recordsCountBySeller.get(sellerId) ?? 0,
-          revenue: revenueBySeller.get(sellerId) ?? 0
+          revenue: revenueBySeller.get(sellerId) ?? 0,
+          lastActivity: lastActivityBySeller.get(sellerId) ?? null
         };
       }),
       error: null
@@ -523,10 +588,15 @@ async function getSaleContext(admin: AdminClient, saleId: string, shopId: string
     .single();
 
   if (error) {
-    return { data: null, error: error.message };
+    return {
+      data: null,
+      error: isSupabaseNotFound(error) ? "Продажа не найдена." : "Не удалось проверить продажу.",
+      statusCode: isSupabaseNotFound(error) ? 404 as const : 500 as const,
+      code: isSupabaseNotFound(error) ? "SALE_NOT_FOUND" : "SALE_LOOKUP_FAILED"
+    };
   }
 
-  return { data, error: null };
+  return { data, error: null, statusCode: null, code: null };
 }
 
 async function writeAuditLog(
@@ -555,7 +625,11 @@ async function recalculateSale(admin: AdminClient, saleId: string, shopId: strin
   const context = await getSaleContext(admin, saleId, shopId);
 
   if (!context.data) {
-    return { ok: false, message: context.error ?? "Продажа не найдена." };
+    return mutationError(
+      context.error ?? "Продажа не найдена.",
+      context.statusCode ?? 404,
+      context.code ?? "SALE_NOT_FOUND"
+    );
   }
 
   const { data: saleItems, error: saleItemsError } = await admin
@@ -565,20 +639,24 @@ async function recalculateSale(admin: AdminClient, saleId: string, shopId: strin
     .is("deleted_at", null);
 
   if (saleItemsError) {
-    return { ok: false, message: saleItemsError.message };
+    return mutationError("Не удалось пересчитать продажу.", 500, "SALE_ITEMS_RECALC_FAILED");
   }
 
   const activeItems = saleItems ?? [];
-  const totalAmount = Number(
+  const currentStatus = String(context.data.status);
+  const revenueTotal = Number(
     activeItems
       .filter((item: any) => isRevenueSaleItemStatus(String(item.status)) && item.total !== null)
       .reduce((sum: number, item: any) => sum + Number(item.total), 0)
       .toFixed(2)
   );
-  const saleStatus = activeItems.length > 0 &&
-    activeItems.every((item: any) => isRevenueSaleItemStatus(String(item.status)))
-    ? "processed"
-    : "needs_review";
+  const totalAmount = currentStatus === "cancelled" || currentStatus === "failed" ? 0 : revenueTotal;
+  const hasReviewItems = activeItems.some((item: any) => !isRevenueSaleItemStatus(String(item.status)));
+  const saleStatus = currentStatus === "cancelled" || currentStatus === "failed"
+    ? currentStatus
+    : currentStatus === "needs_review" || hasReviewItems
+      ? "needs_review"
+      : "processed";
 
   const { error: saleUpdateError } = await admin
     .from("sales")
@@ -589,7 +667,7 @@ async function recalculateSale(admin: AdminClient, saleId: string, shopId: strin
     .single();
 
   if (saleUpdateError) {
-    return { ok: false, message: saleUpdateError.message };
+    return mutationError("Не удалось пересчитать продажу.", 500, "SALE_RECALC_FAILED");
   }
 
   if (context.data.voice_record_id) {
@@ -602,7 +680,7 @@ async function recalculateSale(admin: AdminClient, saleId: string, shopId: strin
       .single();
 
     if (voiceRecordUpdateError) {
-      return { ok: false, message: voiceRecordUpdateError.message };
+      return mutationError("Не удалось обновить статус записи.", 500, "VOICE_RECORD_RECALC_FAILED");
     }
   }
 
@@ -615,28 +693,26 @@ export async function updateSaleItem(params: {
   quantity: number;
   price: number;
 }) {
-  const owner = await requireOwner();
+  let owner: OwnerContext;
+  try {
+    owner = await requireOwner();
+  } catch (error) {
+    const authError = authMutationError(error);
+    if (authError) return authError;
+    throw error;
+  }
   const admin = getSupabaseAdminClient();
 
   if (!admin) {
-    return {
-      ok: false,
-      message: "Не удалось сохранить товар."
-    };
+    return mutationError("Не удалось сохранить товар.", 500, "SUPABASE_ADMIN_MISSING");
   }
 
   if (!params.productName.trim() || !Number.isFinite(params.quantity) || params.quantity <= 0) {
-    return {
-      ok: false,
-      message: "Укажите товар и корректное количество."
-    };
+    return mutationError("Укажите товар и корректное количество.", 422, "INVALID_ITEM_DATA");
   }
 
   if (!Number.isFinite(params.price) || params.price <= 0) {
-    return {
-      ok: false,
-      message: "Укажите корректную цену."
-    };
+    return mutationError("Укажите корректную цену.", 422, "INVALID_ITEM_PRICE");
   }
 
   const { data: existingItem, error: existingItemError } = await admin
@@ -646,14 +722,15 @@ export async function updateSaleItem(params: {
     .single();
 
   if (existingItemError) {
-    return {
-      ok: false,
-      message: existingItemError.message
-    };
+    return mutationError(
+      isSupabaseNotFound(existingItemError) ? "Товар не найден." : "Не удалось загрузить товар.",
+      isSupabaseNotFound(existingItemError) ? 404 : 500,
+      isSupabaseNotFound(existingItemError) ? "ITEM_NOT_FOUND" : "ITEM_LOOKUP_FAILED"
+    );
   }
 
   if (existingItem.deleted_at) {
-    return { ok: false, message: "Сначала восстановите исключённую позицию." };
+    return mutationError("Сначала восстановите исключённую позицию.", 422, "ITEM_ALREADY_EXCLUDED");
   }
 
   const patch = buildManualSaleItemPatch({
@@ -664,22 +741,26 @@ export async function updateSaleItem(params: {
   });
 
   if (!patch.normalized_product_name) {
-    return {
-      ok: false,
-      message: "Укажите товар."
-    };
+    return mutationError("Укажите товар.", 422, "INVALID_PRODUCT_NAME");
   }
 
   const saleContext = await getSaleContext(admin, existingItem.sale_id, owner.shopId);
 
   if (!saleContext.data) {
-    return {
-      ok: false,
-      message: saleContext.error ?? "Продажа не найдена."
-    };
+    return mutationError(
+      saleContext.error ?? "Продажа не найдена.",
+      saleContext.statusCode ?? 404,
+      saleContext.code ?? "SALE_NOT_FOUND"
+    );
   }
 
-  requireShopAccess(owner, String(saleContext.data.shop_id));
+  try {
+    requireShopAccess(owner, String(saleContext.data.shop_id));
+  } catch (error) {
+    const authError = authMutationError(error);
+    if (authError) return authError;
+    throw error;
+  }
   const saleStatus = String(saleContext.data.status);
   const nextItemStatus = saleStatus === "processed" ? patch.status : "needs_review";
 
@@ -690,10 +771,7 @@ export async function updateSaleItem(params: {
     .eq("is_active", true);
 
   if (productsError) {
-    return {
-      ok: false,
-      message: productsError.message
-    };
+    return mutationError("Не удалось проверить каталог товаров.", 500, "PRODUCT_LOOKUP_FAILED");
   }
 
   const product = (products ?? []).find(
@@ -722,10 +800,11 @@ export async function updateSaleItem(params: {
     .single();
 
   if (error) {
-    return {
-      ok: false,
-      message: error.message
-    };
+    return mutationError(
+      isSupabaseNotFound(error) ? "Товар не найден." : "Не удалось сохранить товар.",
+      isSupabaseNotFound(error) ? 404 : 500,
+      isSupabaseNotFound(error) ? "ITEM_NOT_FOUND" : "ITEM_UPDATE_FAILED"
+    );
   }
 
   const recalculation = await recalculateSale(admin, item.sale_id, owner.shopId);
@@ -775,11 +854,18 @@ export async function updateSaleItem(params: {
 }
 
 export async function excludeSaleItem(itemId: string): Promise<MutationResult> {
-  const owner = await requireOwner();
+  let owner: OwnerContext;
+  try {
+    owner = await requireOwner();
+  } catch (error) {
+    const authError = authMutationError(error);
+    if (authError) return authError;
+    throw error;
+  }
   const admin = getSupabaseAdminClient();
 
   if (!admin) {
-    return { ok: false, message: "Не удалось исключить товар из отчёта." };
+    return mutationError("Не удалось исключить товар из отчёта.", 500, "SUPABASE_ADMIN_MISSING");
   }
 
   const { data: item, error: itemError } = await admin
@@ -789,7 +875,11 @@ export async function excludeSaleItem(itemId: string): Promise<MutationResult> {
     .single();
 
   if (itemError) {
-    return { ok: false, message: itemError.message };
+    return mutationError(
+      isSupabaseNotFound(itemError) ? "Товар не найден." : "Не удалось загрузить товар.",
+      isSupabaseNotFound(itemError) ? 404 : 500,
+      isSupabaseNotFound(itemError) ? "ITEM_NOT_FOUND" : "ITEM_LOOKUP_FAILED"
+    );
   }
 
   if (item.deleted_at) {
@@ -798,10 +888,20 @@ export async function excludeSaleItem(itemId: string): Promise<MutationResult> {
 
   const context = await getSaleContext(admin, item.sale_id, owner.shopId);
   if (!context.data) {
-    return { ok: false, message: context.error ?? "Продажа не найдена." };
+    return mutationError(
+      context.error ?? "Продажа не найдена.",
+      context.statusCode ?? 404,
+      context.code ?? "SALE_NOT_FOUND"
+    );
   }
 
-  requireShopAccess(owner, String(context.data.shop_id));
+  try {
+    requireShopAccess(owner, String(context.data.shop_id));
+  } catch (error) {
+    const authError = authMutationError(error);
+    if (authError) return authError;
+    throw error;
+  }
 
   const patch = buildExcludedSaleItemPatch(item.status);
   const { data: excludedItem, error } = await admin
@@ -813,7 +913,11 @@ export async function excludeSaleItem(itemId: string): Promise<MutationResult> {
     .single();
 
   if (error) {
-    return { ok: false, message: error.message };
+    return mutationError(
+      isSupabaseNotFound(error) ? "Товар не найден." : "Не удалось исключить товар из отчёта.",
+      isSupabaseNotFound(error) ? 404 : 500,
+      isSupabaseNotFound(error) ? "ITEM_NOT_FOUND" : "ITEM_EXCLUDE_FAILED"
+    );
   }
 
   const recalculation = await recalculateSale(admin, excludedItem.sale_id, owner.shopId);
@@ -836,11 +940,18 @@ export async function excludeSaleItem(itemId: string): Promise<MutationResult> {
 }
 
 export async function restoreSaleItem(itemId: string): Promise<MutationResult> {
-  const owner = await requireOwner();
+  let owner: OwnerContext;
+  try {
+    owner = await requireOwner();
+  } catch (error) {
+    const authError = authMutationError(error);
+    if (authError) return authError;
+    throw error;
+  }
   const admin = getSupabaseAdminClient();
 
   if (!admin) {
-    return { ok: false, message: "Не удалось восстановить товар." };
+    return mutationError("Не удалось восстановить товар.", 500, "SUPABASE_ADMIN_MISSING");
   }
 
   const { data: item, error: itemError } = await admin
@@ -850,7 +961,11 @@ export async function restoreSaleItem(itemId: string): Promise<MutationResult> {
     .single();
 
   if (itemError) {
-    return { ok: false, message: itemError.message };
+    return mutationError(
+      isSupabaseNotFound(itemError) ? "Товар не найден." : "Не удалось загрузить товар.",
+      isSupabaseNotFound(itemError) ? 404 : 500,
+      isSupabaseNotFound(itemError) ? "ITEM_NOT_FOUND" : "ITEM_LOOKUP_FAILED"
+    );
   }
 
   if (!item.deleted_at) {
@@ -859,10 +974,20 @@ export async function restoreSaleItem(itemId: string): Promise<MutationResult> {
 
   const context = await getSaleContext(admin, item.sale_id, owner.shopId);
   if (!context.data) {
-    return { ok: false, message: context.error ?? "Продажа не найдена." };
+    return mutationError(
+      context.error ?? "Продажа не найдена.",
+      context.statusCode ?? 404,
+      context.code ?? "SALE_NOT_FOUND"
+    );
   }
 
-  requireShopAccess(owner, String(context.data.shop_id));
+  try {
+    requireShopAccess(owner, String(context.data.shop_id));
+  } catch (error) {
+    const authError = authMutationError(error);
+    if (authError) return authError;
+    throw error;
+  }
 
   const updatedAt = new Date().toISOString();
   const { data: restoredItem, error } = await admin
@@ -880,7 +1005,11 @@ export async function restoreSaleItem(itemId: string): Promise<MutationResult> {
     .single();
 
   if (error) {
-    return { ok: false, message: error.message };
+    return mutationError(
+      isSupabaseNotFound(error) ? "Товар не найден." : "Не удалось восстановить товар.",
+      isSupabaseNotFound(error) ? 404 : 500,
+      isSupabaseNotFound(error) ? "ITEM_NOT_FOUND" : "ITEM_RESTORE_FAILED"
+    );
   }
 
   const recalculation = await recalculateSale(admin, restoredItem.sale_id, owner.shopId);
@@ -898,12 +1027,285 @@ export async function restoreSaleItem(itemId: string): Promise<MutationResult> {
   return { ok: true, message: "Позиция восстановлена и снова учитывается в отчёте." };
 }
 
+type ReviewMutationItemRow = {
+  id: string;
+  product_name: string;
+  quantity: number | string;
+  price: number | string | null;
+  total: number | string | null;
+  status: string;
+  deleted_at?: string | null;
+};
+
+function normalizePreviousItemStatus(status: string): Exclude<SaleItem["status"], "excluded"> {
+  if (status === "processed" || status === "needs_price" || status === "needs_review" || status === "failed") {
+    return status;
+  }
+
+  return "needs_review";
+}
+
+function toConfirmableReviewItem(item: ReviewMutationItemRow) {
+  const quantity = Number(item.quantity);
+  const price = item.price === null ? Number.NaN : Number(item.price);
+  const total = calculateItemTotal(quantity, price);
+
+  if (
+    item.status === "excluded" ||
+    !isMeaningfulProductName(item.product_name) ||
+    !Number.isFinite(quantity) ||
+    quantity <= 0 ||
+    !Number.isFinite(price) ||
+    price <= 0 ||
+    total === null
+  ) {
+    return null;
+  }
+
+  return { id: String(item.id), total };
+}
+
+async function getActiveReviewMutationItems(admin: AdminClient, saleId: string) {
+  const { data, error } = await admin
+    .from("sale_items")
+    .select("id, product_name, quantity, price, total, status, deleted_at")
+    .eq("sale_id", saleId)
+    .is("deleted_at", null);
+
+  if (error) {
+    return {
+      items: [],
+      error: mutationError("Не удалось загрузить товары записи.", 500, "REVIEW_ITEMS_LOOKUP_FAILED")
+    };
+  }
+
+  return {
+    items: ((data ?? []) as ReviewMutationItemRow[]).filter((item) => item.status !== "excluded"),
+    error: null
+  };
+}
+
+async function setReviewSaleStatus(
+  admin: AdminClient,
+  sale: NonNullable<Awaited<ReturnType<typeof getSaleContext>>["data"]>,
+  shopId: string,
+  status: "processed" | "cancelled",
+  totalAmount: number
+) {
+  const { error: saleError } = await admin
+    .from("sales")
+    .update({ status, total_amount: totalAmount })
+    .eq("id", sale.id)
+    .eq("shop_id", shopId)
+    .select("id")
+    .single();
+
+  if (saleError) {
+    return mutationError("Не удалось обновить статус записи.", 500, "REVIEW_SALE_UPDATE_FAILED");
+  }
+
+  if (sale.voice_record_id) {
+    const { error: voiceError } = await admin
+      .from("voice_records")
+      .update({ status })
+      .eq("id", sale.voice_record_id)
+      .eq("shop_id", shopId)
+      .select("id")
+      .single();
+
+    if (voiceError) {
+      return mutationError("Не удалось обновить voice-запись.", 500, "REVIEW_VOICE_UPDATE_FAILED");
+    }
+  }
+
+  return null;
+}
+
+async function resolveReviewMutationContext(saleId: string) {
+  if (!saleId) {
+    return {
+      owner: null,
+      admin: null,
+      sale: null,
+      error: mutationError("Запись не найдена.", 422, "SALE_ID_MISSING")
+    };
+  }
+
+  let owner: OwnerContext;
+  try {
+    owner = await requireOwner();
+  } catch (error) {
+    const authError = authMutationError(error);
+    if (authError) {
+      return { owner: null, admin: null, sale: null, error: authError };
+    }
+    throw error;
+  }
+
+  const admin = getSupabaseAdminClient();
+  if (!admin) {
+    return {
+      owner,
+      admin: null,
+      sale: null,
+      error: mutationError("Не удалось выполнить действие.", 500, "SUPABASE_ADMIN_MISSING")
+    };
+  }
+
+  const context = await getSaleContext(admin, saleId, owner.shopId);
+  if (!context.data) {
+    return {
+      owner,
+      admin,
+      sale: null,
+      error: mutationError(
+        context.error ?? "Запись не найдена.",
+        context.statusCode ?? 404,
+        context.code ?? "SALE_NOT_FOUND"
+      )
+    };
+  }
+
+  return { owner, admin, sale: context.data, error: null };
+}
+
+export async function confirmReviewSale(saleId: string): Promise<MutationResult> {
+  const context = await resolveReviewMutationContext(saleId);
+  if (context.error) return context.error;
+  const { owner, admin, sale } = context;
+  if (!owner || !admin || !sale) {
+    return mutationError("Не удалось подтвердить запись.", 500, "REVIEW_CONTEXT_MISSING");
+  }
+
+  if (sale.status === "processed") {
+    return { ok: true, message: "Запись уже подтверждена и входит в отчёт." };
+  }
+  if (sale.status === "cancelled") {
+    return { ok: true, message: "Запись уже отменена и не входит в отчёт." };
+  }
+  if (sale.status === "failed") {
+    return mutationError("Не удалось подтвердить неуспешную запись.", 422, "FAILED_SALE_CONFIRM_FORBIDDEN");
+  }
+
+  const activeItems = await getActiveReviewMutationItems(admin, sale.id);
+  if (activeItems.error) return activeItems.error;
+
+  const confirmableItems = activeItems.items.flatMap((item) => {
+    const confirmable = toConfirmableReviewItem(item);
+    return confirmable ? [confirmable] : [];
+  });
+
+  if (!confirmableItems.length) {
+    return mutationError(
+      "Перед подтверждением нужны товар, количество и цена хотя бы в одной позиции.",
+      422,
+      "NO_CONFIRMABLE_ITEMS"
+    );
+  }
+
+  if (confirmableItems.length !== activeItems.items.length) {
+    return mutationError(
+      "Перед подтверждением заполните товар, количество и цену во всех позициях.",
+      422,
+      "INCOMPLETE_REVIEW_ITEMS"
+    );
+  }
+
+  for (const item of confirmableItems) {
+    const { error } = await admin
+      .from("sale_items")
+      .update({
+        status: "processed",
+        confidence: 1,
+        total: item.total,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", item.id)
+      .is("deleted_at", null)
+      .select("id")
+      .single();
+
+    if (error) {
+      return mutationError("Не удалось подтвердить товары записи.", 500, "REVIEW_ITEM_CONFIRM_FAILED");
+    }
+  }
+
+  const totalAmount = Number(confirmableItems.reduce((sum, item) => sum + item.total, 0).toFixed(2));
+  const statusError = await setReviewSaleStatus(admin, sale, owner.shopId, "processed", totalAmount);
+  if (statusError) return statusError;
+
+  const auditError = await writeAuditLog(admin, sale, "voice_sale_confirmed_webapp", {
+    sale_id: sale.id,
+    item_count: confirmableItems.length
+  });
+  logAuditFailure("voice_sale_confirmed_webapp", auditError);
+
+  return { ok: true, message: "Запись подтверждена и добавлена в выручку." };
+}
+
+export async function cancelReviewSale(saleId: string): Promise<MutationResult> {
+  const context = await resolveReviewMutationContext(saleId);
+  if (context.error) return context.error;
+  const { owner, admin, sale } = context;
+  if (!owner || !admin || !sale) {
+    return mutationError("Не удалось отменить запись.", 500, "REVIEW_CONTEXT_MISSING");
+  }
+
+  if (sale.status === "cancelled") {
+    return { ok: true, message: "Запись уже отменена и не входит в отчёт." };
+  }
+  if (sale.status === "processed") {
+    return { ok: true, message: "Запись уже подтверждена и входит в отчёт." };
+  }
+  if (sale.status === "failed") {
+    return mutationError("Не удалось отменить неуспешную запись.", 422, "FAILED_SALE_CANCEL_FORBIDDEN");
+  }
+
+  const activeItems = await getActiveReviewMutationItems(admin, sale.id);
+  if (activeItems.error) return activeItems.error;
+  const deletedAt = new Date().toISOString();
+  let excludedCount = 0;
+
+  for (const item of activeItems.items) {
+    const { error } = await admin
+      .from("sale_items")
+      .update(buildExcludedSaleItemPatch(normalizePreviousItemStatus(item.status), deletedAt))
+      .eq("id", item.id)
+      .is("deleted_at", null)
+      .select("id")
+      .single();
+
+    if (error) {
+      return mutationError("Не удалось отменить товары записи.", 500, "REVIEW_ITEM_CANCEL_FAILED");
+    }
+    excludedCount += 1;
+  }
+
+  const statusError = await setReviewSaleStatus(admin, sale, owner.shopId, "cancelled", 0);
+  if (statusError) return statusError;
+
+  const auditError = await writeAuditLog(admin, sale, "voice_sale_cancelled_webapp", {
+    sale_id: sale.id,
+    item_count: excludedCount
+  });
+  logAuditFailure("voice_sale_cancelled_webapp", auditError);
+
+  return { ok: true, message: "Запись отменена и не входит в отчёт." };
+}
+
 export async function resetDay(range: { start: string; end: string }): Promise<MutationResult> {
-  const owner = await requireOwner();
+  let owner: OwnerContext;
+  try {
+    owner = await requireOwner();
+  } catch (error) {
+    const authError = authMutationError(error);
+    if (authError) return authError;
+    throw error;
+  }
   const admin = getSupabaseAdminClient();
 
   if (!admin) {
-    return { ok: false, message: "Не удалось сбросить отчёт за день." };
+    return mutationError("Не удалось сбросить отчёт за день.", 500, "SUPABASE_ADMIN_MISSING");
   }
 
   const start = new Date(range.start);
@@ -911,7 +1313,7 @@ export async function resetDay(range: { start: string; end: string }): Promise<M
   const duration = end.getTime() - start.getTime();
 
   if (!Number.isFinite(duration) || duration <= 0 || duration > 25 * 60 * 60 * 1000) {
-    return { ok: false, message: "Сброс разрешён только для одного дня." };
+    return mutationError("Сброс разрешён только для одного дня.", 422, "INVALID_RESET_RANGE");
   }
 
   const { data: sales, error: salesError } = await admin
@@ -922,7 +1324,7 @@ export async function resetDay(range: { start: string; end: string }): Promise<M
     .lt("created_at", range.end);
 
   if (salesError) {
-    return { ok: false, message: salesError.message };
+    return mutationError("Не удалось загрузить продажи для сброса.", 500, "RESET_SALES_LOOKUP_FAILED");
   }
 
   const saleIds = (sales ?? []).map((sale: any) => String(sale.id));
@@ -937,7 +1339,7 @@ export async function resetDay(range: { start: string; end: string }): Promise<M
     .is("deleted_at", null);
 
   if (itemsError) {
-    return { ok: false, message: itemsError.message };
+    return mutationError("Не удалось загрузить товары для сброса.", 500, "RESET_ITEMS_LOOKUP_FAILED");
   }
 
   if (!activeItems?.length) {
@@ -963,10 +1365,10 @@ export async function resetDay(range: { start: string; end: string }): Promise<M
       .select("id");
 
     if (error) {
-      return { ok: false, message: error.message };
+      return mutationError("Не удалось исключить часть товаров.", 500, "RESET_ITEMS_UPDATE_FAILED");
     }
     if (excludedItems?.length !== ids.length) {
-      return { ok: false, message: "Не все позиции были исключены из отчёта." };
+      return mutationError("Не все позиции были исключены из отчёта.", 500, "RESET_ITEMS_UPDATE_INCOMPLETE");
     }
   }
 

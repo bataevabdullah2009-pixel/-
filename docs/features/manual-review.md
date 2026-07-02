@@ -1,25 +1,28 @@
-# Review and Item Editing
+# Manual Review
 
-Review voice-запись подтверждается или отменяется в Telegram.
+Review voice-запись подтверждается или отменяется только в Telegram.
 
 Под сообщением бота есть только:
 
 - `✅ Подтвердить`;
 - `❌ Отмена`.
 
-WebApp не показывает confirm/cancel controls для review-записи.
+Telegram callback data короткие:
 
-WebApp показывает review items отдельно и сообщает, что запись нужно подтвердить в Telegram.
+- `confirm:<sale_id>`;
+- `cancel:<sale_id>`.
+
+WebApp показывает review-записи и review-items как `Нужно подтвердить в Telegram`, но не содержит confirm/cancel actions.
 
 Редактирование товара в WebApp:
 
-1. Карандаш открывает поля «Товар», «Количество», «Цена, ₽».
+1. Карандаш открывает поля `Товар`, `Количество`, `Цена, ₽`.
 2. `Сохранить` обновляет Supabase row.
 3. `Отмена` сбрасывает несохранённый ввод.
 4. Processed sale после edit пересчитывает выручку.
 5. Review sale после edit остаётся review до Telegram confirm.
 
-Исключение товара:
+Удаление товара:
 
 ```text
 status = excluded

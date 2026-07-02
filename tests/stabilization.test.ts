@@ -263,21 +263,23 @@ describe("sales flow stabilization", () => {
     expect(button).not.toHaveProperty("url");
   });
 
-  it("uses only confirm and cancel callback buttons for a review sale", () => {
-    const keyboard = createVoiceSaleReviewKeyboard("550e8400-e29b-41d4-a716-446655440000");
+  it("uses only short confirm and cancel callback buttons for a review sale", () => {
+    const keyboard = createVoiceSaleReviewKeyboard(
+      "550e8400-e29b-41d4-a716-446655440000",
+      "https://voice-sales.example.com"
+    );
     const buttons = keyboard.reply_markup.inline_keyboard[0];
 
+    expect(keyboard.reply_markup.inline_keyboard).toHaveLength(1);
     expect(buttons).toHaveLength(2);
     expect(buttons?.[0]).toMatchObject({
       text: "✅ Подтвердить",
-      callback_data: "voice_sale_review:confirm:550e8400-e29b-41d4-a716-446655440000"
+      callback_data: "confirm:550e8400-e29b-41d4-a716-446655440000"
     });
     expect(buttons?.[1]).toMatchObject({
       text: "❌ Отмена",
-      callback_data: "voice_sale_review:cancel:550e8400-e29b-41d4-a716-446655440000"
+      callback_data: "cancel:550e8400-e29b-41d4-a716-446655440000"
     });
-    expect(JSON.stringify(keyboard.reply_markup)).not.toContain("web_app");
-    expect(JSON.stringify(keyboard.reply_markup)).not.toContain("Открыть отчёт");
   });
 
   it("confirms a review sale and includes valid items in revenue", async () => {
@@ -329,6 +331,23 @@ describe("sales flow stabilization", () => {
     });
     expect(state.sale_items[0].deleted_at).toBeTruthy();
     expect(report.totalRevenue).toBe(0);
+  });
+
+  it("does not let another seller shop confirm a review sale", async () => {
+    const { client, state } = createReviewDecisionClient();
+    const foreignSeller = { id: "seller-2", shopId: "shop-2" };
+
+    const result = await confirmVoiceSaleWithClient(client as never, foreignSeller, "sale-1");
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: "error",
+      oldStatus: null,
+      newStatus: null,
+      message: "Запись не найдена."
+    });
+    expect(state.sales[0]).toMatchObject({ status: "needs_review", total_amount: 0 });
+    expect(state.sale_items[0]).toMatchObject({ status: "needs_review", deleted_at: null });
   });
 
   it("does not use the old Telegram-only blocking message for missing initData", () => {

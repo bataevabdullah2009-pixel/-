@@ -19,6 +19,6 @@
 
 `save_voice_sale` проверяет, что seller активен и принадлежит `shop_id`, затем атомарно создаёт `voice_records`, `sales` и `sale_items`. Приложение после RPC читает sale и items обратно и сравнивает точное количество строк.
 
-Telegram confirm переводит sale/voice в `processed`. Telegram cancel переводит sale/voice в `cancelled` и soft-delete active items.
+Telegram confirm переводит sale/voice в `processed`. Telegram cancel переводит sale/voice в `cancelled` и soft-delete active items. WebApp item edit/delete не подтверждает и не отменяет review voice-записи.
 
 `20260623221651_repair_complete_single_item_sales.sql` переводит старые однозначные single-item записи в `processed`, только если parser JSON содержит полный уверенный item, а cleaned text явно содержит единицу и цену.

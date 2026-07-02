@@ -36,16 +36,22 @@ export function createReportMenuButton(appUrl: string) {
 }
 
 export function createVoiceSaleReviewCallbackData(action: "confirm" | "cancel", saleId: string) {
-  return `${VOICE_SALE_REVIEW_CALLBACK_PREFIX}:${action}:${saleId}`;
+  return `${action}:${saleId}`;
 }
 
-export function createVoiceSaleReviewKeyboard(saleId: string) {
-  return Markup.inlineKeyboard([
+type ReviewKeyboardButton = ReturnType<typeof Markup.button.callback>;
+
+export function createVoiceSaleReviewKeyboard(saleId: string, appUrl?: string) {
+  void appUrl;
+
+  const rows: ReviewKeyboardButton[][] = [
     [
       Markup.button.callback("✅ Подтвердить", createVoiceSaleReviewCallbackData("confirm", saleId)),
       Markup.button.callback("❌ Отмена", createVoiceSaleReviewCallbackData("cancel", saleId))
     ]
-  ]);
+  ];
+
+  return Markup.inlineKeyboard(rows);
 }
 
 function punctuateRecognizedText(recognizedText: string) {

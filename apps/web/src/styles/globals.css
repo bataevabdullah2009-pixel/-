@@ -1,19 +1,21 @@
 :root {
-  --bg: #f4f7fa;
-  --surface: #ffffff;
-  --surface-raised: #fbfdff;
-  --ink: #13233a;
-  --muted: #68768a;
-  --line: #dce5ed;
-  --accent: #168acd;
-  --accent-strong: #0872b2;
-  --warning: #8a5a00;
-  --warning-soft: #fff7df;
-  --danger: #c2382a;
-  --danger-soft: #fff2f0;
-  --soft: #eaf6fd;
-  --shadow: 0 18px 50px rgba(36, 67, 94, 0.1);
-  --radius: 18px;
+  --bg: #090b10;
+  --surface: #111827;
+  --surface-raised: #141a24;
+  --surface-elevated: #18202c;
+  --ink: #f8fafc;
+  --muted: #94a3b8;
+  --line: rgba(255, 255, 255, 0.08);
+  --accent: #f59e0b;
+  --accent-strong: #ffb020;
+  --success: #22c55e;
+  --warning: #ffb020;
+  --warning-soft: rgba(245, 158, 11, 0.14);
+  --danger: #ef4444;
+  --danger-soft: rgba(239, 68, 68, 0.12);
+  --soft: rgba(245, 158, 11, 0.12);
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+  --radius: 8px;
 }
 
 * {
@@ -30,9 +32,7 @@ body {
   min-height: 100dvh;
   margin: 0;
   overflow-x: hidden;
-  background:
-    radial-gradient(circle at 12% -15%, rgba(22, 138, 205, 0.12), transparent 34rem),
-    var(--bg);
+  background: var(--bg);
   color: var(--ink);
   font-family: "Segoe UI Variable", "Manrope", "Segoe UI", sans-serif;
   letter-spacing: 0;
@@ -106,7 +106,7 @@ select {
   max-width: 100%;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #ffffff;
+  background: var(--surface-elevated);
   color: var(--ink);
   padding: 9px 11px;
 }
@@ -383,9 +383,9 @@ main {
   min-width: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-  padding: 8px 0;
+  padding: 6px 0;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
@@ -393,8 +393,17 @@ main {
 .segmentedControl {
   min-width: 0;
   display: flex;
-  gap: 7px;
+  gap: 6px;
   flex-wrap: wrap;
+}
+
+.segmentedControl a {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  padding: 7px 10px;
 }
 
 .inlineForm {
@@ -403,6 +412,12 @@ main {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.filterBlock .inlineForm input,
+.filterBlock .inlineForm button {
+  min-height: 36px;
+  padding-block: 7px;
 }
 
 .tableShell {
@@ -1554,5 +1569,309 @@ th {
 @media (prefers-reduced-motion: reduce) {
   .skeleton {
     animation: none;
+  }
+}
+
+.appHeader,
+.reportToolbar,
+.filterBlock,
+.filtersRow {
+  border-color: var(--line);
+}
+
+.appHeader {
+  background: rgba(9, 11, 16, 0.72);
+}
+
+.desktopNav a,
+.segmentedControl a,
+.summaryBar,
+.reportSummaryGrid article,
+.itemManager,
+.deletedItemsPanel,
+.saleItemCard,
+.recordCard,
+.sellerRow,
+.emptyState,
+.reportCard,
+.reviewRecordCard,
+.telegramDebugGrid > div {
+  border-color: var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.desktopNav a,
+.segmentedControl a {
+  color: var(--muted);
+}
+
+.desktopNav a:hover,
+.segmentedControl a:hover,
+.segmentedControl .activeSegment {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.13);
+  color: var(--accent-strong);
+}
+
+.summaryBar {
+  background: rgba(17, 24, 39, 0.92);
+}
+
+.summaryMetrics > div,
+.sellerMetrics span,
+.iconButton,
+.deletedItemsPanel summary span,
+.recordItemsDisclosure summary span {
+  background: var(--surface-elevated);
+}
+
+.reportSummaryGrid strong,
+.summaryMetrics strong,
+.saleItemTotal,
+.topProductRow b,
+.recordItemRow b,
+.recordAmount,
+.sellerMetrics b,
+.telegramDebugGrid dd {
+  color: var(--accent-strong);
+}
+
+.reportSummaryGrid .summaryNeedsReview {
+  border-color: rgba(245, 158, 11, 0.42);
+  background: var(--warning-soft);
+}
+
+.actionNotice-success,
+.clearPill,
+.reviewBlockClear {
+  border-color: rgba(34, 197, 94, 0.35);
+  background: rgba(34, 197, 94, 0.12);
+  color: #86efac;
+}
+
+.actionNotice-error,
+.status-failed {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: var(--danger-soft);
+  color: #fca5a5;
+}
+
+.saleItemCard,
+.itemManager,
+.deletedItemsPanel,
+.recordCard,
+.sellerRow,
+.emptyState,
+.reportCard,
+.reviewRecordCard,
+.summaryBar,
+.reportSummaryGrid article {
+  border-radius: var(--radius);
+}
+
+.saleItemCardAttention,
+.reviewBlockAttention {
+  border-color: rgba(245, 158, 11, 0.45);
+  box-shadow: inset 3px 0 0 var(--accent), var(--shadow);
+}
+
+.saleItemEditForm,
+.saleItemDeletePanel {
+  background: var(--surface-raised);
+}
+
+.iconButton {
+  border-color: var(--line);
+  color: var(--accent-strong);
+}
+
+.iconButton:hover {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.13);
+  color: var(--accent-strong);
+}
+
+.secondaryActionButton {
+  border-color: var(--line);
+  background: var(--surface-elevated);
+  color: var(--ink);
+}
+
+.secondaryActionButton:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: #202a38;
+  color: var(--ink);
+}
+
+.status {
+  border-color: var(--line);
+}
+
+.status-processed {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.12);
+}
+
+.status-needs_review,
+.status-needs_price,
+.status-pending,
+.attentionPill,
+.telegramReviewBadge {
+  color: var(--accent-strong);
+  background: var(--warning-soft);
+}
+
+.status-cancelled,
+.status-excluded {
+  color: var(--muted);
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.dangerGhostButton,
+.textDangerButton,
+.iconButtonDanger,
+.deleteConfirmButton {
+  border-color: rgba(239, 68, 68, 0.55);
+}
+
+.dangerGhostButton,
+.textDangerButton {
+  background: var(--danger-soft);
+  color: #fca5a5;
+}
+
+.deleteConfirmButton {
+  background: var(--danger);
+  color: #ffffff;
+}
+
+.restoreButton,
+.correctionButton {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: rgba(245, 158, 11, 0.13);
+  color: var(--accent-strong);
+}
+
+.sparklineBars {
+  height: 150px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(26px, 1fr);
+  align-items: end;
+  gap: 8px;
+}
+
+.sparklineBar {
+  min-width: 0;
+  height: 100%;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.sparklineBar span {
+  align-self: end;
+  border-radius: 7px 7px 2px 2px;
+  background: linear-gradient(180deg, var(--accent-strong), var(--accent));
+  box-shadow: 0 0 22px rgba(245, 158, 11, 0.18);
+}
+
+.sparklineBar b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reviewRecordList {
+  display: grid;
+  gap: 14px;
+}
+
+.reviewRecordCard {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.reviewRecordHeader,
+.reviewDecisionActions {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reviewRecordHeader span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.reviewRecordHeader h3 {
+  margin: 3px 0 0;
+  font-size: 18px;
+}
+
+.reviewRecordHeader strong {
+  color: var(--accent-strong);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.reviewParsedText {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.reviewDecisionActions {
+  justify-content: flex-end;
+}
+
+.reviewDecisionActions form {
+  margin: 0;
+}
+
+.reviewSearch {
+  width: min(100%, 560px);
+}
+
+.mobileNav {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-color: var(--line);
+  background: rgba(17, 24, 39, 0.96);
+  box-shadow: 0 -14px 32px rgba(0, 0, 0, 0.34);
+}
+
+.mobileNav a.mobileNavActive {
+  background: rgba(245, 158, 11, 0.14);
+  color: var(--accent-strong);
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #111827 25%, #18202c 50%, #111827 75%);
+  background-size: 200% 100%;
+}
+
+@media (max-width: 760px) {
+  .reviewRecordHeader,
+  .reviewDecisionActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .reviewDecisionActions form,
+  .reviewDecisionActions button {
+    width: 100%;
+  }
+
+  .sparklineBars {
+    overflow-x: auto;
+    padding-bottom: 2px;
   }
 }

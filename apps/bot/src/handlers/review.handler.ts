@@ -9,7 +9,9 @@ import {
 import { VOICE_SALE_REVIEW_CALLBACK_PREFIX } from "../services/telegram.service";
 import { formatErrorMessage, logger } from "../utils/logger";
 
-const reviewActionPattern = new RegExp(`^${VOICE_SALE_REVIEW_CALLBACK_PREFIX}:(confirm|cancel):([0-9a-fA-F-]{36})$`);
+const reviewActionPattern = new RegExp(
+  `^(?:${VOICE_SALE_REVIEW_CALLBACK_PREFIX}:)?(confirm|cancel):([0-9a-fA-F-]{36})$`
+);
 
 async function showReviewDecision(ctx: Context, message: string) {
   try {
@@ -35,6 +37,12 @@ export function registerReviewHandler(bot: Telegraf<Context>, env: AppEnv) {
     const [, action, saleId] = match;
     const sellerName = ctx.from?.first_name ?? ctx.from?.username ?? null;
 
+    logger.info("callback_received", {
+      callback_action: action,
+      record_id: saleId,
+      telegram_user_id: telegramId
+    });
+
     try {
       const seller = await requireSeller(env, telegramId, sellerName);
       const result = action === "confirm"
@@ -43,13 +51,14 @@ export function registerReviewHandler(bot: Telegraf<Context>, env: AppEnv) {
 
       await ctx.answerCbQuery(result.ok ? "Готово" : "Нужна проверка");
       await showReviewDecision(ctx, result.message);
-      logger.info("voice_sale_review_callback", {
-        telegramUserId: telegramId,
-        sellerId: seller.id,
-        shopId: seller.shopId,
-        saleId,
-        action,
-        status: result.status,
+      logger.info("callback_action", {
+        callback_action: action,
+        record_id: saleId,
+        telegram_user_id: telegramId,
+        seller_id: seller.id,
+        shop_id: seller.shopId,
+        old_status: result.oldStatus ?? null,
+        new_status: result.newStatus ?? result.status,
         ok: result.ok
       });
     } catch (error) {
@@ -57,11 +66,13 @@ export function registerReviewHandler(bot: Telegraf<Context>, env: AppEnv) {
         ? "Ваш Telegram не привязан к магазину."
         : "Не удалось обработать решение. Попробуйте ещё раз.";
 
-      logger.error("voice_sale_review_callback_failed", {
-        telegramUserId: telegramId,
-        saleId,
-        action,
-        errorMessage: formatErrorMessage(error)
+      logger.error("callback_action", {
+        callback_action: action,
+        record_id: saleId,
+        telegram_user_id: telegramId,
+        old_status: null,
+        new_status: null,
+        error: formatErrorMessage(error)
       });
       await ctx.answerCbQuery("Ошибка");
       await showReviewDecision(ctx, message);

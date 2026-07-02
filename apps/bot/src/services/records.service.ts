@@ -357,6 +357,8 @@ export type VoiceSaleReviewResult = {
   ok: boolean;
   message: string;
   status: "processed" | "cancelled" | "unchanged" | "error";
+  oldStatus?: string | null;
+  newStatus?: string | null;
   itemCount?: number;
 };
 
@@ -469,22 +471,41 @@ export async function confirmVoiceSaleWithClient(
   const sale = await getReviewSale(supabase, seller, saleId);
 
   if (!sale) {
-    return { ok: false, status: "error", message: "Запись не найдена." };
+    return { ok: false, status: "error", oldStatus: null, newStatus: null, message: "Запись не найдена." };
   }
 
   if (sale.status === "processed") {
-    return { ok: true, status: "unchanged", message: "✅ Запись уже подтверждена и входит в отчёт." };
+    return {
+      ok: true,
+      status: "unchanged",
+      oldStatus: sale.status,
+      newStatus: sale.status,
+      message: "✅ Запись уже подтверждена и входит в отчёт."
+    };
   }
 
   if (sale.status === "cancelled") {
-    return { ok: true, status: "unchanged", message: "❌ Запись уже отменена и не входит в отчёт." };
+    return {
+      ok: true,
+      status: "unchanged",
+      oldStatus: sale.status,
+      newStatus: sale.status,
+      message: "❌ Запись уже отменена и не входит в отчёт."
+    };
   }
 
   if (sale.status === "failed") {
-    return { ok: false, status: "error", message: "Не удалось подтвердить неуспешную запись." };
+    return {
+      ok: false,
+      status: "error",
+      oldStatus: sale.status,
+      newStatus: sale.status,
+      message: "Не удалось подтвердить неуспешную запись."
+    };
   }
 
-  const activeItems = await getActiveReviewItems(supabase, sale.id);
+  const activeItems = (await getActiveReviewItems(supabase, sale.id))
+    .filter((item) => item.status !== "excluded");
   const confirmableItems = activeItems.flatMap((item) => {
     const confirmable = toConfirmableItem(item);
     return confirmable ? [confirmable] : [];
@@ -494,7 +515,19 @@ export async function confirmVoiceSaleWithClient(
     return {
       ok: false,
       status: "error",
+      oldStatus: sale.status,
+      newStatus: sale.status,
       message: "Перед подтверждением нужны товар, количество и цена хотя бы в одной позиции."
+    };
+  }
+
+  if (confirmableItems.length !== activeItems.length) {
+    return {
+      ok: false,
+      status: "error",
+      oldStatus: sale.status,
+      newStatus: sale.status,
+      message: "Перед подтверждением заполните товар, количество и цену во всех позициях."
     };
   }
 
@@ -525,6 +558,8 @@ export async function confirmVoiceSaleWithClient(
   return {
     ok: true,
     status: "processed",
+    oldStatus: sale.status,
+    newStatus: "processed",
     message: "✅ Запись подтверждена и добавлена в отчёт.",
     itemCount: confirmableItems.length
   };
@@ -538,15 +573,27 @@ export async function cancelVoiceSaleWithClient(
   const sale = await getReviewSale(supabase, seller, saleId);
 
   if (!sale) {
-    return { ok: false, status: "error", message: "Запись не найдена." };
+    return { ok: false, status: "error", oldStatus: null, newStatus: null, message: "Запись не найдена." };
   }
 
   if (sale.status === "cancelled") {
-    return { ok: true, status: "unchanged", message: "❌ Запись уже отменена и не входит в отчёт." };
+    return {
+      ok: true,
+      status: "unchanged",
+      oldStatus: sale.status,
+      newStatus: sale.status,
+      message: "❌ Запись уже отменена и не входит в отчёт."
+    };
   }
 
   if (sale.status === "processed") {
-    return { ok: true, status: "unchanged", message: "✅ Запись уже подтверждена и входит в отчёт." };
+    return {
+      ok: true,
+      status: "unchanged",
+      oldStatus: sale.status,
+      newStatus: sale.status,
+      message: "✅ Запись уже подтверждена и входит в отчёт."
+    };
   }
 
   const activeItems = await getActiveReviewItems(supabase, sale.id);
@@ -578,6 +625,8 @@ export async function cancelVoiceSaleWithClient(
   return {
     ok: true,
     status: "cancelled",
+    oldStatus: sale.status,
+    newStatus: "cancelled",
     message: "❌ Запись отменена и не входит в отчёт.",
     itemCount: excludedCount
   };

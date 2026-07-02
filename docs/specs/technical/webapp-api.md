@@ -6,9 +6,9 @@
 
 Зафиксировать серверный контракт WebApp для чтения отчёта, журнала, продавцов и мутаций `sale_items`.
 
-WebApp не подтверждает сомнительную voice-запись.
+WebApp не подтверждает и не отменяет сомнительную voice-запись. Review decision выполняется Telegram callback flow.
 
-Confirm/cancel находится в Telegram callback flow.
+Telegram confirm/cancel остаётся быстрым flow под сообщением бота.
 
 ## Доверенная граница
 
@@ -18,6 +18,7 @@ Confirm/cancel находится в Telegram callback flow.
 4. Records API проверяет item -> sale -> shop.
 5. Supabase service role доступен только server-side.
 6. UI не является security boundary.
+7. Review visibility не является доверенной границей; любые решения выполняются в Telegram callback.
 
 ## `getReport(filters)`
 
@@ -81,6 +82,16 @@ Confirm/cancel находится в Telegram callback flow.
 8. sale items для раскрытия «Товары».
 
 Records не показывает пустое состояние при auth/DB error.
+
+## Review visibility
+
+Report и records показывают review state через данные `getReport(filters)` и `getRecords(filters)`:
+
+1. `sales.status = needs_review`;
+2. records с `sale_items.status = needs_review`;
+3. legacy `needs_price`.
+
+WebApp не предоставляет confirm/cancel controls и не принимает `shop_id`.
 
 ## `getSellers()`
 
@@ -153,7 +164,7 @@ Records не показывает пустое состояние при auth/DB
 7. Изменённая строка читается через `.select().single()`.
 8. Processed sale сохраняет item как `processed`.
 9. Review sale сохраняет item как `needs_review`.
-10. Review edit не добавляет выручку до Telegram confirm.
+10. Review edit не добавляет выручку до явного confirm.
 
 После успеха:
 
@@ -204,13 +215,23 @@ Records не показывает пустое состояние при auth/DB
 
 `confirmSaleItemAction` больше не используется и не является частью WebApp contract.
 
+## Review decision actions
+
+WebApp review decision actions are not part of the current public contract.
+
+1. Telegram `confirm:<sale_id>` confirms review voice sale.
+2. Telegram `cancel:<sale_id>` cancels review voice sale.
+3. WebApp updates its state after refresh/revalidation.
+4. `/review` redirects to `/records` for old links.
+
 ## Error contract
 
 1. Server logs получает technical reason.
 2. UI получает стабильное русскоязычное сообщение.
-3. Internal Supabase message не отдаётся напрямую для update/delete action.
-4. Auth errors отображаются отдельно.
-5. DB loading error не превращается в empty state.
+3. Internal Supabase message не отдаётся напрямую для update/delete actions.
+4. Mutations возвращают `statusCode`/`code`: 401 session, 403 access, 404 not found, 422 invalid data, 500 server error.
+5. Auth errors отображаются отдельно.
+6. DB loading error не превращается в empty state.
 
 ## Таблицы
 
@@ -248,4 +269,4 @@ Records не показывает пустое состояние при auth/DB
 2. Client-side service role.
 3. GraphQL.
 4. Массовые операции.
-5. Подтверждение voice-записи в WebApp.
+5. Client-side подтверждение voice-записи без server action.

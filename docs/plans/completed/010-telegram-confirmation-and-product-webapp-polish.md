@@ -2,6 +2,8 @@
 
 Статус: завершено 30 июня 2026.
 
+Актуальное состояние superseded планом `012-product-handoff-polish.md`: review-message содержит только `✅ Подтвердить` и `❌ Отмена`, callback data сокращены до `confirm:<record_id>` / `cancel:<record_id>`, а WebApp не имеет пользовательского review-confirm экрана.
+
 ## Цель
 
 Довести Telegram bot + WebApp «Голосовой журнал продаж» до продуктового состояния: сомнительные voice-записи решаются в Telegram, WebApp остаётся чистой мобильной панелью, редактирование и удаление товаров работают через Supabase и не ломают выручку.
@@ -9,7 +11,7 @@
 ## Сделано
 
 - Добавлен sale-level Telegram callback flow `✅ Подтвердить` / `❌ Отмена`.
-- Review voice-message больше не получает кнопку «Открыть отчёт».
+- Review voice-message не смешивает confirm/cancel flow с открытием отчёта.
 - Confirm переводит sale/voice в `processed` и добавляет валидные items в выручку.
 - Cancel переводит sale/voice в `cancelled` и soft-delete active items.
 - Callback flow сделан идемпотентным: первое решение выигрывает.
@@ -17,7 +19,7 @@
 - WebApp удалил legacy item-confirm path.
 - WebApp edit review item сохраняет поля, но не подтверждает voice-запись.
 - Экран отчёта перестроен: четыре метрики, топ товаров, продажи за период, review-блок.
-- Экран записей показывает раскрытие «Товары» и бейдж «Нужно подтвердить в Telegram».
+- Экран записей показывает раскрытие «Товары»; текущий бейдж review обновлён в 011 до «Нужно проверить».
 - Экран продавцов показывает активность, записи и выручку за выбранный период.
 - Добавлены/обновлены regression tests для confirm, cancel, keyboard contract и статусов.
 

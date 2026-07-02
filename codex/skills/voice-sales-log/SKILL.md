@@ -1,87 +1,136 @@
 ---
 name: voice-sales-log
-description: Безопасно изменять и документировать репозиторий voice-sales-log: Telegram bot, voice STT/LLM pipeline, Supabase, отчёты, Mini App, fallback mode, тесты, спецификации, планы и release readiness.
+description: Work on Telegram bot + WebApp "Голосовой журнал продаж" without breaking voice pipeline, Supabase revenue rules, Telegram confirmation flow, or product documentation.
 ---
 
-# Voice Sales Log
+# Voice Sales Log Skill
 
-Сохранять основной путь продукта:
+Use this skill for any change in this repository.
+
+## Product
+
+`Голосовой журнал продаж` is a Telegram bot and Telegram WebApp for a shop. Sellers record sales by voice. The bot recognizes products, quantities and prices. Supabase stores the data. WebApp shows report, records and sellers.
+
+## Read first
+
+Before code changes, read:
+
+- `AGENTS.md`
+- `README.md`
+- `docs/specs/product/telegram-confirmation-flow.md`
+- `docs/specs/product/webapp-report.md`
+- `docs/specs/product/sale-item-editing.md`
+- `docs/specs/technical/database.md`
+- `docs/specs/technical/telegram-webhook.md`
+- `docs/specs/technical/telegram-webapp-session.md`
+
+## Do not break voice pipeline
+
+Do not rewrite these areas unless the task explicitly requires it:
+
+- STT call;
+- parser prompt/schema;
+- Telegram webhook route;
+- voice audio persistence;
+- `saveVoiceSale` RPC payload;
+- failure persistence.
+
+Audio upload may fail without blocking sale persistence.
+
+## Status model
+
+`sales` and `voice_records`:
+
+- `processed` - confirmed and counted.
+- `needs_review` - saved but not counted.
+- `cancelled` - user cancelled, not counted.
+- `failed` - processing failed, not counted.
+
+`sale_items`:
+
+- `processed` - can count only if parent sale is also `processed`.
+- `needs_review` - not counted.
+- `needs_price` - legacy review state, not counted.
+- `failed` - not counted.
+- `excluded` - soft-deleted, not counted.
+
+## Telegram confirmation flow
+
+Review voice-message must contain only:
+
+- `✅ Подтвердить`;
+- `❌ Отмена`.
+
+Do not add `Открыть отчёт` to the review-message.
+
+Allowed report access:
+
+- `/start` inline/reply keyboard;
+- menu button;
+- normal WebApp navigation.
+
+Callback data:
 
 ```text
-Telegram voice -> STT -> LLM parser -> evidence rules -> Supabase -> report
+confirm:<sale_id>
+cancel:<sale_id>
 ```
 
-Не расширять MVP до CRM, склада, кассы, оплат или клиентской базы.
+Legacy `voice_sale_review:<action>:<sale_id>` may be accepted for old messages.
 
-## Прочитать перед изменением
+## WebApp rules
 
-1. `../../../AGENTS.md`
-2. `../../../README.md`
-3. `../../../docs/overview/README.md`
-4. `../../../docs/specs/global.md`
-5. `../../../docs/architecture/architecture.md`
-6. Все файлы в `../../../docs/plans/active/`
-7. `../../../docs/rules/README.md`
-8. Этот `SKILL.md`
+Navigation:
 
-Затем прочитать профильные specs/features/rules и последний релевантный completed plan.
+- `Отчёт`;
+- `Записи`;
+- `Продавцы`.
 
-Для WebApp обязательно прочитать:
+WebApp does not confirm or cancel review voice records. Show review records as `Нужно подтвердить в Telegram`.
 
-- `../../../docs/specs/product/webapp-report.md`;
-- `../../../docs/specs/product/sale-item-editing.md`;
-- `../../../docs/specs/product/telegram-confirmation-flow.md`;
-- `../../../docs/specs/technical/webapp-api.md`.
+Sale item card:
 
-Для БД обязательно прочитать `../../../docs/specs/technical/database.md`.
-Для Telegram logic обязательно прочитать `../../../docs/specs/technical/telegram-webapp-session.md`.
+- normal view shows product, quantity, unit price, total;
+- `✏️` opens compact edit mode;
+- `🗑` opens delete confirmation;
+- no permanent large buttons;
+- no `Подтвердить позицию`;
+- no text link `Исключить из отчёта`.
 
-## Workflow rules
+## Revenue rules
 
-### Telegram bot/webhook
+Count only:
 
-Сохранять `POST /api/telegram/webhook`, Node.js runtime, secret header, constant-time compare и общий `processTelegramUpdate`. Кнопки отчёта — только `web_app`.
+- parent sale `processed`;
+- item `processed`;
+- `deleted_at is null`;
+- valid price;
+- valid total;
+- valid quantity.
 
-### Web App
+Never count:
 
-Web App поддерживает:
+- parent sale `needs_review`;
+- parent sale `cancelled`;
+- parent sale `failed`;
+- item `needs_review`;
+- item `needs_price`;
+- item `excluded`;
+- deleted rows.
 
-- Telegram mode с `window.Telegram.WebApp.initData`;
-- browser fallback mode при `ALLOW_WEBAPP_FALLBACK=true`;
-- error mode только для реальных ошибок сервера/БД/конфигурации.
+## Documentation
 
-Client fetch выполняется через `apiFetch()`, который отправляет `x-app-mode` и, при наличии, `x-telegram-init-data`. Server-side доступ выполняется через `resolveRequestContext()` / `requireOwner()`. `shop_id` нельзя принимать от клиента.
+After code changes update relevant docs. After DB changes update migrations and `docs/specs/technical/database.md`. After UI changes update product specs. After Telegram flow changes update Telegram specs.
 
-Карточка товара показывает name/quantity/unit price/total и действия карандаш/корзина. Update/delete возвращают локальный pending/error state, а сервер повторно проверяет item → sale → shop. Исключённые rows не показываются активными.
+## Verification
 
-WebApp не подтверждает сомнительную voice-запись. Edit review item сохраняет поля, но item остаётся review до Telegram confirm.
-
-### Telegram confirm/cancel
-
-Сомнительная voice-запись получает только две inline callback-кнопки: `✅ Подтвердить` и `❌ Отмена`. В этом сообщении не добавлять `web_app` кнопку «Открыть отчёт».
-
-Confirm переводит sale/voice в `processed` и добавляет валидные active items в выручку. Cancel переводит sale/voice в `cancelled` и soft-delete active items. Callback не принимает `shop_id`, повторно разрешает seller по Telegram user id и должен быть идемпотентным.
-
-### Voice pipeline
-
-Не ломать STT/LLM flow. Уверенная позиция (`product_name`, `quantity > 0`, `price > 0`, `confidence >= 0.80`) сохраняется как `processed` и сразу входит в отчёт. Неполные, низкоуверенные или странные позиции сохраняются как `needs_review`. Невалидный LLM JSON создаёт fallback review item.
-
-### Data
-
-Service role только server-side. Исключение товара — soft delete через `deleted_at`; восстановление очищает `deleted_at`. Отчёт считает только active `processed`. Отменённая voice-запись хранится как `sales.status = cancelled` / `voice_records.status = cancelled`.
-
-### Documentation
-
-После каждого изменения кода обновить docs/specs/features/rules, `CHANGELOG.md`, plans и roadmap. Удалять или переписывать устаревшие формулировки. В финальном ответе перечислять изменённые документы.
-
-## Finish
-
-Перед финалом выполнить:
+Run:
 
 ```bash
 npm run lint
 npm run test
 npm run build
+npm run web:build
 ```
 
-Если команды не запускались, упали или внешние Telegram/Vercel smoke checks недоступны, сказать это прямо.
+Use `npm.cmd` on PowerShell if `npm.ps1` is blocked.

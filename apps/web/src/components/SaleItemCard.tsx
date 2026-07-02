@@ -215,7 +215,7 @@ export function SaleItemCard({ item }: SaleItemCardProps) {
       ) : null}
 
       {isDeleteOpen ? (
-        <div className="saleItemDeletePanel">
+        <div className="saleItemDeletePanel" role="dialog" aria-label="Удаление товара">
           <p>Удалить товар из отчёта?</p>
           {showDeleteError ? (
             <p className="saleItemError" role="alert">{deleteState.message}</p>
