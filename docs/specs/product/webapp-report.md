@@ -7,7 +7,8 @@
 3. WebApp является рабочей поверхностью владельца магазина, а не маркетинговой страницей.
 4. Сомнительные `needs_review` voice-записи можно решить в Telegram callback или на вкладке `Проверка`.
 5. Интерфейс должен быть чистым, компактным и пригодным для ежедневного использования на телефоне.
-6. Визуальный стиль: graphite background, тёмные surfaces, умеренный amber/gold accent, красный только для ошибок/удаления, зелёный только для успешных действий.
+6. Визуальный стиль: premium SaaS dashboard на `#0B1020`, surfaces `#12192B`/`#161F34`, основной холодный accent `#5B8CFF`, warning `#F59E0B` только для review-состояний, красный только для ошибок/удаления, зелёный только для успешных действий.
+7. Metadata icons используют `/favicon.svg` в той же цветовой системе, чтобы браузер не запрашивал отсутствующую иконку.
 
 ## 2. Роли
 
@@ -52,7 +53,7 @@
 ## 6. Period filters
 
 1. Фильтры периода находятся ниже summary/action toolbar.
-2. Доступные presets: `Сегодня`, `Вчера`, `Неделя`, `Месяц`, `Год`.
+2. Доступные presets: `Сегодня`, `Вчера`, `Неделя`, `Месяц`.
 3. Custom date выбирается через native `input type=date`.
 4. Date submit button называется `Дата`.
 5. Фильтры сохраняют существующие query params, кроме mutation notices.
@@ -96,14 +97,15 @@
 3. Каждая позиция показывается отдельной компактной карточкой.
 4. Item можно отредактировать через `SaleItemCard`.
 5. Item можно исключить через `status = excluded` и `deleted_at`.
-6. Для каждой parent sale доступны `Подтвердить` и `Отмена`.
-7. Если есть несколько review sales, доступна `Подтвердить всё`.
-8. `Подтвердить` вызывает `confirmReviewSaleAction`.
-9. `Отмена` вызывает `cancelReviewSaleAction`.
-10. Actions используют тот же service-layer contract, что Telegram callbacks.
-11. После action revalidate выполняется для `/review`, `/daily-report`, `/records`, `/sellers`.
-12. Подтверждённая запись начинает входить в выручку.
-13. Отменённая запись не входит в выручку.
+6. Карточка review item показывает, что распознано и чего не хватает: цена, количество/вес или отдельный товар.
+7. Для каждой parent sale доступны `Подтвердить` и `Отмена`.
+8. Если есть несколько review sales, доступна `Подтвердить всё`.
+9. `Подтвердить` вызывает `confirmReviewSaleAction`.
+10. `Отмена` вызывает `cancelReviewSaleAction`.
+11. Actions используют тот же service-layer contract, что Telegram callbacks.
+12. После action revalidate выполняется для `/review`, `/daily-report`, `/records`, `/sellers`.
+13. Если sale содержит валидные и неполные items, валидные items подтверждаются и входят в выручку, неполные остаются `needs_review`.
+14. Отменённая запись не входит в выручку.
 
 ## 11. Deleted items
 
@@ -147,11 +149,12 @@
 4. `sale_items` читаются только через sale ids текущего shop.
 5. `scopeReportRows` исключает cancelled/failed sales для report.
 6. `scopeReportRows` не даёт processed-looking item из `needs_review` sale войти в выручку.
-7. `buildSalesReport` агрегирует только `processed` items без `deleted_at`.
-8. `needs_review` не входит в revenue.
-9. `cancelled` не входит в revenue.
-10. `failed` не входит в revenue.
-11. `excluded` не входит в active list.
+7. Processed sale может содержать mixed items: `processed` items входят в revenue, `needs_review` items остаются видимыми в review list.
+8. `buildSalesReport` агрегирует только `processed` items без `deleted_at` и с валидным `total`.
+9. `needs_review` не входит в revenue.
+10. `cancelled` не входит в revenue.
+11. `failed` не входит в revenue.
+12. `excluded` не входит в active list.
 
 ## 15. API and server logic
 

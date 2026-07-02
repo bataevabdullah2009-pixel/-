@@ -130,9 +130,9 @@ An item contributes revenue only when:
 3. Item belongs to scoped sale ids.
 4. Item status is `processed`.
 5. Item `deleted_at is null`.
-6. Item `price is not null`.
-7. Item `total is not null`.
-8. Item quantity is valid.
+6. Item `total is not null`.
+7. Item quantity/weight is valid.
+8. Item `price` is valid or can be derived from `total / quantity`.
 
 Never count:
 
@@ -174,13 +174,15 @@ Never count:
 3. If already cancelled, return unchanged success.
 4. If failed, return error.
 5. Select active items by `sale_id` and `deleted_at is null`.
-6. Validate product, quantity, price and total.
-7. Update every confirmable item to `processed`.
-8. Set confidence to `1`.
-9. Recalculate item total.
-10. Update sale `status = processed`.
-11. Update sale `total_amount`.
-12. Update voice record `status = processed`.
+6. Validate product, quantity/weight and price-or-total per active item.
+7. If no item is confirmable, return `Не удалось подтвердить: нет ни одной полной позиции.` and leave rows unchanged.
+8. Update every confirmable item to `processed`.
+9. Leave incomplete active items as `needs_review`.
+10. Set confidence to `1` on confirmable items.
+11. Recalculate item price/total when possible.
+12. Update sale `status = processed`.
+13. Update sale `total_amount` to the sum of confirmable items.
+14. Update voice record `status = processed`.
 
 ## 16. Cancel mutation
 
@@ -220,11 +222,11 @@ Never count:
 ## 19. Recalculation
 
 1. Reads active items.
-2. Sums only `processed` item totals.
+2. Sums only `processed` item totals with valid `total`.
 3. Current cancelled sale total becomes zero.
 4. Current failed sale total becomes zero.
-5. Current needs_review sale stays needs_review.
-6. Current processed sale stays processed when all items are deleted.
+5. Current needs_review sale stays needs_review until explicit confirm.
+6. Current processed sale stays processed when all items are deleted or when mixed-cart review items remain active.
 7. Voice record status follows recalculated sale status.
 
 ## 20. RLS and access

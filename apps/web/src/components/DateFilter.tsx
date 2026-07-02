@@ -15,8 +15,7 @@ type DateFilterProps = {
 const basePresets: Array<{ value: DateRangePreset; label: string }> = [
   { value: "today", label: "Сегодня" },
   { value: "week", label: "Неделя" },
-  { value: "month", label: "Месяц" },
-  { value: "year", label: "Год" }
+  { value: "month", label: "Месяц" }
 ];
 
 export function DateFilter({ basePath, currentPreset, currentDate, params, includeYesterday }: DateFilterProps) {

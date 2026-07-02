@@ -89,6 +89,8 @@ Navigation:
 
 WebApp `/review` shows active `needs_review` items and may confirm/cancel the parent review sale through server actions. Telegram inline callbacks remain the primary review path and must stay functional.
 
+Confirm validates active `sale_items` individually. Valid mixed-cart items are moved to `processed`, parent sale/voice totals are recalculated, and incomplete active items remain `needs_review`. If there is no complete item, confirm must not mutate data and returns `Не удалось подтвердить: нет ни одной полной позиции.`
+
 Sale item card:
 
 - normal view shows product, quantity, unit price, total;
@@ -105,9 +107,9 @@ Count only:
 - parent sale `processed`;
 - item `processed`;
 - `deleted_at is null`;
-- valid price;
 - valid total;
-- valid quantity.
+- valid quantity or weight;
+- saved price or unit price derivable from total.
 
 Never count:
 
@@ -122,7 +124,7 @@ Never count:
 ## Documentation
 
 After code changes update relevant docs. After DB changes update migrations and `docs/specs/technical/database.md`. After UI changes update product specs. After Telegram flow changes update Telegram specs.
-After every code change, update docs, specs, plans and changelog so they match the actual code. Do not leave stale documents that contradict implementation.
+После каждого изменения кода агент обязан обновлять документацию, changelog, активные планы и технические спецификации так, чтобы они соответствовали фактическому состоянию проекта. Запрещено оставлять документацию, противоречащую текущему коду.
 
 ## Verification
 

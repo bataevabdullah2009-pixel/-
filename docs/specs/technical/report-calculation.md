@@ -29,8 +29,7 @@
 2. Вчера.
 3. Последние 7 дней.
 4. Месяц.
-5. Год.
-6. Выбранная дата.
+5. Выбранная дата.
 
 ## Что входит в выручку
 
@@ -38,9 +37,9 @@
 
 1. `sale_items.status = processed`.
 2. `sale_items.deleted_at is null`.
-3. `price is not null`.
-4. `total is not null`.
-5. `quantity > 0`.
+3. `total is not null`.
+4. `quantity > 0` или вес больше нуля.
+5. `price` сохранён или может быть восстановлен из `total / quantity`.
 6. Родительская sale не `cancelled`.
 7. Родительская sale не `failed`.
 
@@ -56,8 +55,8 @@ Legacy `confirmed` поддерживается расчётчиком как pr
 4. `excluded`.
 5. Rows с `deleted_at`.
 6. Parent sale `cancelled`.
-7. Rows без цены.
-8. Rows без total.
+7. Rows без total.
+8. Rows без количества/веса.
 
 ## Review items
 

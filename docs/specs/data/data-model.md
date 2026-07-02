@@ -22,8 +22,8 @@
 - `failed` — технически неудачная позиция, в UI равно «Нужно проверить»;
 - `excluded` — soft-deleted позиция.
 
-Новая voice-позиция становится `processed`, если товар осмысленный, количество и цена распознаны, `confidence >= 0.80`. Иначе она сохраняется как `needs_review`.
+Новая voice-позиция становится `processed`, если товар осмысленный, количество/вес и цена либо итоговая сумма распознаны, `confidence >= 0.80`. Единицы веса хранятся в `quantity` + `unit`: `кг` как килограммы, `г` как граммы; total для граммов считается как доля килограмма от unit price. Иначе позиция сохраняется как `needs_review`.
 
-`sales.total_amount` равен сумме активных `processed` items. `sales.status = processed`, если запись уверенная или явно подтверждена. `sales.status = needs_review`, если запись ждёт confirm/cancel. `sales.status = cancelled`, если пользователь нажал `❌ Отмена` или WebApp `Отмена`.
+`sales.total_amount` равен сумме активных `processed` items с валидным `total`. `sales.status = processed`, если запись уверенная или явно подтверждена. После mixed confirm parent sale может быть `processed`, while неполные active `sale_items` остаются `needs_review` и не входят в выручку. `sales.status = needs_review`, если запись ждёт confirm/cancel. `sales.status = cancelled`, если пользователь нажал `❌ Отмена` или WebApp `Отмена`.
 
 WebApp edit review item сохраняет поля, но не переводит sale в `processed`.

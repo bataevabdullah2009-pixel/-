@@ -55,6 +55,32 @@ function SubmitButton({
   );
 }
 
+function getReviewReasons(item: SaleItem) {
+  if (item.status === "processed") {
+    return [];
+  }
+
+  const productName = item.product_name.trim();
+  const lowerProductName = productName.toLocaleLowerCase("ru-RU");
+  const hasUnclearProduct = !productName || lowerProductName.includes("корзин");
+  const reasons: string[] = [];
+
+  if (hasUnclearProduct) {
+    reasons.push("не удалось выделить отдельный товар");
+  }
+  if (!Number.isFinite(item.quantity) || item.quantity <= 0 || hasUnclearProduct) {
+    reasons.push("нет количества или веса");
+  }
+  if (item.price === null && item.total === null) {
+    reasons.push("нет цены");
+  }
+  if (item.price !== null && item.total === null) {
+    reasons.push("нет суммы");
+  }
+
+  return [...new Set(reasons)];
+}
+
 export function SaleItemCard({ item }: SaleItemCardProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -104,6 +130,7 @@ export function SaleItemCard({ item }: SaleItemCardProps) {
   const price = item.price === null
     ? `${formatQuantity(item.quantity)} ${item.unit}, цена не указана`
     : `${formatQuantity(item.quantity)} ${item.unit} × ${formatCurrency(item.price)}`;
+  const reviewReasons = getReviewReasons(item);
 
   return (
     <article className={`saleItemCard ${item.status !== "processed" ? "saleItemCardAttention" : ""}`}>
@@ -118,6 +145,9 @@ export function SaleItemCard({ item }: SaleItemCardProps) {
           <div className="saleItemMeta">
             <span>{price}</span>
           </div>
+          {reviewReasons.length ? (
+            <p className="saleItemMissing">Не хватает: {reviewReasons.join(", ")}</p>
+          ) : null}
           <strong className="saleItemTotal">{total}</strong>
         </div>
 
@@ -175,6 +205,14 @@ export function SaleItemCard({ item }: SaleItemCardProps) {
               defaultValue={item.quantity}
               required
             />
+          </label>
+          <label>
+            <span>Единица</span>
+            <select name="unit" defaultValue={item.unit || "шт"}>
+              <option value="шт">шт</option>
+              <option value="кг">кг</option>
+              <option value="г">г</option>
+            </select>
           </label>
           <label>
             <span>Цена, ₽</span>

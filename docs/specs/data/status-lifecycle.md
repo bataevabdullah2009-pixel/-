@@ -127,8 +127,11 @@ Internal enum не показываются в UI.
 ```text
 sale_item.status = processed
 and sale_item.deleted_at is null
-and price is not null
 and total is not null
+and quantity_or_weight is valid
+and (unit_price is not null or unit_price can be derived from total)
 ```
 
 `needs_review`, `cancelled`, `failed`, `excluded` и soft-deleted rows не входят.
+
+Mixed processed sale допустима после confirm: parent sale получает `processed`, валидные items получают `processed`, а неполные active items остаются `needs_review` и продолжают отображаться в review list без влияния на revenue.

@@ -248,10 +248,13 @@ Records не показывает пустое состояние при auth/DB
 2. Проверяет текущий WebApp session.
 3. Находит sale текущего shop.
 4. Вызывает `confirmReviewSale`.
-5. Переводит sale/voice/items в `processed`, если данные валидны.
-6. Пересчитывает `total_amount`.
-7. Revalidate `/review`, `/daily-report`, `/records`, `/sellers`.
-8. Redirects back to `/review` with safe mutation state.
+5. Валидирует active items по product, quantity/weight и price-or-total.
+6. Если есть хотя бы один валидный item, переводит sale/voice и confirmable items в `processed`.
+7. Неполные active items остаются `needs_review` и не входят в выручку.
+8. Если нет ни одного confirmable item, возвращает `Не удалось подтвердить: нет ни одной полной позиции.`
+9. Пересчитывает `total_amount` по confirmable items.
+10. Revalidate `/review`, `/daily-report`, `/records`, `/sellers`.
+11. Redirects back to `/review` with safe mutation state.
 
 `cancelReviewSaleAction`:
 

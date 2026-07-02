@@ -15,6 +15,7 @@
 - Не добавлять `Открыть отчёт` в review-message.
 - Callback data: `confirm:<sale_id>` и `cancel:<sale_id>`.
 - Callback должен быть идемпотентным.
+- Confirm подтверждает валидные active items и не блокирует mixed cart из-за неполных items.
 - Webhook должен принимать `message` и `callback_query`.
 
 ## WebApp
@@ -27,12 +28,13 @@
 ## Data
 
 - Revenue только из parent sale `processed` и active item `processed`.
+- Revenue требует валидный `total`; unit price может быть сохранён или вычислен из total.
 - Soft delete только через `deleted_at`.
 - `shop_id` не брать от клиента как источник прав.
 
 ## Docs and checks
 
-- После каждого изменения кода агент обязан обновить документацию, спеки, планы и changelog под фактическое состояние проекта. Запрещено оставлять устаревшие документы, которые противоречат коду.
+- После каждого изменения кода агент обязан обновлять документацию, changelog, активные планы и технические спецификации так, чтобы они соответствовали фактическому состоянию проекта. Запрещено оставлять документацию, противоречащую текущему коду.
 - После БД обновлять migrations и database spec.
 - После UI обновлять product specs.
 - После Telegram flow обновлять telegram specs.

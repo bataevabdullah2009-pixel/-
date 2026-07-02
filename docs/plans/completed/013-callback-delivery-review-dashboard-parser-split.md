@@ -39,7 +39,7 @@
 - Каждая позиция остаётся отдельной карточкой.
 - `Подтвердить`, `Отмена` и `Подтвердить всё` вызывают server actions.
 - Actions revalidate `/review`, `/daily-report`, `/records`, `/sellers`.
-- Дизайн приведён к graphite/navy SaaS dashboard с умеренным amber accent.
+- На этом этапе была первая спокойная SaaS-версия WebApp; актуальная палитра после 014: `#0B1020` background, `#12192B`/`#161F34` surfaces и синий accent `#5B8CFF`.
 - KPI компактные 2x2, chart не растягивает один столбец, top products ограничены пятью строками.
 
 ## Проверка

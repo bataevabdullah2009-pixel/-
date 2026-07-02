@@ -5,6 +5,7 @@ import {
   buildManualSaleItemPatch,
   buildSalesReport,
   calculateItemTotal,
+  calculateUnitPriceFromTotal,
   displayProductName,
   filterByDateRange,
   getDateRange,
@@ -360,7 +361,7 @@ export async function getSellerStats(
       );
 
       for (const item of scoped.items) {
-        if (item.deleted_at || !isRevenueSaleItemStatus(item.status) || item.total === null || item.price === null) {
+        if (item.deleted_at || !isRevenueSaleItemStatus(item.status) || item.total === null) {
           continue;
         }
         const sellerId = saleSellerById.get(item.sale_id);
@@ -654,7 +655,9 @@ async function recalculateSale(admin: AdminClient, saleId: string, shopId: strin
   const hasReviewItems = activeItems.some((item: any) => !isRevenueSaleItemStatus(String(item.status)));
   const saleStatus = currentStatus === "cancelled" || currentStatus === "failed"
     ? currentStatus
-    : currentStatus === "needs_review" || hasReviewItems
+    : currentStatus === "processed"
+      ? "processed"
+      : hasReviewItems
       ? "needs_review"
       : "processed";
 
@@ -691,6 +694,7 @@ export async function updateSaleItem(params: {
   itemId: string;
   productName: string;
   quantity: number;
+  unit?: string | null;
   price: number;
 }) {
   let owner: OwnerContext;
@@ -736,7 +740,7 @@ export async function updateSaleItem(params: {
   const patch = buildManualSaleItemPatch({
     productName: params.productName,
     quantity: params.quantity,
-    unit: existingItem.unit,
+    unit: params.unit ?? existingItem.unit,
     price: params.price
   });
 
@@ -1031,6 +1035,7 @@ type ReviewMutationItemRow = {
   id: string;
   product_name: string;
   quantity: number | string;
+  unit: string | null;
   price: number | string | null;
   total: number | string | null;
   status: string;
@@ -1047,14 +1052,21 @@ function normalizePreviousItemStatus(status: string): Exclude<SaleItem["status"]
 
 function toConfirmableReviewItem(item: ReviewMutationItemRow) {
   const quantity = Number(item.quantity);
-  const price = item.price === null ? Number.NaN : Number(item.price);
-  const total = calculateItemTotal(quantity, price);
+  const sourcePrice = item.price === null ? null : Number(item.price);
+  const sourceTotal = item.total === null ? null : Number(item.total);
+  const price = sourcePrice !== null && Number.isFinite(sourcePrice)
+    ? sourcePrice
+    : calculateUnitPriceFromTotal(quantity, sourceTotal, item.unit);
+  const total = sourceTotal !== null && Number.isFinite(sourceTotal) && sourceTotal > 0
+    ? Number(sourceTotal.toFixed(2))
+    : calculateItemTotal(quantity, price, item.unit);
 
   if (
     item.status === "excluded" ||
     !isMeaningfulProductName(item.product_name) ||
     !Number.isFinite(quantity) ||
     quantity <= 0 ||
+    price === null ||
     !Number.isFinite(price) ||
     price <= 0 ||
     total === null
@@ -1062,13 +1074,13 @@ function toConfirmableReviewItem(item: ReviewMutationItemRow) {
     return null;
   }
 
-  return { id: String(item.id), total };
+  return { id: String(item.id), price, total };
 }
 
 async function getActiveReviewMutationItems(admin: AdminClient, saleId: string) {
   const { data, error } = await admin
     .from("sale_items")
-    .select("id, product_name, quantity, price, total, status, deleted_at")
+    .select("id, product_name, quantity, unit, price, total, status, deleted_at")
     .eq("sale_id", saleId)
     .is("deleted_at", null);
 
@@ -1197,17 +1209,9 @@ export async function confirmReviewSale(saleId: string): Promise<MutationResult>
 
   if (!confirmableItems.length) {
     return mutationError(
-      "Перед подтверждением нужны товар, количество и цена хотя бы в одной позиции.",
+      "Не удалось подтвердить: нет ни одной полной позиции.",
       422,
       "NO_CONFIRMABLE_ITEMS"
-    );
-  }
-
-  if (confirmableItems.length !== activeItems.items.length) {
-    return mutationError(
-      "Перед подтверждением заполните товар, количество и цену во всех позициях.",
-      422,
-      "INCOMPLETE_REVIEW_ITEMS"
     );
   }
 
@@ -1217,6 +1221,7 @@ export async function confirmReviewSale(saleId: string): Promise<MutationResult>
       .update({
         status: "processed",
         confidence: 1,
+        price: item.price,
         total: item.total,
         updated_at: new Date().toISOString()
       })

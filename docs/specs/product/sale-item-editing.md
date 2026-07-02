@@ -54,6 +54,7 @@
 5. Поля:
    - `Товар`;
    - `Количество`;
+   - `Единица`;
    - `Цена, ₽`.
 6. Кнопки:
    - `Сохранить`;
@@ -68,8 +69,9 @@
 2. `productName` обязателен.
 3. `quantity` должна быть finite number.
 4. `quantity` должна быть больше нуля.
-5. `price` должна быть finite number.
-6. `price` должна быть больше нуля.
+5. `unit` должна быть одной из поддерживаемых единиц `шт`, `кг`, `г`.
+6. `price` должна быть finite number.
+7. `price` должна быть больше нуля.
 7. Empty product name возвращает validation error.
 8. Invalid price возвращает validation error.
 9. Deleted item нельзя обновить без restore.
@@ -100,6 +102,7 @@
 3. Edit не подтверждает review voice-запись.
 4. Review sale начинает входить в выручку только после явного confirm.
 5. Processed sale пересчитывает revenue сразу.
+6. Для `unit = г` сумма считается как `quantity / 1000 * price`; `price` трактуется как цена за кг.
 6. Cancelled sale не должен получить revenue через update.
 7. Failed sale не должен получить revenue через update.
 

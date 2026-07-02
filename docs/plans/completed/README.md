@@ -13,5 +13,6 @@
 - [011 - Release stabilization callbacks review premium WebApp](./011-release-stabilization-callbacks-review-premium-webapp.md) - historical, superseded by 012 for `/review` and review keyboard.
 - [012 - Product handoff polish](./012-product-handoff-polish.md) - historical where it discusses `/review`; superseded by 013.
 - [013 - Callback delivery, review dashboard and parser split](./013-callback-delivery-review-dashboard-parser-split.md)
+- [014 - Mixed cart confirmation and calm SaaS WebApp](./014-mixed-cart-confirm-saas-webapp.md)
 
 Актуальное состояние продукта описано в `README.md`, `AGENTS.md` и `docs/specs`.

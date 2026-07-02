@@ -2,6 +2,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   buildExcludedSaleItemPatch,
   calculateItemTotal,
+  calculateUnitPriceFromTotal,
   displayProductName,
   isMeaningfulProductName,
   normalizeProductName,
@@ -173,7 +174,7 @@ async function resolveSaleItem(env: AppEnv, shopId: string, item: ParsedSaleItem
   const normalized = normalizeSaleItemFields(item);
   const product = await findDefaultProductPrice(env, shopId, normalized.product_name);
   const price = normalized.price;
-  const total = calculateItemTotal(normalized.quantity, price);
+  const total = calculateItemTotal(normalized.quantity, price, normalized.unit);
   const productName = product?.name ? displayProductName(product.name) : normalized.product_name;
   const status: SaleItemStatus = resolveSaleItemStatus({
     productName,
@@ -347,6 +348,7 @@ type ReviewSaleItemRow = {
   id: string;
   product_name: string;
   quantity: number | string;
+  unit: string | null;
   price: number | string | null;
   total: number | string | null;
   status: string;
@@ -385,7 +387,7 @@ async function getReviewSale(
 async function getActiveReviewItems(supabase: SupabaseClient, saleId: string) {
   const { data, error } = await supabase
     .from("sale_items")
-    .select("id, product_name, quantity, price, total, status, deleted_at")
+    .select("id, product_name, quantity, unit, price, total, status, deleted_at")
     .eq("sale_id", saleId)
     .is("deleted_at", null);
 
@@ -398,14 +400,21 @@ async function getActiveReviewItems(supabase: SupabaseClient, saleId: string) {
 
 function toConfirmableItem(item: ReviewSaleItemRow) {
   const quantity = Number(item.quantity);
-  const price = item.price === null ? Number.NaN : Number(item.price);
-  const total = calculateItemTotal(quantity, price);
+  const sourcePrice = item.price === null ? null : Number(item.price);
+  const sourceTotal = item.total === null ? null : Number(item.total);
+  const price = sourcePrice !== null && Number.isFinite(sourcePrice)
+    ? sourcePrice
+    : calculateUnitPriceFromTotal(quantity, sourceTotal, item.unit);
+  const total = sourceTotal !== null && Number.isFinite(sourceTotal) && sourceTotal > 0
+    ? Number(sourceTotal.toFixed(2))
+    : calculateItemTotal(quantity, price, item.unit);
 
   if (
     item.status === "excluded" ||
     !isMeaningfulProductName(item.product_name) ||
     !Number.isFinite(quantity) ||
     quantity <= 0 ||
+    price === null ||
     !Number.isFinite(price) ||
     price <= 0 ||
     total === null
@@ -415,6 +424,7 @@ function toConfirmableItem(item: ReviewSaleItemRow) {
 
   return {
     id: String(item.id),
+    price,
     total
   };
 }
@@ -517,17 +527,7 @@ export async function confirmVoiceSaleWithClient(
       status: "error",
       oldStatus: sale.status,
       newStatus: sale.status,
-      message: "Перед подтверждением нужны товар, количество и цена хотя бы в одной позиции."
-    };
-  }
-
-  if (confirmableItems.length !== activeItems.length) {
-    return {
-      ok: false,
-      status: "error",
-      oldStatus: sale.status,
-      newStatus: sale.status,
-      message: "Перед подтверждением заполните товар, количество и цену во всех позициях."
+      message: "Не удалось подтвердить: нет ни одной полной позиции."
     };
   }
 
@@ -537,6 +537,7 @@ export async function confirmVoiceSaleWithClient(
       .update({
         status: "processed",
         confidence: 1,
+        price: item.price,
         total: item.total,
         updated_at: new Date().toISOString()
       })

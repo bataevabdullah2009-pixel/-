@@ -183,10 +183,12 @@ voice_sale_review:cancel:<uuid>
 4. Already cancelled returns unchanged success.
 5. Failed sale returns error.
 6. Loads active items.
-7. Validates all active items.
-8. Updates items to processed.
-9. Recalculates total.
-10. Updates sale and voice record.
+7. Validates active items individually.
+8. If at least one item is valid, updates only confirmable items to `processed`.
+9. Leaves incomplete active items as `needs_review`.
+10. Recalculates total from confirmable items.
+11. Updates sale and voice record to `processed`.
+12. If no item is valid, returns `Не удалось подтвердить: нет ни одной полной позиции.`
 
 ## 18. Cancel service
 
