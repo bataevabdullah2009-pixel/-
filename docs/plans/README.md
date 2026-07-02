@@ -4,7 +4,7 @@
 
 ## Current status
 
-Активного плана разработки нет. Текущий handoff polish завершён в [012 - Product handoff polish](./completed/012-product-handoff-polish.md).
+Активного плана разработки нет. Последний завершённый этап: [014 - Mixed cart confirmation and calm SaaS WebApp](./completed/014-mixed-cart-confirm-saas-webapp.md).
 
 ## Completed
 

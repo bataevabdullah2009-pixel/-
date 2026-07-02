@@ -42,8 +42,8 @@
 ## Processed voice sale
 
 1. Product name is meaningful.
-2. Quantity is valid.
-3. Price is valid.
+2. Quantity or weight is valid.
+3. Unit price is valid or can be derived from total.
 4. Total is valid.
 5. Confidence is high enough.
 6. Sale status becomes `processed`.
@@ -54,7 +54,7 @@
 
 ## Needs review voice sale
 
-1. Missing product, quantity or price creates review.
+1. Missing product, missing quantity/weight, or missing both price and total creates review.
 2. Low confidence creates review.
 3. Parser fallback creates review.
 4. Sale status becomes `needs_review`.
@@ -69,11 +69,14 @@
 1. `confirm:<sale_id>` confirms.
 2. `cancel:<sale_id>` cancels.
 3. Legacy `voice_sale_review:<action>:<sale_id>` can be accepted.
-4. Confirm sets sale/voice/items to `processed`.
-5. Confirm recalculates total.
-6. Cancel sets sale/voice to `cancelled`.
-7. Cancel soft-deletes active items.
-8. Callbacks are idempotent.
+4. Confirm validates active `sale_items` individually.
+5. Confirm sets sale/voice and valid items to `processed`.
+6. Confirm leaves incomplete mixed-cart items in `needs_review`.
+7. Confirm fails only when there is no complete item and returns `Не удалось подтвердить: нет ни одной полной позиции.`
+8. Confirm recalculates total from confirmed items.
+9. Cancel sets sale/voice to `cancelled`.
+10. Cancel soft-deletes active items.
+11. Callbacks are idempotent.
 
 ## WebApp
 
@@ -88,7 +91,7 @@
 ## Sale item editing
 
 1. `✏️` opens compact edit mode.
-2. Edit fields: product, quantity, price.
+2. Edit fields: product, quantity, unit, price.
 3. Save updates Supabase.
 4. Save recalculates item total.
 5. Save recalculates sale total.
@@ -104,9 +107,9 @@ Count only:
 1. Parent sale `processed`.
 2. Item `processed`.
 3. `deleted_at is null`.
-4. Price exists.
-5. Total exists.
-6. Quantity valid.
+4. Total exists.
+5. Quantity or weight is valid.
+6. Unit price exists or can be derived from total.
 
 Do not count:
 
@@ -130,7 +133,7 @@ Do not count:
 1. Confident `Сникерс, 5 штук по 100 рублей` is processed.
 2. Review sale does not enter revenue.
 3. Review message has exactly two buttons.
-4. Confirm adds revenue.
+4. Confirm adds revenue for complete items and leaves incomplete mixed-cart items in review.
 5. Cancel excludes revenue.
 6. Edit item persists after reload.
 7. Delete item persists after reload.

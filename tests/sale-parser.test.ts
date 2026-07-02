@@ -79,6 +79,17 @@ describe("sale parser evidence rules", () => {
     });
   });
 
+  it("normalizes grams and calculates total from kilogram unit price", () => {
+    expect(parseExample("Сыр 300 грамм по 200 рублей", "Сыр")).toMatchObject({
+      product_name: "Сыр",
+      quantity: 300,
+      unit: "г",
+      price: 200,
+      total: 60,
+      status: "processed"
+    });
+  });
+
   it("parses bread with an explicit quantity and price", () => {
     expect(parseExample("Хлеб 4 штуки по 40 рублей", "Хлеб")).toMatchObject({
       product_name: "Хлеб",

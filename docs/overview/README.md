@@ -55,6 +55,7 @@
 - переводит sale в `processed`;
 - переводит voice record в `processed`;
 - переводит все валидные active items в `processed`;
+- оставляет неполные active items mixed-корзины в `needs_review`;
 - пересчитывает `sales.total_amount`;
 - добавляет товары в отчёт.
 
@@ -74,6 +75,8 @@ WebApp содержит:
 - `Проверка`;
 - `Записи`;
 - `Продавцы`.
+
+WebApp использует спокойный premium SaaS стиль: `#0B1020` background, `#12192B`/`#161F34` surfaces и синий accent `#5B8CFF`; warning-оранжевый применяется только для review-состояний.
 
 Сомнительные voice-записи подтверждаются или отменяются Telegram inline-кнопками под исходным сообщением либо на вкладке WebApp `Проверка`. Оба пути используют одинаковые status/revenue rules.
 

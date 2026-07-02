@@ -58,7 +58,37 @@ function signedInitData(botToken: string, telegramId: number, authDate: number) 
   return params.toString();
 }
 
-function createReviewDecisionClient() {
+type ReviewDecisionSaleItem = {
+  id: string;
+  sale_id: string;
+  product_name: string;
+  quantity: number;
+  unit: string | null;
+  price: number | null;
+  total: number | null;
+  confidence: number;
+  status: string;
+  deleted_at: string | null;
+  deleted_reason?: string | null;
+  deleted_previous_status?: string | null;
+  updated_at?: string;
+};
+
+function createReviewDecisionClient(options: {
+  saleItems?: ReviewDecisionSaleItem[];
+} = {}) {
+  const defaultSaleItems: ReviewDecisionSaleItem[] = [{
+    id: "item-1",
+    sale_id: "sale-1",
+    product_name: "Сникерс",
+    quantity: 5,
+    unit: "шт",
+    price: 100,
+    total: 500,
+    confidence: 0.62,
+    status: "needs_review",
+    deleted_at: null
+  }];
   const state = {
     sales: [{
       id: "sale-1",
@@ -74,18 +104,7 @@ function createReviewDecisionClient() {
       seller_id: "seller-1",
       status: "needs_review"
     }],
-    sale_items: [{
-      id: "item-1",
-      sale_id: "sale-1",
-      product_name: "Сникерс",
-      quantity: 5,
-      unit: "шт",
-      price: 100,
-      total: 500,
-      confidence: 0.62,
-      status: "needs_review",
-      deleted_at: null
-    }]
+    sale_items: options.saleItems ?? defaultSaleItems
   };
 
   const client = {
@@ -317,6 +336,144 @@ describe("sales flow stabilization", () => {
     expect(state.voice_records[0]).toMatchObject({ status: "processed" });
     expect(state.sale_items[0]).toMatchObject({ status: "processed", confidence: 1 });
     expect(report.totalRevenue).toBe(500);
+  });
+
+  it("confirms a full cart with multiple valid items and calculates revenue", async () => {
+    const { client, state } = createReviewDecisionClient({
+      saleItems: [
+        {
+          id: "item-snickers",
+          sale_id: "sale-1",
+          product_name: "Сникерс",
+          quantity: 5,
+          unit: "шт",
+          price: 100,
+          total: 500,
+          confidence: 0.7,
+          status: "needs_review",
+          deleted_at: null
+        },
+        {
+          id: "item-bread",
+          sale_id: "sale-1",
+          product_name: "Буханка хлеба",
+          quantity: 3,
+          unit: "шт",
+          price: 50,
+          total: 150,
+          confidence: 0.7,
+          status: "needs_review",
+          deleted_at: null
+        }
+      ]
+    });
+    const seller = { id: "seller-1", shopId: "shop-1" };
+
+    const result = await confirmVoiceSaleWithClient(client as never, seller, "sale-1");
+    const report = buildSalesReport(state.sale_items.map((row) => ({
+      ...row,
+      created_at: "2026-06-30T09:00:00.000Z"
+    })) as SaleItem[]);
+
+    expect(result).toMatchObject({ ok: true, status: "processed", itemCount: 2 });
+    expect(state.sales[0]).toMatchObject({ status: "processed", total_amount: 650 });
+    expect(state.sale_items).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "item-snickers", status: "processed", total: 500 }),
+      expect.objectContaining({ id: "item-bread", status: "processed", total: 150 })
+    ]));
+    expect(report.totalRevenue).toBe(650);
+  });
+
+  it("confirms valid items from a mixed cart and leaves incomplete items in review", async () => {
+    const { client, state } = createReviewDecisionClient({
+      saleItems: [
+        {
+          id: "item-snickers",
+          sale_id: "sale-1",
+          product_name: "Сникерс",
+          quantity: 5,
+          unit: "шт",
+          price: 100,
+          total: 500,
+          confidence: 0.7,
+          status: "needs_review",
+          deleted_at: null
+        },
+        {
+          id: "item-bread",
+          sale_id: "sale-1",
+          product_name: "Буханка хлеба",
+          quantity: 3,
+          unit: "шт",
+          price: 50,
+          total: 150,
+          confidence: 0.7,
+          status: "needs_review",
+          deleted_at: null
+        },
+        {
+          id: "item-basket",
+          sale_id: "sale-1",
+          product_name: "Целая корзина продуктов",
+          quantity: 1,
+          unit: "шт",
+          price: null,
+          total: null,
+          confidence: 0.4,
+          status: "needs_review",
+          deleted_at: null
+        }
+      ]
+    });
+    const seller = { id: "seller-1", shopId: "shop-1" };
+
+    const result = await confirmVoiceSaleWithClient(client as never, seller, "sale-1");
+    const report = buildSalesReport(state.sale_items.map((row) => ({
+      ...row,
+      created_at: "2026-06-30T09:00:00.000Z"
+    })) as SaleItem[]);
+
+    expect(result).toMatchObject({ ok: true, status: "processed", itemCount: 2 });
+    expect(state.sales[0]).toMatchObject({ status: "processed", total_amount: 650 });
+    expect(state.voice_records[0]).toMatchObject({ status: "processed" });
+    expect(state.sale_items).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "item-snickers", status: "processed", total: 500 }),
+      expect.objectContaining({ id: "item-bread", status: "processed", total: 150 }),
+      expect.objectContaining({ id: "item-basket", status: "needs_review", total: null })
+    ]));
+    expect(report.totalRevenue).toBe(650);
+    expect(report.reviewItems).toHaveLength(1);
+  });
+
+  it("does not confirm a cart without any complete item", async () => {
+    const { client, state } = createReviewDecisionClient({
+      saleItems: [
+        {
+          id: "item-basket",
+          sale_id: "sale-1",
+          product_name: "Целая корзина продуктов",
+          quantity: 1,
+          unit: "шт",
+          price: null,
+          total: null,
+          confidence: 0.4,
+          status: "needs_review",
+          deleted_at: null
+        }
+      ]
+    });
+    const seller = { id: "seller-1", shopId: "shop-1" };
+
+    const result = await confirmVoiceSaleWithClient(client as never, seller, "sale-1");
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: "error",
+      message: "Не удалось подтвердить: нет ни одной полной позиции."
+    });
+    expect(state.sales[0]).toMatchObject({ status: "needs_review", total_amount: 0 });
+    expect(state.voice_records[0]).toMatchObject({ status: "needs_review" });
+    expect(state.sale_items[0]).toMatchObject({ status: "needs_review", total: null });
   });
 
   it("cancels a review sale with soft delete and zero revenue", async () => {

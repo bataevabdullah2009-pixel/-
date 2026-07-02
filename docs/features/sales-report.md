@@ -13,7 +13,7 @@
 - записей;
 - нужно проверить.
 
-Фильтры периода: сегодня, вчера, неделя, месяц, год, выбор даты.
+Фильтры периода: сегодня, вчера, неделя, месяц, выбор даты.
 
 Ниже:
 
@@ -23,11 +23,11 @@
 - блок «Нужно проверить», если есть review items;
 - блок исключённых товаров, если есть soft-deleted rows.
 
-В итог входят только active `processed` items с `deleted_at is null`, ценой и total.
+В итог входят только active `processed` items с `deleted_at is null`, валидным количеством/весом и total. Unit price может быть сохранён или выведен из total.
 
 Не входят `needs_review`, `needs_price`, `cancelled`, `failed`, `excluded` и soft-deleted rows.
 
-Review items видны отдельно; подтверждение доступно только в Telegram.
+Review items видны отдельно; подтверждение доступно в Telegram и на вкладке WebApp `Проверка`. В mixed sale валидные items могут войти в выручку, а неполные остаться в review list.
 
 Processed item можно исправить карандашом; выручка пересчитывается.
 

@@ -93,8 +93,9 @@ sales.status = processed
 sale_items.sale_id in scoped sales
 sale_items.status = processed
 sale_items.deleted_at is null
-sale_items.price is not null
 sale_items.total is not null
+sale_items.quantity/weight is valid
+sale_items.price is valid or derivable from total
 ```
 
 `scopeReportRows` prevents cross-shop reads and downgrades items from `needs_review` sales to review state for report purposes.
@@ -118,9 +119,11 @@ needs_review sale
 
 Confirm:
 
-- validates active items;
-- requires meaningful product, quantity and price;
+- validates active items individually;
+- requires meaningful product, quantity/weight and price-or-total for a confirmable item;
 - sets valid items to `processed`;
+- leaves incomplete active items as `needs_review`;
+- fails only when there is no confirmable item;
 - sets sale/voice to `processed`;
 - recalculates total.
 

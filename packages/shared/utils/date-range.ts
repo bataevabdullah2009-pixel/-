@@ -162,7 +162,14 @@ const UNIT_ALIASES = new Map([
   ["кг.", "кг"],
   ["килограмм", "кг"],
   ["килограмма", "кг"],
-  ["килограммов", "кг"]
+  ["килограммов", "кг"],
+  ["г", "г"],
+  ["г.", "г"],
+  ["гр", "г"],
+  ["гр.", "г"],
+  ["грамм", "г"],
+  ["грамма", "г"],
+  ["граммов", "г"]
 ]);
 
 function normalizeText(value: string | null | undefined) {
@@ -196,12 +203,31 @@ export function normalizeUnit(unit: string | null | undefined) {
   return UNIT_ALIASES.get(normalized) ?? normalized;
 }
 
-export function calculateItemTotal(quantity: number, price: number | null | undefined) {
+export function getPricingQuantity(quantity: number, unit: string | null | undefined) {
+  const normalizedUnit = normalizeUnit(unit);
+  return normalizedUnit === "г" ? quantity / 1000 : quantity;
+}
+
+export function calculateItemTotal(quantity: number, price: number | null | undefined, unit?: string | null) {
   if (price === null || price === undefined) {
     return null;
   }
 
-  return Number((quantity * price).toFixed(2));
+  return Number((getPricingQuantity(quantity, unit) * price).toFixed(2));
+}
+
+export function calculateUnitPriceFromTotal(quantity: number, total: number | null | undefined, unit?: string | null) {
+  if (total === null || total === undefined) {
+    return null;
+  }
+
+  const pricingQuantity = getPricingQuantity(quantity, unit);
+
+  if (!Number.isFinite(pricingQuantity) || pricingQuantity <= 0) {
+    return null;
+  }
+
+  return Number((total / pricingQuantity).toFixed(2));
 }
 
 const MEANINGLESS_PRODUCT_TOKENS = new Set([
@@ -256,16 +282,20 @@ export function normalizeSaleItemFields(item: {
   quantity?: number | null;
   unit?: string | null;
   price?: number | null;
+  total?: number | null;
   confidence?: number | null;
 }) {
   const hasQuantity = typeof item.quantity === "number" && Number.isFinite(item.quantity);
   const hasPrice = typeof item.price === "number" && Number.isFinite(item.price);
+  const hasTotal = typeof item.total === "number" && Number.isFinite(item.total);
   const hasConfidence = typeof item.confidence === "number" && Number.isFinite(item.confidence);
   const quantityWasMissing = !hasQuantity || Number(item.quantity) <= 0;
   const quantity = quantityWasMissing ? 1 : Number(item.quantity);
-  const price = hasPrice ? Number(item.price) : null;
+  const unit = normalizeUnit(item.unit);
+  const sourceTotal = hasTotal && Number(item.total) > 0 ? Number(item.total) : null;
+  const price = hasPrice ? Number(item.price) : calculateUnitPriceFromTotal(quantity, sourceTotal, unit);
   const confidence = hasConfidence ? Number(item.confidence) : 0.5;
-  const total = calculateItemTotal(quantity, price);
+  const total = price === null ? sourceTotal : calculateItemTotal(quantity, price, unit);
   const productName = displayProductName(item.product_name);
   const status = resolveSaleItemStatus({
     productName,
@@ -279,7 +309,7 @@ export function normalizeSaleItemFields(item: {
     product_name: productName,
     normalized_product_name: normalizeProductName(productName),
     quantity,
-    unit: normalizeUnit(item.unit),
+    unit,
     price,
     total,
     confidence,
@@ -308,7 +338,7 @@ export function buildManualSaleItemPatch(params: {
     quantity: normalized.quantity,
     unit: normalized.unit,
     price: params.price,
-    total: calculateItemTotal(normalized.quantity, params.price),
+    total: calculateItemTotal(normalized.quantity, params.price, normalized.unit),
     confidence: 1,
     status: "processed" as const
   };
@@ -344,7 +374,6 @@ export function buildSalesReport(items: SaleItem[]): ReportSummary {
     if (
       isRevenueSaleItemStatus(item.status) &&
       item.product_id &&
-      item.price !== null &&
       item.total !== null &&
       item.confidence >= 0.8
     ) {
@@ -357,7 +386,7 @@ export function buildSalesReport(items: SaleItem[]): ReportSummary {
       continue;
     }
 
-    if (!isRevenueSaleItemStatus(item.status) || item.price === null || item.total === null) {
+    if (!isRevenueSaleItemStatus(item.status) || item.total === null) {
       if (item.status !== "excluded") {
         reviewItems.push(item);
       }

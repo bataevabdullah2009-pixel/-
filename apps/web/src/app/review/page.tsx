@@ -47,7 +47,7 @@ export default async function ReviewPage({ searchParams }: ReviewPageProps) {
             {saleIds.map((saleId) => (
               <input type="hidden" name="saleId" value={saleId} key={saleId} />
             ))}
-            <button type="submit" className="goldActionButton">Подтвердить всё</button>
+            <button type="submit" className="primaryActionButton">Подтвердить всё</button>
           </form>
         ) : null}
       </div>

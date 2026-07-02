@@ -480,6 +480,50 @@ describe("Telegram Mini App authentication", () => {
     expect(report.reviewItems).toHaveLength(1);
   });
 
+  it("counts processed items and keeps review items visible inside a processed mixed sale", () => {
+    const scoped = scopeReportRows(
+      [{
+        id: "sale-mixed",
+        shop_id: "shop-1",
+        status: "processed",
+        created_at: "2026-06-25T10:00:00.000Z"
+      }],
+      [
+        {
+          id: "item-valid",
+          sale_id: "sale-mixed",
+          product_name: "Сникерс",
+          quantity: 5,
+          unit: "шт",
+          price: 100,
+          total: 500,
+          confidence: 1,
+          status: "processed"
+        },
+        {
+          id: "item-review",
+          sale_id: "sale-mixed",
+          product_name: "Целая корзина продуктов",
+          quantity: 1,
+          unit: "шт",
+          price: null,
+          total: null,
+          confidence: 0.4,
+          status: "needs_review"
+        }
+      ],
+      "shop-1"
+    );
+    const report = buildSalesReport(scoped.items);
+
+    expect(report.totalRevenue).toBe(500);
+    expect(report.reviewItems).toHaveLength(1);
+    expect(report.reviewItems[0]).toMatchObject({
+      id: "item-review",
+      status: "needs_review"
+    });
+  });
+
   it("never exposes excluded rows as active items", () => {
     const partitioned = partitionSaleItems([{
       id: "legacy-excluded",

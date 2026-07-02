@@ -9,7 +9,7 @@
 - Review-message содержит только `✅ Подтвердить` и `❌ Отмена`.
 - Callback data короткие: `confirm:<sale_id>` и `cancel:<sale_id>`.
 - Legacy callback prefix принимается для старых сообщений.
-- Confirm callback переводит sale/voice/items в `processed`.
+- Confirm callback переводит sale/voice и валидные active items в `processed`; неполные active items mixed-корзины остаются `needs_review`.
 - Cancel callback переводит sale/voice в `cancelled` и soft-delete active items.
 - Failed voice сохраняет `voice_records.status = failed`, если sale ещё не persisted.
 
@@ -17,7 +17,7 @@
 
 - Нижняя навигация: `Отчёт`, `Проверка`, `Записи`, `Продавцы`.
 - `Отчёт` показывает выручку, количество товаров, количество записей и review count.
-- Период фильтруется по сегодня, вчера, неделя, месяц, год и выбранная дата.
+- Период фильтруется по сегодня, вчера, неделя, месяц и выбранная дата.
 - `Топ товаров` строится по active processed revenue.
 - `Продажи за период` показывает active processed item cards.
 - `Проверка` показывает active review items и даёт `Подтвердить`, `Отмена`, `Подтвердить всё`.
@@ -29,7 +29,7 @@
 ## Sale item management
 
 - `✏️` открывает compact edit form.
-- Edit сохраняет товар, количество и цену в Supabase.
+- Edit сохраняет товар, количество, единицу и цену в Supabase.
 - Edit пересчитывает item total.
 - Edit пересчитывает sale total и report totals.
 - `🗑` открывает confirm dialog `Удалить товар из отчёта?`.
@@ -42,6 +42,7 @@
 
 - В выручку входит только parent sale `processed`.
 - В выручку входит только item `processed`.
+- Item с валидным `total` может войти в выручку даже если unit price был восстановлен из total.
 - `needs_review`, `cancelled`, `failed`, `excluded` и deleted rows не входят.
 - Processed-looking item внутри `needs_review` sale не входит в выручку.
 

@@ -73,6 +73,7 @@ export async function updateSaleItemAction(
   const itemId = String(formData.get("itemId") ?? "");
   const productName = String(formData.get("productName") ?? "").trim();
   const quantity = Number(formData.get("quantity") ?? 1);
+  const unit = String(formData.get("unit") ?? "шт").trim() || "шт";
   const priceValue = String(formData.get("price") ?? "").trim();
   const price = Number(priceValue);
 
@@ -86,7 +87,7 @@ export async function updateSaleItemAction(
   }
 
   try {
-    const result = await updateSaleItem({ itemId, productName, quantity, price });
+    const result = await updateSaleItem({ itemId, productName, quantity, unit, price });
     if (!result.ok) {
       console.error("Failed to update sale item", {
         itemId,

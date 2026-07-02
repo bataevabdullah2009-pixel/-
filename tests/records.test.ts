@@ -254,7 +254,25 @@ describe("sales report", () => {
 
   it("calculates item total from quantity and price", () => {
     expect(calculateItemTotal(7, 90)).toBe(630);
+    expect(calculateItemTotal(300, 200, "г")).toBe(60);
     expect(calculateItemTotal(3, null)).toBeNull();
+  });
+
+  it("derives unit price from total when recognition has total but no unit price", () => {
+    expect(normalizeSaleItemFields({
+      product_name: "Сникерс",
+      quantity: 5,
+      unit: "шт",
+      price: null,
+      total: 500,
+      confidence: 1
+    })).toMatchObject({
+      product_name: "Сникерс",
+      quantity: 5,
+      price: 100,
+      total: 500,
+      status: "processed"
+    });
   });
 
   it("excludes soft-deleted items from quantity and revenue", () => {

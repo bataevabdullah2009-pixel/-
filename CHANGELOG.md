@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## 2026-07-02 - Mixed cart confirmation and calm SaaS WebApp
+
+### Confirm flow
+
+- Исправлена причина ошибки `Перед подтверждением нужны товар, количество и цена хотя бы в одной позиции.`: confirm-flow требовал, чтобы все active `sale_items` были полными, и блокировал всю корзину при одной неполной позиции.
+- Telegram `confirmVoiceSaleWithClient` и WebApp `confirmReviewSale` теперь подтверждают все валидные active items, переводят их в `processed`, пересчитывают `sales.total_amount`, а неполные active items оставляют в `needs_review`.
+- Если нет ни одной полной позиции, confirm не меняет sale/items и возвращает `Не удалось подтвердить: нет ни одной полной позиции.`
+- Валидная позиция: осмысленный `product_name`, положительное количество/вес и либо `price`, либо `total`, из которого можно вывести unit price.
+- Поддержаны весовые единицы `кг` и `г`; `300 грамм по 200 рублей` считается как `0.3 * 200 = 60`.
+
+### WebApp
+
+- WebApp переведён на спокойный premium SaaS дизайн-сет: background `#0B1020`, surface `#12192B`, surface2 `#161F34`, accent `#5B8CFF`, warning `#F59E0B`, danger `#EF4444`.
+- Оранжевый убран из основного интерфейсного акцента и оставлен только для review/warning состояний.
+- KPI, фильтры, график, топ товаров, последние продажи, проверка, записи и продавцы получили компактные карточки, ровные hit areas и единый spacing.
+- `SaleItemCard` показывает причины проверки (`нет цены`, `нет количества или веса`, `не удалось выделить отдельный товар`) и поддерживает редактирование единицы `шт`/`кг`/`г`.
+- Быстрые периоды в UI: `Сегодня`, `Вчера`, `Неделя`, `Месяц` плюс выбор даты.
+- Добавлена явная `favicon.svg` в новой палитре, чтобы WebApp не создавал 404 на browser smoke.
+
+### Tests and docs
+
+- Добавлены regression tests для полной корзины, mixed cart и корзины без валидных позиций.
+- Добавлены parser/shared tests для граммов и total-only распознавания.
+- Обновлены README, AGENTS, specs, features, architecture/rules/overview и планы под фактический код.
+
 ## 2026-07-02 - Callback delivery, parser split and premium review dashboard
 
 ### Telegram
@@ -23,7 +48,7 @@
 - Нижняя навигация приведена к четырём разделам: `Отчёт`, `Проверка`, `Записи`, `Продавцы`.
 - `/review` снова является пользовательским экраном: показывает только active `needs_review` позиции, отдельные карточки товаров, `Подтвердить`, `Отмена` и `Подтвердить всё`.
 - WebApp review actions используют server-side shop/session checks, переводят parent sale/voice/items в те же статусы, что Telegram callback, и пересчитывают выручку.
-- Report UI переведён в premium graphite SaaS style: `#070A0F`, compact 2x2 KPI, умеренный amber accent, тёмные surface-карточки, line-clamp длинных товаров.
+- Report UI получил первую compact SaaS-итерацию; актуальная палитра после текущего изменения описана выше и использует `#0B1020`, `#12192B`/`#161F34` и accent `#5B8CFF`.
 - Аналитика получила bar chart с ограниченной шириной столбцов и подписями день + сумма; один столбец больше не растягивается на весь экран.
 - Карточки товаров остаются компактными: обычный режим показывает только `✏️` edit и `🗑` delete, edit/delete открываются inline.
 
@@ -37,7 +62,7 @@
 
 - Локально пройдены `npm.cmd run lint`, `npm.cmd run test`, `npm.cmd run build` и `npm.cmd run web:build`.
 - `npm.cmd run test`: 8 test files, 96 tests.
-- Browser smoke через Playwright + системный Chrome проверил `/daily-report`, `/review`, `/records`, `/sellers` в demo mode: страницы рендерятся без Next error overlay, навигация содержит четыре раздела, CSS-переменные graphite/gold применяются.
+- Browser smoke через Playwright + системный Chrome проверил `/daily-report`, `/review`, `/records`, `/sellers` в demo mode: страницы рендерятся без Next error overlay, навигация содержит четыре раздела.
 - Без demo/fallback локальный browser получает ожидаемое auth-сообщение `Telegram не передал данные сессии...`; это не проверяет реальный Telegram initData.
 
 ### Docs

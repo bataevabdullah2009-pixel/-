@@ -8,7 +8,12 @@ import "../styles/globals.css";
 
 export const metadata: Metadata = {
   title: "Голосовой журнал продаж",
-  description: "Простой журнал голосовых продаж и отчётов для магазина"
+  description: "Простой журнал голосовых продаж и отчётов для магазина",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg"
+  }
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

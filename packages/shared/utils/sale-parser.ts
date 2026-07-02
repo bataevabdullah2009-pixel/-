@@ -1,4 +1,5 @@
 import type { ParsedSale, ParsedSaleItem } from "../types/index";
+import { calculateItemTotal } from "./date-range";
 
 const NUMBER_WORD_VALUES = new Map<string, number>([
   ["ноль", 0],
@@ -48,7 +49,7 @@ const NUMBER_WORD_VALUES = new Map<string, number>([
 const NUMBER_WORDS = [...NUMBER_WORD_VALUES.keys()].sort((left, right) => right.length - left.length).join("|");
 const NUMBER_PATTERN = `(?:\\d+(?:[.,]\\d+)?|(?:${NUMBER_WORDS})(?:[ -]+(?:${NUMBER_WORDS})){0,4})`;
 const QUANTITY_PATTERN = new RegExp(
-  `(${NUMBER_PATTERN})\\s*(шт\\.?|штук(?:а|и)?|кг\\.?|килограмм(?:а|ов)?)(?!\\p{L})`,
+  `(${NUMBER_PATTERN})\\s*(шт\\.?|штук(?:а|и)?|кг\\.?|килограмм(?:а|ов)?|г\\.?|гр\\.?|грамм(?:а|ов)?)(?!\\p{L})`,
   "iu"
 );
 const PRICE_PATTERN = new RegExp(
@@ -86,7 +87,13 @@ function parseSpokenNumber(value: string | undefined) {
 
 function normalizeEvidenceUnit(unit: string | undefined) {
   const normalized = unit?.toLocaleLowerCase("ru-RU").replace(".", "");
-  return normalized?.startsWith("кг") || normalized?.startsWith("килограмм") ? "кг" : "шт";
+  if (normalized?.startsWith("кг") || normalized?.startsWith("килограмм")) {
+    return "кг";
+  }
+  if (normalized === "г" || normalized === "гр" || normalized?.startsWith("грамм")) {
+    return "г";
+  }
+  return "шт";
 }
 
 function trimEvidenceProductName(value: string) {
@@ -221,7 +228,7 @@ function buildEvidenceItemsFromText(text: string, confidence: number): ParsedSal
       quantity: evidence.quantity,
       unit: evidence.unit,
       price: evidence.price,
-      total: Number((evidence.quantity * evidence.price).toFixed(2)),
+      total: calculateItemTotal(evidence.quantity, evidence.price, evidence.unit),
       confidence
     }];
   });
@@ -275,7 +282,7 @@ function applyEvidence(item: ParsedSaleItem, rawSegment: string, cleanedSegment:
     quantity,
     unit,
     price,
-    total: quantity === null || price === null ? null : Number((quantity * price).toFixed(2))
+    total: quantity === null || price === null ? null : calculateItemTotal(quantity, price, unit)
   };
 }
 
