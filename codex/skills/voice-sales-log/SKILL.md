@@ -83,10 +83,11 @@ Legacy `voice_sale_review:<action>:<sale_id>` may be accepted for old messages.
 Navigation:
 
 - `Отчёт`;
+- `Проверка`;
 - `Записи`;
 - `Продавцы`.
 
-WebApp does not confirm or cancel review voice records. Show review records as `Нужно подтвердить в Telegram`.
+WebApp `/review` shows active `needs_review` items and may confirm/cancel the parent review sale through server actions. Telegram inline callbacks remain the primary review path and must stay functional.
 
 Sale item card:
 
@@ -121,6 +122,7 @@ Never count:
 ## Documentation
 
 After code changes update relevant docs. After DB changes update migrations and `docs/specs/technical/database.md`. After UI changes update product specs. After Telegram flow changes update Telegram specs.
+After every code change, update docs, specs, plans and changelog so they match the actual code. Do not leave stale documents that contradict implementation.
 
 ## Verification
 

@@ -13,6 +13,6 @@
 - `403` — Telegram user не привязан, отключён или магазин не найден.
 - `500` — ошибка конфигурации или сервера.
 
-Бизнес-данные WebApp читаются через Server Components и изменяются Server Actions. Inline update/delete возвращают клиенту structured action state; restore/reset сохраняют redirect-based contract. WebApp не содержит пользовательских confirm/cancel actions для review voice-записей; такие решения выполняются Telegram callback flow.
+Бизнес-данные WebApp читаются через Server Components и изменяются Server Actions. Inline update/delete возвращают клиенту structured action state; restore/reset сохраняют redirect-based contract. WebApp `/review` содержит confirm/cancel actions для review voice-записей и использует тот же service-layer contract, что Telegram callback flow.
 
 Header `x-telegram-init-data` содержит raw `Telegram.WebApp.initData`. `TELEGRAM_WEBHOOK_SECRET` не используется этим endpoint.

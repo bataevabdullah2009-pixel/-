@@ -43,4 +43,4 @@ WebApp review visibility:
 1. Использует `requireOwner()`.
 2. Читает review records/items только через server-derived `shop_id`.
 3. Не принимает `shop_id` от клиента.
-4. Не предоставляет confirm/cancel controls; решения выполняет Telegram callback.
+4. Confirm/cancel actions повторно проверяют parent sale через server-derived `shop_id`.

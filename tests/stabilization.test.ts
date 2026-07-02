@@ -9,6 +9,7 @@ import {
   resolveSellerAccess,
   SellerAccessError
 } from "../apps/bot/src/services/records.service";
+import { parseReviewCallbackData } from "../apps/bot/src/handlers/review.handler";
 import { parseSaleTranscript } from "../apps/bot/src/services/cleanup-text.service";
 import {
   createReportKeyboard,
@@ -282,6 +283,19 @@ describe("sales flow stabilization", () => {
     });
   });
 
+  it("parses short and legacy review callbacks and rejects invalid callback data", () => {
+    expect(parseReviewCallbackData("confirm:550e8400-e29b-41d4-a716-446655440000")).toEqual({
+      action: "confirm",
+      saleId: "550e8400-e29b-41d4-a716-446655440000"
+    });
+    expect(parseReviewCallbackData("voice_sale_review:cancel:550e8400-e29b-41d4-a716-446655440000")).toEqual({
+      action: "cancel",
+      saleId: "550e8400-e29b-41d4-a716-446655440000"
+    });
+    expect(parseReviewCallbackData("approve:550e8400-e29b-41d4-a716-446655440000")).toBeNull();
+    expect(parseReviewCallbackData("confirm:not-a-uuid")).toBeNull();
+  });
+
   it("confirms a review sale and includes valid items in revenue", async () => {
     const { client, state } = createReviewDecisionClient();
     const seller = { id: "seller-1", shopId: "shop-1" };
@@ -296,7 +310,7 @@ describe("sales flow stabilization", () => {
     expect(result).toMatchObject({
       ok: true,
       status: "processed",
-      message: "✅ Запись подтверждена и добавлена в отчёт."
+      message: "✅ Запись подтверждена и добавлена в выручку."
     });
     expect(repeat).toMatchObject({ ok: true, status: "unchanged" });
     expect(state.sales[0]).toMatchObject({ status: "processed", total_amount: 500 });

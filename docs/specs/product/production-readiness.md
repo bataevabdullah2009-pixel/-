@@ -20,7 +20,7 @@
 - review только для реальных проблем распознавания;
 - Telegram confirm/cancel для `needs_review` voice-записей;
 - `cancelled` для отменённых voice-записей;
-- WebApp показывает review-состояние без confirm/cancel controls;
+- WebApp `/review` подтверждает и отменяет review-записи через server actions;
 - WebApp edit review item без скрытого подтверждения;
 - soft delete, restore и reset day;
 - records с раскрытием товаров;

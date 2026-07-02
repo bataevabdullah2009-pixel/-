@@ -1,49 +1,53 @@
 # CHANGELOG
 
-## 2026-07-02 - Product handoff polish
+## 2026-07-02 - Callback delivery, parser split and premium review dashboard
 
 ### Telegram
 
-- Review voice-message теперь содержит только две inline-кнопки: `✅ Подтвердить` и `❌ Отмена`.
-- Кнопка `Открыть отчёт` удалена из сообщения сомнительной записи.
-- `/start`, reply keyboard и menu button сохраняют доступ к WebApp отчёту.
-- Callback data остаются короткими: `confirm:<sale_id>` и `cancel:<sale_id>`.
+- Root cause callback-кнопок найден и подтверждён live `getWebhookInfo`: production URL был верный, но webhook был установлен с `allowed_updates: ["message"]`, поэтому Telegram не доставлял `callback_query`.
+- `scripts/set-telegram-webhook.ts` теперь устанавливает `allowed_updates: ["message", "callback_query"]`; live webhook-info подтверждает оба типа update.
+- Webhook route логирует безопасный `telegram_update_received` с `has_message`, `has_voice`, `has_callback_query`, `callback_query_id`, `callback_data`, `callback_from_id`, `callback_message_id`.
+- Review callback data остаются короткими: `confirm:<sale_id>` и `cancel:<sale_id>`.
 - Legacy callback prefix `voice_sale_review:` остаётся совместимым для старых сообщений.
-- Confirm/cancel callbacks остаются идемпотентными.
+- Повторное нажатие получает `answerCallbackQuery` с текстом `Эта запись уже обработана`.
+- Неправильный callback format получает понятный ответ `Некорректная кнопка.`.
+
+### Parser
+
+- `enforceTranscriptEvidence` разбивает один склеенный LLM item на несколько sale_items, если transcript содержит несколько товарных сегментов через точку, запятую или союз.
+- Поддержан порядок `3 штуки Сникерса по 200 рублей`, где количество стоит перед названием товара.
+- Регрессия покрывает фразы `Буханка хлеба 5 штук по 100 рублей. 3 штуки Сникерса по 200 рублей.` и `Шоколад 5 штук по 100 рублей, хлеб 4 штуки по 50 рублей`.
 
 ### WebApp
 
-- Нижняя навигация приведена к трём разделам: `Отчёт`, `Записи`, `Продавцы`.
-- Пользовательский `/review` больше не является экраном подтверждения; старый route перенаправляет на `/records`.
-- Экран отчёта получил продуктовый заголовок `Голосовой журнал продаж` и подзаголовок `Сводка магазина`.
-- Review-состояние в WebApp показывается как `Нужно подтвердить в Telegram`.
-- Карточки товаров оставлены компактными: обычный режим + `✏️` edit + `🗑` delete.
-- Delete wording изменён на `Удалить товар из отчёта?`, `Удалить`, `Отмена`.
-- Фильтры периода уплотнены для мобильного интерфейса.
-- Telegram diagnostics остаются только на `/debug-telegram` в development или при `DEBUG_TELEGRAM_WEBAPP=true`.
+- Нижняя навигация приведена к четырём разделам: `Отчёт`, `Проверка`, `Записи`, `Продавцы`.
+- `/review` снова является пользовательским экраном: показывает только active `needs_review` позиции, отдельные карточки товаров, `Подтвердить`, `Отмена` и `Подтвердить всё`.
+- WebApp review actions используют server-side shop/session checks, переводят parent sale/voice/items в те же статусы, что Telegram callback, и пересчитывают выручку.
+- Report UI переведён в premium graphite SaaS style: `#070A0F`, compact 2x2 KPI, умеренный amber accent, тёмные surface-карточки, line-clamp длинных товаров.
+- Аналитика получила bar chart с ограниченной шириной столбцов и подписями день + сумма; один столбец больше не растягивается на весь экран.
+- Карточки товаров остаются компактными: обычный режим показывает только `✏️` edit и `🗑` delete, edit/delete открываются inline.
 
 ### Data and revenue
 
-- Report scope больше не считает processed-looking items из parent sale со статусом `needs_review`.
-- Revenue status predicate приведён к каноническому `processed`.
-- Пересчёт продажи после update/delete больше не переводит processed sale в `needs_review`, если все active items удалены.
-- `cancelled` и `failed` sale не получают выручку при пересчёте.
+- Confirm переводит sale/voice/items в `processed`, пересчитывает `total_amount` и добавляет запись в выручку.
+- Cancel переводит sale/voice в `cancelled`, items в `excluded` с `deleted_at`, и оставляет выручку нулевой.
+- Report scope считает только parent sale `processed` + item `processed` + active non-deleted rows.
 
 ### Tests
 
-- Обновлён regression test Telegram review keyboard: ровно две кнопки.
-- Добавлен regression test, что `needs_review` sale не входит в выручку даже при валидных item fields.
-- Локально пройден `npm.cmd run test`: 8 test files, 93 tests.
+- Локально пройдены `npm.cmd run lint`, `npm.cmd run test`, `npm.cmd run build` и `npm.cmd run web:build`.
+- `npm.cmd run test`: 8 test files, 96 tests.
+- Browser smoke через Playwright + системный Chrome проверил `/daily-report`, `/review`, `/records`, `/sellers` в demo mode: страницы рендерятся без Next error overlay, навигация содержит четыре раздела, CSS-переменные graphite/gold применяются.
+- Без demo/fallback локальный browser получает ожидаемое auth-сообщение `Telegram не передал данные сессии...`; это не проверяет реальный Telegram initData.
 
 ### Docs
 
-- Обновлены README, AGENTS, overview, specs, features, plans, roadmap, architecture, rules и локальный Codex skill.
-- Удалены актуальные противоречия про WebApp review-confirm и третью Telegram-кнопку в review-message.
+- Обновлены README, AGENTS, overview, specs, features, plans, roadmap, architecture, rules и локальный Codex skill под фактический `/review` и callback delivery.
 
 ## 2026-06-30 - Release stabilization, superseded details
 
 - Ветка стабилизации добавляла короткие callback data, WebApp review screen и расширенные проверки update/delete.
-- Текущий контракт от 2026-07-02 supersedes пользовательский `/review` screen и третью кнопку `Открыть отчёт` в review-message.
+- Текущий контракт от 2026-07-02 оставляет две Telegram-кнопки без `Открыть отчёт` и использует `/review` как пользовательский экран проверки.
 - Актуальные правила см. в `README.md`, `AGENTS.md` и `docs/specs`.
 
 ## 2026-06-25 - WebApp persistence hardening

@@ -1,20 +1,21 @@
 :root {
-  --bg: #090b10;
-  --surface: #111827;
-  --surface-raised: #141a24;
-  --surface-elevated: #18202c;
+  --bg: #070a0f;
+  --surface: #101622;
+  --surface-raised: #141c2a;
+  --surface-elevated: #182132;
+  --surface2: #141c2a;
   --ink: #f8fafc;
   --muted: #94a3b8;
   --line: rgba(255, 255, 255, 0.08);
-  --accent: #f59e0b;
-  --accent-strong: #ffb020;
+  --accent: #f5a524;
+  --accent-strong: #f5a524;
   --success: #22c55e;
-  --warning: #ffb020;
-  --warning-soft: rgba(245, 158, 11, 0.14);
+  --warning: #f5a524;
+  --warning-soft: rgba(245, 165, 36, 0.12);
   --danger: #ef4444;
   --danger-soft: rgba(239, 68, 68, 0.12);
-  --soft: rgba(245, 158, 11, 0.12);
-  --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+  --soft: rgba(245, 165, 36, 0.12);
+  --shadow: 0 14px 38px rgba(0, 0, 0, 0.32);
   --radius: 8px;
 }
 
@@ -64,14 +65,15 @@ select {
 button,
 .secondaryButton,
 .correctionButton {
-  min-height: 44px;
+  min-height: 38px;
   border: 1px solid var(--accent);
   border-radius: 10px;
   background: var(--accent);
-  color: #ffffff;
-  padding: 9px 13px;
+  color: #111827;
+  padding: 8px 12px;
   cursor: pointer;
   white-space: nowrap;
+  font-weight: 700;
 }
 
 .secondaryButton,
@@ -84,7 +86,7 @@ button,
 
 button:hover,
 .secondaryButton:hover {
-  background: var(--accent-strong);
+  background: #ffc766;
 }
 
 button:disabled {
@@ -151,7 +153,7 @@ main {
 .segmentedControl a {
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--surface2);
   padding: 9px 12px;
   color: var(--ink);
   text-align: center;
@@ -285,18 +287,19 @@ main {
 
 .reportSummaryGrid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  max-width: 760px;
 }
 
 .reportSummaryGrid article {
   min-width: 0;
   display: grid;
-  gap: 7px;
+  gap: 6px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--surface);
-  padding: 14px;
+  padding: 12px;
 }
 
 .reportSummaryGrid span,
@@ -309,7 +312,7 @@ main {
 .reportSummaryGrid strong {
   overflow-wrap: anywhere;
   color: var(--accent-strong);
-  font-size: 24px;
+  font-size: 22px;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
@@ -462,10 +465,10 @@ th {
 .itemManager,
 .deletedItemsPanel {
   border: 1px solid var(--line);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 10px 36px rgba(36, 67, 94, 0.06);
-  padding: 18px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 14px;
   scroll-margin-top: 112px;
 }
 
@@ -484,7 +487,7 @@ th {
 
 .sectionHeading h3 {
   margin: 0;
-  font-size: 22px;
+  font-size: 18px;
   letter-spacing: 0;
 }
 
@@ -541,7 +544,11 @@ th {
 
 .topProductRow strong,
 .recordItemRow strong {
+  display: -webkit-box;
+  overflow: hidden;
   overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .topProductRow span,
@@ -586,9 +593,9 @@ th {
 .saleItemCard {
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: 0 8px 24px rgba(25, 57, 82, 0.05);
+  box-shadow: none;
 }
 
 .saleItemCardAttention {
@@ -601,7 +608,7 @@ th {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 14px;
-  padding: 15px 14px;
+  padding: 12px;
 }
 
 .saleItemContent {
@@ -621,8 +628,12 @@ th {
 .saleItemTitleRow h4 {
   min-width: 0;
   margin: 0;
+  display: -webkit-box;
+  overflow: hidden;
   overflow-wrap: anywhere;
-  font-size: 18px;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 16px;
   line-height: 1.2;
   letter-spacing: 0;
 }
@@ -644,7 +655,7 @@ th {
 
 .saleItemTotal {
   color: var(--accent-strong);
-  font-size: 20px;
+  font-size: 18px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -655,14 +666,14 @@ th {
 }
 
 .iconButton {
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
   border-color: var(--line);
-  border-radius: 13px;
-  background: #f7fafc;
+  border-radius: var(--radius);
+  background: var(--surface-elevated);
   color: var(--accent-strong);
   padding: 0;
 }
@@ -696,8 +707,8 @@ th {
 .saleItemEditForm,
 .saleItemDeletePanel {
   border-top: 1px solid var(--line);
-  background: #f8fbfd;
-  padding: 14px;
+  background: var(--surface-raised);
+  padding: 12px;
 }
 
 .saleItemEditForm {
@@ -780,6 +791,31 @@ th {
 .deleteConfirmButton:hover {
   border-color: #a82d22;
   background: #a82d22;
+}
+
+.goldActionButton,
+.successActionButton {
+  min-height: 38px;
+  border-radius: var(--radius);
+  padding: 8px 12px;
+}
+
+.goldActionButton {
+  border-color: rgba(245, 165, 36, 0.5);
+  background: var(--accent);
+  color: #101622;
+}
+
+.successActionButton {
+  border-color: rgba(34, 197, 94, 0.55);
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+}
+
+.successActionButton:hover {
+  border-color: rgba(34, 197, 94, 0.75);
+  background: rgba(34, 197, 94, 0.22);
+  color: #bbf7d0;
 }
 
 .deletedItemsPanel summary {
@@ -889,6 +925,44 @@ th {
   gap: 10px;
 }
 
+.reviewSummaryStrip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.reviewSummaryStrip > div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 12px;
+}
+
+.reviewSummaryStrip span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.reviewSummaryStrip strong {
+  color: var(--accent-strong);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.reviewDecisionCard {
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface2);
+  padding: 10px;
+}
+
 .reviewItem,
 .recordCard,
 .sellerRow,
@@ -898,7 +972,7 @@ th {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface);
-  padding: 16px;
+  padding: 14px;
 }
 
 .reviewItem {
@@ -1209,7 +1283,7 @@ th {
     bottom: 0;
     left: 0;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 4px;
     border-top: 1px solid rgba(23, 33, 31, 0.12);
     background: rgba(255, 255, 255, 0.96);
@@ -1757,8 +1831,9 @@ th {
   height: 150px;
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(26px, 1fr);
+  grid-auto-columns: minmax(44px, 76px);
   align-items: end;
+  justify-content: start;
   gap: 8px;
 }
 
@@ -1766,8 +1841,8 @@ th {
   min-width: 0;
   height: 100%;
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto;
-  gap: 8px;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  gap: 5px;
   color: var(--muted);
   font-size: 11px;
   text-align: center;
@@ -1786,9 +1861,16 @@ th {
   white-space: nowrap;
 }
 
+.sparklineBar small {
+  overflow: hidden;
+  color: var(--accent-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .reviewRecordList {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .reviewRecordCard {
@@ -1842,7 +1924,7 @@ th {
 }
 
 .mobileNav {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border-color: var(--line);
   background: rgba(17, 24, 39, 0.96);
   box-shadow: 0 -14px 32px rgba(0, 0, 0, 0.34);

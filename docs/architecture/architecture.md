@@ -23,7 +23,7 @@ Telegram user
   -> records.service
   -> Supabase RPC save_voice_sale
   -> Telegram response
-  -> WebApp report/records/sellers
+  -> WebApp report/review/records/sellers
 ```
 
 ## Bot modules
@@ -41,15 +41,16 @@ Telegram user
 ## Web modules
 
 - `apps/web/src/app/daily-report/page.tsx` renders report.
+- `apps/web/src/app/review/page.tsx` renders review queue and review decisions.
+- `apps/web/src/app/review/actions.ts` owns WebApp confirm/cancel review actions.
 - `apps/web/src/app/records/page.tsx` renders record journal.
 - `apps/web/src/app/sellers/page.tsx` renders seller stats.
-- `apps/web/src/app/review/page.tsx` redirects old `/review` links to `/records`.
 - `apps/web/src/app/daily-report/actions.ts` owns sale item update/delete/restore/reset actions.
 - `apps/web/src/features/records/records.api.ts` reads reports and performs mutations.
 - `apps/web/src/features/records/report-scope.ts` scopes sale_items through sales from current shop.
 - `apps/web/src/components/SaleItemCard.tsx` owns compact item edit/delete UX.
 - `apps/web/src/components/RecordCard.tsx` owns record display and Telegram review badge.
-- `apps/web/src/components/MobileNavigation.tsx` owns three-tab mobile navigation.
+- `apps/web/src/components/MobileNavigation.tsx` owns four-tab mobile navigation.
 
 ## Data model
 
@@ -132,16 +133,16 @@ Cancel:
 
 ## WebApp responsibility
 
-WebApp is not a review decision surface. It does not expose confirm/cancel controls for `needs_review` voice records.
-
 WebApp responsibilities:
 
 - show report;
+- show review queue;
+- confirm/cancel review sales through server actions;
 - show records;
 - show sellers;
 - edit sale item fields;
 - delete sale item from active report;
-- display that review records need Telegram confirmation.
+- display review/cancel/processed states consistently.
 
 ## Authentication and shop isolation
 
@@ -171,7 +172,6 @@ No diagnostics button is shown in the ordinary review-message. `/start` report k
 
 ## Non-goals
 
-- No WebApp confirm/cancel for review voice records.
 - No rewrite of STT.
 - No rewrite of parser.
 - No database schema reset.

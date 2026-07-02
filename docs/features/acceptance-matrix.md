@@ -13,7 +13,7 @@
 | Report | Отчёт считает только active `processed` rows с `deleted_at is null`, ценой и total. | Покрыто report tests. |
 | WebApp edit | Карточка открывает edit mode, сохраняет `product_name`, `quantity`, `price`, не очищает форму при ошибке. | Реализовано в `SaleItemCard`. |
 | WebApp delete | Корзина показывает confirm «Удалить товар из отчёта?», soft-delete без физического удаления. | Реализовано и покрыто patch/report tests. |
-| Review visibility | WebApp показывает `needs_review` как «Нужно подтвердить в Telegram» без confirm/cancel controls. | Реализовано в report/records UX. |
+| Review actions | WebApp `/review` показывает active `needs_review`, подтверждает, отменяет и bulk-confirm через server actions. | Реализовано в review UX; покрыто service/status tests. |
 | Shop auth | `shop_id` не принимается от клиента; WebApp и callback используют server-derived context. | Покрыто auth/scope tests. |
 | Diagnostics | `/debug-telegram` скрыт без `DEBUG_TELEGRAM_WEBAPP=true`. | Покрыто auth tests. |
 

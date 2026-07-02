@@ -11,6 +11,7 @@
 - [009 - WebApp sale item product polish](./009-webapp-sale-item-product-polish.md)
 - [010 - Telegram confirmation and product WebApp polish](./010-telegram-confirmation-and-product-webapp-polish.md) - historical, superseded where it discusses removed or restored buttons.
 - [011 - Release stabilization callbacks review premium WebApp](./011-release-stabilization-callbacks-review-premium-webapp.md) - historical, superseded by 012 for `/review` and review keyboard.
-- [012 - Product handoff polish](./012-product-handoff-polish.md)
+- [012 - Product handoff polish](./012-product-handoff-polish.md) - historical where it discusses `/review`; superseded by 013.
+- [013 - Callback delivery, review dashboard and parser split](./013-callback-delivery-review-dashboard-parser-split.md)
 
 Актуальное состояние продукта описано в `README.md`, `AGENTS.md` и `docs/specs`.

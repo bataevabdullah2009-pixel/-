@@ -13,7 +13,7 @@
 5. Parser extracts sale items.
 6. Bot saves voice record, sale and sale items in Supabase.
 7. Bot replies with success or review decision.
-8. WebApp shows report, records and sellers.
+8. WebApp shows report, review, records and sellers.
 
 ## Roles
 
@@ -77,13 +77,13 @@
 
 ## WebApp
 
-1. Navigation: `Отчёт`, `Записи`, `Продавцы`.
+1. Navigation: `Отчёт`, `Проверка`, `Записи`, `Продавцы`.
 2. `/daily-report` shows summary, top products, period sales and review visibility.
-3. `/records` shows voice-sale journal.
-4. `/sellers` shows seller stats.
-5. `/review` redirects to `/records`.
-6. WebApp does not confirm or cancel review voice sales.
-7. Review records show `Нужно подтвердить в Telegram`.
+3. `/review` shows active `needs_review` items and review actions.
+4. `/records` shows voice-sale journal.
+5. `/sellers` shows seller stats.
+6. WebApp review actions use server-derived shop context.
+7. Review records show status consistently.
 
 ## Sale item editing
 
@@ -134,5 +134,5 @@ Do not count:
 5. Cancel excludes revenue.
 6. Edit item persists after reload.
 7. Delete item persists after reload.
-8. WebApp has three nav tabs.
+8. WebApp has four nav tabs.
 9. Docs match code.

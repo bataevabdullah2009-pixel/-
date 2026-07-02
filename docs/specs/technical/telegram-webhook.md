@@ -156,6 +156,8 @@ Rules:
 7. Callback answers Telegram loading state.
 8. Callback edits message text if possible.
 9. Callback falls back to reply if edit fails.
+10. Webhook route logs safe `telegram_update_received` metadata before dispatch.
+11. `scripts/set-telegram-webhook.ts` must include `callback_query` in `allowed_updates`.
 
 ## 16. Callback data
 
@@ -228,7 +230,7 @@ voice_sale_review:cancel:<uuid>
 1. WebApp route is separate.
 2. WebApp session is not required for Telegram callback.
 3. WebApp shows updated state after refresh.
-4. WebApp does not expose review confirm/cancel.
+4. WebApp `/review` exposes review confirm/cancel through server actions and WebApp session.
 5. `/start` can still open WebApp report.
 
 ## 23. Database writes
@@ -272,5 +274,4 @@ voice_sale_review:cancel:<uuid>
 1. Replacing Telegraf.
 2. Replacing STT provider.
 3. Replacing LLM/parser.
-4. WebApp review decision UI.
-5. Physical deletion of sale data.
+4. Physical deletion of sale data.

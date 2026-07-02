@@ -98,7 +98,7 @@
 1. Если parent sale `processed`, item остаётся `processed`.
 2. Если parent sale `needs_review`, item остаётся `needs_review`.
 3. Edit не подтверждает review voice-запись.
-4. Review sale начинает входить в выручку только после Telegram `✅ Подтвердить`.
+4. Review sale начинает входить в выручку только после явного confirm.
 5. Processed sale пересчитывает revenue сразу.
 6. Cancelled sale не должен получить revenue через update.
 7. Failed sale не должен получить revenue через update.
@@ -243,4 +243,4 @@
 2. Bulk editing.
 3. Product catalog management UI.
 4. Per-item Telegram conversation.
-5. WebApp review confirm/cancel.
+5. Per-item review confirm/cancel inside ordinary sale item card.

@@ -7,7 +7,7 @@
 - Не переписывать STT/parser/webhook без прямой задачи.
 - Не терять voice record при recoverable parser failure.
 - Уверенная запись остаётся `processed`.
-- Сомнительная запись остаётся `needs_review` до Telegram decision.
+- Сомнительная запись остаётся `needs_review` до Telegram или WebApp review decision.
 
 ## Telegram
 
@@ -15,12 +15,13 @@
 - Не добавлять `Открыть отчёт` в review-message.
 - Callback data: `confirm:<sale_id>` и `cancel:<sale_id>`.
 - Callback должен быть идемпотентным.
+- Webhook должен принимать `message` и `callback_query`.
 
 ## WebApp
 
-- Навигация: `Отчёт`, `Записи`, `Продавцы`.
-- WebApp не подтверждает review voice-записи.
-- `needs_review` показывать как `Нужно подтвердить в Telegram`.
+- Навигация: `Отчёт`, `Проверка`, `Записи`, `Продавцы`.
+- `/review` показывает только active `needs_review` и подтверждает/отменяет через server actions.
+- `needs_review` показывать как review state без смешивания с выручкой.
 - Карточка товара компактная: display mode, `✏️`, `🗑`.
 
 ## Data
@@ -31,7 +32,7 @@
 
 ## Docs and checks
 
-- После кода обновлять docs.
+- После каждого изменения кода агент обязан обновить документацию, спеки, планы и changelog под фактическое состояние проекта. Запрещено оставлять устаревшие документы, которые противоречат коду.
 - После БД обновлять migrations и database spec.
 - После UI обновлять product specs.
 - После Telegram flow обновлять telegram specs.

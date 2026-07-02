@@ -89,11 +89,34 @@ function normalizeEvidenceUnit(unit: string | undefined) {
   return normalized?.startsWith("кг") || normalized?.startsWith("килограмм") ? "кг" : "шт";
 }
 
+function trimEvidenceProductName(value: string) {
+  return value
+    .replace(/^[\s,;:—–-]+/u, "")
+    .replace(/[\s,;:—–-]+$/u, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function findItemStart(source: string, productName: string, cursor: number) {
   const normalizedName = productName.trim().toLocaleLowerCase("ru-RU");
   const exactIndex = normalizedName ? source.indexOf(normalizedName, cursor) : -1;
 
   if (exactIndex >= 0) {
+    const boundary = Math.max(
+      source.lastIndexOf(".", exactIndex),
+      source.lastIndexOf("!", exactIndex),
+      source.lastIndexOf("?", exactIndex),
+      source.lastIndexOf("…", exactIndex),
+      source.lastIndexOf(";", exactIndex),
+      source.lastIndexOf(",", exactIndex)
+    ) + 1;
+    const prefix = source.slice(boundary, exactIndex);
+
+    if (QUANTITY_PATTERN.test(prefix)) {
+      const leadingWhitespace = source.slice(boundary).match(/^\s*/u)?.[0].length ?? 0;
+      return boundary + leadingWhitespace;
+    }
+
     return exactIndex;
   }
 
@@ -134,12 +157,22 @@ function getItemSegments(rawText: string, items: ParsedSaleItem[]) {
 function extractEvidence(segment: string) {
   const quantityMatch = segment.match(QUANTITY_PATTERN);
   const priceMatch = segment.match(PRICE_PATTERN);
-  const productName = quantityMatch?.index === undefined
+  const quantityStart = quantityMatch?.index;
+  const quantityEnd = !quantityMatch || quantityStart === undefined
+    ? undefined
+    : quantityStart + quantityMatch[0].length;
+  const priceStart = priceMatch?.index;
+  const beforeQuantity = quantityStart === undefined
     ? ""
-    : segment
-      .slice(0, quantityMatch.index)
-      .replace(/[\s,;:—–-]+$/u, "")
-      .trim();
+    : trimEvidenceProductName(segment.slice(0, quantityStart));
+  const betweenQuantityAndPrice =
+    quantityEnd === undefined || priceStart === undefined || priceStart <= quantityEnd
+      ? ""
+      : trimEvidenceProductName(segment.slice(quantityEnd, priceStart));
+  const beforePrice = priceStart === undefined
+    ? ""
+    : trimEvidenceProductName(segment.slice(0, priceStart));
+  const productName = beforeQuantity || betweenQuantityAndPrice || (quantityStart === undefined ? beforePrice : "");
 
   return {
     productName,
@@ -147,6 +180,68 @@ function extractEvidence(segment: string) {
     unit: normalizeEvidenceUnit(quantityMatch?.[2]),
     price: parseSpokenNumber(priceMatch?.[1] ?? priceMatch?.[2])
   };
+}
+
+function segmentHasSaleEvidence(segment: string) {
+  return PRICE_PATTERN.test(segment) || QUANTITY_PATTERN.test(segment);
+}
+
+function splitByConjunctions(segment: string) {
+  const parts = segment
+    .split(/\s+(?:и|плюс|а также)\s+/iu)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length <= 1) {
+    return [segment];
+  }
+
+  return parts.every(segmentHasSaleEvidence) ? parts : [segment];
+}
+
+function splitPotentialSaleSegments(text: string) {
+  return text
+    .replace(/\s+/g, " ")
+    .split(/[.!?…;]+|,/u)
+    .flatMap((segment) => splitByConjunctions(segment.trim()))
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+}
+
+function buildEvidenceItemsFromText(text: string, confidence: number): ParsedSaleItem[] {
+  return splitPotentialSaleSegments(text).flatMap((segment) => {
+    const evidence = extractEvidence(segment);
+
+    if (!evidence.productName || evidence.quantity === null || evidence.price === null) {
+      return [];
+    }
+
+    return [{
+      product_name: evidence.productName,
+      quantity: evidence.quantity,
+      unit: evidence.unit,
+      price: evidence.price,
+      total: Number((evidence.quantity * evidence.price).toFixed(2)),
+      confidence
+    }];
+  });
+}
+
+function expandSingleItemFromTranscript(
+  parsedSale: ParsedSale,
+  rawText: string,
+  cleanedText: string
+): ParsedSaleItem[] {
+  if (parsedSale.items.length !== 1) {
+    return parsedSale.items;
+  }
+
+  const confidence = parsedSale.items[0]?.confidence ?? 0.95;
+  const rawItems = buildEvidenceItemsFromText(rawText, confidence);
+  const cleanedItems = buildEvidenceItemsFromText(cleanedText, confidence);
+  const evidenceItems = rawItems.length >= cleanedItems.length ? rawItems : cleanedItems;
+
+  return evidenceItems.length > 1 ? evidenceItems : parsedSale.items;
 }
 
 function matchesParsedNumber(value: number | null, parsedValue: number | null | undefined) {
@@ -185,9 +280,10 @@ function applyEvidence(item: ParsedSaleItem, rawSegment: string, cleanedSegment:
 }
 
 export function enforceTranscriptEvidence(parsedSale: ParsedSale, rawText: string, cleanedText: string): ParsedSale {
-  const rawSegments = getItemSegments(rawText, parsedSale.items);
-  const cleanedSegments = getItemSegments(cleanedText, parsedSale.items);
-  const items = parsedSale.items.map((item, index) =>
+  const sourceItems = expandSingleItemFromTranscript(parsedSale, rawText, cleanedText);
+  const rawSegments = getItemSegments(rawText, sourceItems);
+  const cleanedSegments = getItemSegments(cleanedText, sourceItems);
+  const items = sourceItems.map((item, index) =>
     applyEvidence(item, rawSegments[index] ?? "", cleanedSegments[index] ?? "")
   );
   const needsReview =

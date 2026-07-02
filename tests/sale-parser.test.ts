@@ -204,6 +204,60 @@ describe("sale parser evidence rules", () => {
     ]);
   });
 
+  it("splits a single glued LLM item into separate products by transcript evidence", () => {
+    const parsed = enforceTranscriptEvidence(
+      {
+        items: [{
+          product_name: "Буханка хлеба 5 штук по 100 рублей. 3 штуки Сникерса по 200 рублей",
+          quantity: 5,
+          unit: "шт",
+          price: 100,
+          total: 500,
+          confidence: 0.95
+        }],
+        raw_text: "",
+        cleaned_text: "",
+        needs_review: false
+      },
+      "Буханка хлеба 5 штук по 100 рублей. 3 штуки Сникерса по 200 рублей.",
+      "Буханка хлеба 5 штук по 100 рублей. 3 штуки Сникерса по 200 рублей."
+    );
+
+    expect(parsed.items).toHaveLength(2);
+    expect(parsed.items).toMatchObject([
+      { product_name: "Буханка хлеба", quantity: 5, price: 100, total: 500 },
+      { product_name: "Сникерса", quantity: 3, price: 200, total: 600 }
+    ]);
+    expect(parsed.needs_review).toBe(false);
+  });
+
+  it("splits comma-separated sales from one glued LLM item", () => {
+    const parsed = enforceTranscriptEvidence(
+      {
+        items: [{
+          product_name: "Шоколад 5 штук по 100 рублей, хлеб 4 штуки по 50 рублей",
+          quantity: 5,
+          unit: "шт",
+          price: 100,
+          total: 500,
+          confidence: 0.95
+        }],
+        raw_text: "",
+        cleaned_text: "",
+        needs_review: false
+      },
+      "Шоколад 5 штук по 100 рублей, хлеб 4 штуки по 50 рублей",
+      "Шоколад 5 штук по 100 рублей, хлеб 4 штуки по 50 рублей"
+    );
+
+    expect(parsed.items).toHaveLength(2);
+    expect(parsed.items).toMatchObject([
+      { product_name: "Шоколад", quantity: 5, price: 100, total: 500 },
+      { product_name: "хлеб", quantity: 4, price: 50, total: 200 }
+    ]);
+    expect(parsed.needs_review).toBe(false);
+  });
+
   it("marks missing quantity and low confidence for review", () => {
     const parsed = enforceTranscriptEvidence(
       {
