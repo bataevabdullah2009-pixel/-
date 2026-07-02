@@ -1,28 +1,55 @@
 # Реализованные функции
 
-Актуально на 30 июня 2026.
+## Telegram bot
 
-- Telegram voice сохраняется как `voice_records`, `sales`, `sale_items` через существующий pipeline.
-- Bot отвечает success только после Supabase RPC и read-back проверки sale/items.
-- Уверенные позиции сразу получают `processed` и входят в отчёт.
-- Сомнительные voice-записи получают `needs_review` и Telegram inline-кнопки `✅ Подтвердить` / `❌ Отмена` / `Открыть отчёт`.
-- Callback data короткие: `confirm:<record_id>` и `cancel:<record_id>`.
-- Confirm callback переводит sale/voice в `processed` и добавляет валидные items в выручку.
+- `/start` проверяет продавца и даёт WebApp доступ к отчёту.
+- Voice messages проходят download, audio prepare, STT, parser, Supabase persistence.
+- Уверенные продажи сохраняются как `processed`.
+- Сомнительные продажи сохраняются как `needs_review`.
+- Review-message содержит только `✅ Подтвердить` и `❌ Отмена`.
+- Callback data короткие: `confirm:<sale_id>` и `cancel:<sale_id>`.
+- Legacy callback prefix принимается для старых сообщений.
+- Confirm callback переводит sale/voice/items в `processed`.
 - Cancel callback переводит sale/voice в `cancelled` и soft-delete active items.
-- Callback flow идемпотентный: повторное нажатие не ломает данные.
-- WebApp поддерживает Telegram session и явно настроенный browser fallback.
-- Отчёт фильтруется по периоду и server-derived магазину.
-- Summary отчёта показывает выручку, количество товаров, записи и «Нужно проверить».
-- Отчёт показывает топ товаров, продажи за период и review-блок.
-- WebApp имеет вкладку «Проверка» для review-записей с parsed text, товарами, edit/delete и confirm/cancel.
-- Журнал записей показывает дату/время, продавца, текст, статус, сумму, аудио и раскрытие товаров.
-- Страница продавцов показывает активность, последнюю запись, количество записей и выручку за период.
-- Карточки товаров показывают название, количество, цену за единицу и сумму.
-- Inline-редактирование сохраняет `product_name`, `quantity`, `price` и пересчитывает `total`.
-- Edit processed item пересчитывает выручку.
-- Edit review item сохраняет поля, но не подтверждает voice-запись.
-- Soft delete выполняется через иконку корзины и локальное подтверждение.
-- Исключённые товары не показываются активными и могут быть восстановлены.
-- Пустой период и продажа без active items отображаются штатным empty state.
-- Нижняя навигация: «Отчёт», «Записи», «Проверка», «Продавцы».
-- Telegram diagnostics доступна только при `DEBUG_TELEGRAM_WEBAPP=true`.
+- Failed voice сохраняет `voice_records.status = failed`, если sale ещё не persisted.
+
+## WebApp
+
+- Нижняя навигация: `Отчёт`, `Записи`, `Продавцы`.
+- `Отчёт` показывает выручку, количество товаров, количество записей и review count.
+- Период фильтруется по сегодня, вчера, неделя, месяц, год и выбранная дата.
+- `Топ товаров` строится по active processed revenue.
+- `Продажи за период` показывает active processed item cards.
+- `Нужно проверить` показывает review items без confirm/cancel controls.
+- `Записи` показывает voice-sale журнал с распознанным текстом, статусом, суммой, audio link и раскрытием товаров.
+- `needs_review` запись помечается бейджем `Нужно подтвердить в Telegram`.
+- `Продавцы` показывает активность, количество записей и выручку за выбранный период.
+- `/debug-telegram` доступен только в development или при `DEBUG_TELEGRAM_WEBAPP=true`.
+
+## Sale item management
+
+- `✏️` открывает compact edit form.
+- Edit сохраняет товар, количество и цену в Supabase.
+- Edit пересчитывает item total.
+- Edit пересчитывает sale total и report totals.
+- `🗑` открывает confirm dialog `Удалить товар из отчёта?`.
+- Delete выполняет soft delete через `deleted_at`.
+- Deleted item исчезает из active report.
+- Deleted item не возвращается после page reload.
+- Restore остаётся для исторически soft-deleted rows в отдельном details block.
+
+## Revenue rules
+
+- В выручку входит только parent sale `processed`.
+- В выручку входит только item `processed`.
+- `needs_review`, `cancelled`, `failed`, `excluded` и deleted rows не входят.
+- Processed-looking item внутри `needs_review` sale не входит в выручку.
+
+## Tests
+
+- Parser/status regression tests.
+- Telegram keyboard regression tests.
+- Confirm/cancel service tests.
+- Report scope and shop isolation tests.
+- Update/delete patch and totals tests.
+- Telegram WebApp session tests.

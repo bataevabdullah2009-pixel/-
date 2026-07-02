@@ -263,13 +263,14 @@ describe("sales flow stabilization", () => {
     expect(button).not.toHaveProperty("url");
   });
 
-  it("uses short confirm and cancel callback buttons for a review sale", () => {
+  it("uses only short confirm and cancel callback buttons for a review sale", () => {
     const keyboard = createVoiceSaleReviewKeyboard(
       "550e8400-e29b-41d4-a716-446655440000",
       "https://voice-sales.example.com"
     );
     const buttons = keyboard.reply_markup.inline_keyboard[0];
 
+    expect(keyboard.reply_markup.inline_keyboard).toHaveLength(1);
     expect(buttons).toHaveLength(2);
     expect(buttons?.[0]).toMatchObject({
       text: "✅ Подтвердить",
@@ -278,10 +279,6 @@ describe("sales flow stabilization", () => {
     expect(buttons?.[1]).toMatchObject({
       text: "❌ Отмена",
       callback_data: "cancel:550e8400-e29b-41d4-a716-446655440000"
-    });
-    expect(keyboard.reply_markup.inline_keyboard[1]?.[0]).toMatchObject({
-      text: "Открыть отчёт",
-      web_app: { url: "https://voice-sales.example.com" }
     });
   });
 

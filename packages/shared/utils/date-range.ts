@@ -328,7 +328,7 @@ export function buildExcludedSaleItemPatch(
 }
 
 export function isRevenueSaleItemStatus(status: string) {
-  return status === "processed" || status === "confirmed";
+  return status === "processed";
 }
 
 export function buildSalesReport(items: SaleItem[]): ReportSummary {

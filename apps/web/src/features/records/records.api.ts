@@ -643,16 +643,20 @@ async function recalculateSale(admin: AdminClient, saleId: string, shopId: strin
   }
 
   const activeItems = saleItems ?? [];
-  const totalAmount = Number(
+  const currentStatus = String(context.data.status);
+  const revenueTotal = Number(
     activeItems
       .filter((item: any) => isRevenueSaleItemStatus(String(item.status)) && item.total !== null)
       .reduce((sum: number, item: any) => sum + Number(item.total), 0)
       .toFixed(2)
   );
-  const saleStatus = activeItems.length > 0 &&
-    activeItems.every((item: any) => isRevenueSaleItemStatus(String(item.status)))
-    ? "processed"
-    : "needs_review";
+  const totalAmount = currentStatus === "cancelled" || currentStatus === "failed" ? 0 : revenueTotal;
+  const hasReviewItems = activeItems.some((item: any) => !isRevenueSaleItemStatus(String(item.status)));
+  const saleStatus = currentStatus === "cancelled" || currentStatus === "failed"
+    ? currentStatus
+    : currentStatus === "needs_review" || hasReviewItems
+      ? "needs_review"
+      : "processed";
 
   const { error: saleUpdateError } = await admin
     .from("sales")

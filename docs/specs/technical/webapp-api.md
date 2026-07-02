@@ -4,9 +4,9 @@
 
 ## Цель
 
-Зафиксировать серверный контракт WebApp для чтения отчёта, журнала, проверки, продавцов и мутаций `sale_items`.
+Зафиксировать серверный контракт WebApp для чтения отчёта, журнала, продавцов и мутаций `sale_items`.
 
-WebApp подтверждает или отменяет сомнительную voice-запись только во вкладке «Проверка» через server-side actions.
+WebApp не подтверждает и не отменяет сомнительную voice-запись. Review decision выполняется Telegram callback flow.
 
 Telegram confirm/cancel остаётся быстрым flow под сообщением бота.
 
@@ -18,7 +18,7 @@ Telegram confirm/cancel остаётся быстрым flow под сообще
 4. Records API проверяет item -> sale -> shop.
 5. Supabase service role доступен только server-side.
 6. UI не является security boundary.
-7. Review confirm/cancel повторно проверяет sale -> shop.
+7. Review visibility не является доверенной границей; любые решения выполняются в Telegram callback.
 
 ## `getReport(filters)`
 
@@ -83,15 +83,15 @@ Telegram confirm/cancel остаётся быстрым flow под сообще
 
 Records не показывает пустое состояние при auth/DB error.
 
-## Review records
+## Review visibility
 
-Вкладка «Проверка» использует `getRecords(filters)`, затем показывает только:
+Report и records показывают review state через данные `getReport(filters)` и `getRecords(filters)`:
 
 1. `sales.status = needs_review`;
 2. records с `sale_items.status = needs_review`;
 3. legacy `needs_price`.
 
-Confirm/cancel не принимает `shop_id`.
+WebApp не предоставляет confirm/cancel controls и не принимает `shop_id`.
 
 ## `getSellers()`
 
@@ -217,29 +217,18 @@ Confirm/cancel не принимает `shop_id`.
 
 ## Review decision actions
 
-`confirmReviewSaleAction(formData)`:
+WebApp review decision actions are not part of the current public contract.
 
-1. Принимает `saleId`.
-2. Вызывает `requireOwner()`.
-3. Читает sale по `saleId` и server-derived `shop_id`.
-4. Проверяет активные items.
-5. Переводит sale/voice/items в `processed`.
-6. Revalidate `/daily-report`, `/records`, `/review`, `/sellers`.
-
-`cancelReviewSaleAction(formData)`:
-
-1. Принимает `saleId`.
-2. Вызывает `requireOwner()`.
-3. Читает sale по `saleId` и server-derived `shop_id`.
-4. Soft-delete active items.
-5. Переводит sale/voice в `cancelled`.
-6. Revalidate `/daily-report`, `/records`, `/review`, `/sellers`.
+1. Telegram `confirm:<sale_id>` confirms review voice sale.
+2. Telegram `cancel:<sale_id>` cancels review voice sale.
+3. WebApp updates its state after refresh/revalidation.
+4. `/review` redirects to `/records` for old links.
 
 ## Error contract
 
 1. Server logs получает technical reason.
 2. UI получает стабильное русскоязычное сообщение.
-3. Internal Supabase message не отдаётся напрямую для update/delete/review actions.
+3. Internal Supabase message не отдаётся напрямую для update/delete actions.
 4. Mutations возвращают `statusCode`/`code`: 401 session, 403 access, 404 not found, 422 invalid data, 500 server error.
 5. Auth errors отображаются отдельно.
 6. DB loading error не превращается в empty state.

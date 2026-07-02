@@ -383,9 +383,9 @@ main {
   min-width: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-  padding: 8px 0;
+  padding: 6px 0;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
@@ -393,8 +393,17 @@ main {
 .segmentedControl {
   min-width: 0;
   display: flex;
-  gap: 7px;
+  gap: 6px;
   flex-wrap: wrap;
+}
+
+.segmentedControl a {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  padding: 7px 10px;
 }
 
 .inlineForm {
@@ -403,6 +412,12 @@ main {
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.filterBlock .inlineForm input,
+.filterBlock .inlineForm button {
+  min-height: 36px;
+  padding-block: 7px;
 }
 
 .tableShell {
@@ -1827,7 +1842,7 @@ th {
 }
 
 .mobileNav {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border-color: var(--line);
   background: rgba(17, 24, 39, 0.96);
   box-shadow: 0 -14px 32px rgba(0, 0, 0, 0.34);

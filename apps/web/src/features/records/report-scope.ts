@@ -31,6 +31,7 @@ export function scopeReportRows(
   options: { includeInactiveSales?: boolean } = {}
 ) {
   const saleCreatedAt = new Map<string, string>();
+  const saleStatusById = new Map<string, string>();
 
   for (const sale of sales) {
     if (String(sale.shop_id) !== shopId) {
@@ -39,16 +40,24 @@ export function scopeReportRows(
     if (!options.includeInactiveSales && (sale.status === "cancelled" || sale.status === "failed")) {
       continue;
     }
-    saleCreatedAt.set(String(sale.id), String(sale.created_at));
+    const saleId = String(sale.id);
+    saleCreatedAt.set(saleId, String(sale.created_at));
+    saleStatusById.set(saleId, sale.status ? String(sale.status) : "processed");
   }
 
   const items: SaleItem[] = saleItems.flatMap((item) => {
-    const createdAt = saleCreatedAt.get(String(item.sale_id));
+    const saleId = String(item.sale_id);
+    const createdAt = saleCreatedAt.get(saleId);
     if (!createdAt) return [];
+    const saleStatus = saleStatusById.get(saleId) ?? "processed";
+    const itemStatus = String(item.status);
+    const activeStatus = saleStatus === "processed" || itemStatus === "excluded"
+      ? itemStatus
+      : "needs_review";
 
     return [{
       id: String(item.id),
-      sale_id: String(item.sale_id),
+      sale_id: saleId,
       product_id: item.product_id ? String(item.product_id) : undefined,
       product_name: String(item.product_name),
       quantity: Number(item.quantity),
@@ -56,7 +65,7 @@ export function scopeReportRows(
       price: item.price === null ? null : Number(item.price),
       total: item.total === null ? null : Number(item.total),
       confidence: Number(item.confidence),
-      status: String(item.status),
+      status: activeStatus,
       created_at: createdAt,
       updated_at: item.updated_at ? String(item.updated_at) : undefined,
       deleted_at: item.deleted_at ? String(item.deleted_at) : null,

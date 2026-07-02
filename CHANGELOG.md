@@ -1,105 +1,78 @@
-# Changelog
+# CHANGELOG
 
-## 2026-06-30 — Release stabilization: callbacks, review page and premium WebApp
+## 2026-07-02 - Product handoff polish
 
-- Telegram review-message теперь использует короткие callback data `confirm:<record_id>` / `cancel:<record_id>` и добавляет `Открыть отчёт` как `web_app` кнопку.
-- Callback handler принимает новые короткие data и legacy `voice_sale_review:<action>:<id>`, всегда отвечает `answerCbQuery`, логирует `callback_received` и `callback_action` с `record_id`, `telegram_user_id`, `old_status`, `new_status`.
-- Confirm/cancel защищены shop/seller scope; чужой seller/shop не может изменить review-запись.
-- Добавлена вкладка WebApp «Проверка» для needs_review записей: parsed text, товары, edit/delete, confirm/cancel в рамках server-derived магазина.
-- WebApp редизайн переведён на dark premium dashboard: graphite/navy surfaces, amber accent, KPI, sparkline продаж по дням, топ товаров, последние продажи и 4-tab bottom nav.
-- Карточка товара использует карандаш/корзину, edit mode с «Сохранить/Отмена» и soft-delete confirm «Исключить товар из отчёта?».
-- Mutation results получают `statusCode`/`code` для 401/403/404/422/500 сценариев, а UI показывает стабильные русские сообщения.
-- Добавлена idempotent migration `20260630153000_ensure_sale_item_soft_delete_columns.sql`, чтобы live-схема гарантированно имела `sale_items.deleted_at` и soft-delete metadata.
-- Экран продавцов показывает последнюю активность за выбранный период.
-- Regression tests обновлены под короткие callback data, WebApp report rules, cancelled records и cross-shop callback denial.
-- Проверено во время разработки: `npm.cmd run test` — 8 файлов, 92 теста passed; `npm.cmd run build` — bot/web/shared passed.
+### Telegram
 
-## 2026-06-30 — Telegram confirm/cancel и продуктовый WebApp
+- Review voice-message теперь содержит только две inline-кнопки: `✅ Подтвердить` и `❌ Отмена`.
+- Кнопка `Открыть отчёт` удалена из сообщения сомнительной записи.
+- `/start`, reply keyboard и menu button сохраняют доступ к WebApp отчёту.
+- Callback data остаются короткими: `confirm:<sale_id>` и `cancel:<sale_id>`.
+- Legacy callback prefix `voice_sale_review:` остаётся совместимым для старых сообщений.
+- Confirm/cancel callbacks остаются идемпотентными.
 
-- Сомнительные voice-записи теперь получают только две Telegram inline-кнопки: `✅ Подтвердить` и `❌ Отмена`.
-- Review-message больше не содержит кнопку «Открыть отчёт» и не смешивает отчёт с confirm/cancel flow.
-- Confirm callback переводит sale/voice в `processed`, валидные active items — в `processed`, и добавляет их в выручку.
-- Cancel callback переводит sale/voice в `cancelled`, soft-delete active items и оставляет выручку нулевой.
-- Callback flow идемпотентный: повторное нажатие не создаёт дубли и не откатывает уже принятое решение.
-- Добавлен `cancelled` в shared types/schema и Supabase constraints через migration `20260630120000_add_cancelled_voice_sale_status.sql`.
-- WebApp убрал legacy item-confirm path: review-запись больше не подтверждается из карточки.
-- WebApp edit review item сохраняет поля, но item остаётся `needs_review` до Telegram confirm.
-- Экран отчёта перестроен под продуктовый мобильный UI: 4 метрики, компактные фильтры, топ товаров, продажи за период и review-блок.
-- Экран записей показывает раскрытие «Товары» и бейдж «Нужно подтвердить в Telegram».
-- Экран продавцов показывает активность, количество записей и выручку за выбранный период.
-- Обновлены specs, features, plans, roadmap, AGENTS и Codex skill под фактическое состояние.
-- Проверено: `npm.cmd run lint` — passed; `npm.cmd run test` — 8 файлов, 90 тестов passed; `npm.cmd run build` — bot/web/shared passed; `npm.cmd run web:build` — passed.
+### WebApp
 
-## 2026-06-25 — WebApp: карточки товаров и надёжные update/delete
+- Нижняя навигация приведена к трём разделам: `Отчёт`, `Записи`, `Продавцы`.
+- Пользовательский `/review` больше не является экраном подтверждения; старый route перенаправляет на `/records`.
+- Экран отчёта получил продуктовый заголовок `Голосовой журнал продаж` и подзаголовок `Сводка магазина`.
+- Review-состояние в WebApp показывается как `Нужно подтвердить в Telegram`.
+- Карточки товаров оставлены компактными: обычный режим + `✏️` edit + `🗑` delete.
+- Delete wording изменён на `Удалить товар из отчёта?`, `Удалить`, `Отмена`.
+- Фильтры периода уплотнены для мобильного интерфейса.
+- Telegram diagnostics остаются только на `/debug-telegram` в development или при `DEBUG_TELEGRAM_WEBAPP=true`.
 
-- Постоянно раскрытая форма заменена мобильной карточкой с названием, количеством, ценой за единицу, суммой, карандашом и корзиной.
-- Update/delete Server Actions возвращают локальное состояние вместо полного redirect; pending/error не очищают карточку.
-- Update читает фактически сохранённую строку Supabase и пересчитывает `sales.total_amount`.
-- Delete выполняет soft delete и локальное подтверждение «Удалить товар из отчёта?».
-- Активный список скрывает строки с `deleted_at` и defensive legacy `status = excluded`.
-- Добавлены empty state, компактные фильтры и suppress hydration warning для CSS variables Telegram SDK.
-- Live schema подтвердила реальные поля `product_name`, `quantity`, `price`, `total`, `status`, `deleted_at`, `updated_at`; migration не потребовалась.
-- Live WebApp проверил quantity/price update, reload persistence, delete и restore. Исходные данные тестовой позиции восстановлены.
-- Voice pipeline, STT, parser, webhook, env-файлы и сохранение голосовых продаж не изменялись.
-- Проверено: `npm run lint` — passed; `npm run test` — 8 файлов, 87 тестов passed; `npm run build` — bot/web/shared passed.
+### Data and revenue
 
-## 2026-06-24 — P0 production verification hardening
+- Report scope больше не считает processed-looking items из parent sale со статусом `needs_review`.
+- Revenue status predicate приведён к каноническому `processed`.
+- Пересчёт продажи после update/delete больше не переводит processed sale в `needs_review`, если все active items удалены.
+- `cancelled` и `failed` sale не получают выручку при пересчёте.
 
-- Сборка Telegram data-check-string переведена на детерминированную ordinal-сортировку ключей; исключается только `hash`.
-- Добавлен фиксированный Telegram Mini App fixture с полями `signature`, `photo_url`, `chat_instance` и проверкой tamper → `401`.
-- Auth API теперь логирует безопасный `initDataLength`, не выводя raw initData или токены.
-- Live Supabase/Vercel smoke подтвердил для обоих активных seller один `shop_id`, `200` auth, session cookie и ненулевой report (`4 sales / 4 sale_items` за 24 июня 2026, Europe/Moscow).
-- Voice/STT/parser/save pipeline и схема базы не изменялись.
+### Tests
 
-## 2026-06-24 — P0: Telegram WebApp session и shop resolver
+- Обновлён regression test Telegram review keyboard: ровно две кнопки.
+- Добавлен regression test, что `needs_review` sale не входит в выручку даже при валидных item fields.
+- Локально пройден `npm.cmd run test`: 8 test files, 93 tests.
 
-- Исправлена HMAC-проверка актуального Telegram `initData`: data-check-string теперь исключает только `hash` и сохраняет поле `signature`.
-- Production API получал `initDataLength: 586`, но возвращал `401 TELEGRAM_INIT_DATA_INVALID` до чтения Telegram user id.
-- Клиент проверяет `Telegram.WebApp`, raw `initData` и `initDataUnsafe.user.id`, отправляет raw строку в `x-telegram-init-data` и показывает явную auth ошибку вместо ложного нуля.
-- Сервер использует только `TELEGRAM_BOT_TOKEN`; безопасные причины отказа разделены на missing initData, invalid hash, expired auth date, missing bot token и user not linked.
-- Seller определяется по Telegram user id. При наличии active owner binding отсутствующий seller создаётся в том же shop.
-- Report читает `sales` по server-derived `shop_id`, затем `sale_items` только по найденным sale IDs; log содержит Telegram user, seller, shop, counts, период и error reason.
-- Records больше не показывает «Записей нет» при auth/DB ошибке, а report не выводит нулевые метрики как успешный результат.
-- «Диагностика Telegram» и `/debug-telegram` скрыты в production без `DEBUG_TELEGRAM_WEBAPP=true`.
-- Voice/STT/parser/save pipeline не изменялся.
-- Проверено: `npm run lint` — passed; `npm run test` — 8 files, 79 tests passed; `npm run build` — bot/web/shared passed.
-- Read-only Supabase check подтвердил совпадение bot sale `shop_id` и WebApp seller `shop_id`, а также наличие `sale_items`.
+### Docs
 
-## 2026-06-24 — P0: подтверждённое сохранение и корректный отчёт
+- Обновлены README, AGENTS, overview, specs, features, plans, roadmap, architecture, rules и локальный Codex skill.
+- Удалены актуальные противоречия про WebApp review-confirm и третью Telegram-кнопку в review-message.
 
-- Устранён ложный success: бот подтверждает запись только после RPC и read-back проверки `sales` и точного количества `sale_items`.
-- Удалён неатомарный server fallback insert при отсутствии `save_voice_sale`; отсутствие RPC теперь является ошибкой сохранения.
-- Supabase ошибки логируются с реальными `code/message/details/hint`, без токенов и ключей.
-- Pipeline logs содержат `telegramMessageId`, `telegramUserId`, `sellerId`, `shopId`, `sttText`, parsed items, sale id, item count, final status и error message.
-- STT явно получает русский язык и контекст продажи; evidence validator использует совпадающий очищенный русский текст при латинской транслитерации.
-- Полная уверенная позиция больше не остаётся в review только из-за общего parser-level флага.
-- Telegram WebApp выбирает seller shop раньше owner shop; fallback seller проверяется против `DEFAULT_SHOP_ID`.
-- Report учитывает готовые позиции, показывает review отдельно и использует московские календарные границы.
-- Save/confirm/exclude/restore/reset проверяют фактически изменённые строки; сбой audit log не маскируется как сбой основной мутации.
-- Добавлена миграция `20260623221651_repair_complete_single_item_sales.sql` для старых однозначных записей.
-- Добавлены regression tests parser/save/read-back/report/review/shop/timezone/STT.
-- Проверено: `npm run lint` — passed; `npm run test` — 8 files, 72 tests passed; `npm run build` — bot/web/shared passed.
-- Live Supabase read-back за 24 июня 2026 (`Europe/Moscow`) показывает `Ники`, 4 × 100, выручка 400.
+## 2026-06-30 - Release stabilization, superseded details
 
-## 2026-06-23 — Web App fallback и автоготовые voice-продажи
+- Ветка стабилизации добавляла короткие callback data, WebApp review screen и расширенные проверки update/delete.
+- Текущий контракт от 2026-07-02 supersedes пользовательский `/review` screen и третью кнопку `Открыть отчёт` в review-message.
+- Актуальные правила см. в `README.md`, `AGENTS.md` и `docs/specs`.
 
-- Убрана жёсткая клиентская блокировка Mini App без Telegram initData: `TelegramAuthBootstrap` больше не заменяет интерфейс красной ошибкой.
-- Добавлен единый client auth helper `getAppAuthContext()` и общий `apiFetch()`, который отправляет `x-app-mode` и добавляет `x-telegram-init-data` только в Telegram mode.
-- Добавлен server helper `resolveRequestContext()`: Telegram mode валидирует initData и ищет owner/seller, fallback mode использует только server env `ALLOW_WEBAPP_FALLBACK`, `DEFAULT_SHOP_ID`, `DEFAULT_SELLER_ID`.
-- `/api/auth/telegram` переведён на общий helper; fallback не устанавливает Telegram cookie и не принимает `shop_id` от клиента.
-- Отсутствие initData больше не превращает отчёт в блокирующую ошибку. Если fallback выключен, auth endpoint может вернуть 401, а UI остаётся доступным.
-- Voice persistence больше не переводит каждую новую позицию в review. Полные позиции с товаром, количеством, ценой и `confidence >= 0.80` сохраняются как `processed`.
-- Отсутствующая цена, отсутствующее количество, низкая уверенность, странный текст или частично неполная multi-item продажа дают `needs_review`.
-- Бот отвечает `✅ Запись сохранена: ...` для готовых продаж и предупреждением с «Распознано: ...» для проверки.
-- Ручное сохранение валидных товара, количества и цены сразу переводит позицию в `processed`, пересчитывает sale и отчёт.
-- UI-статусы сведены к пользовательским labels: «Готово», «Нужно проверить», «Исключено».
-- Soft delete через `deleted_at` оставлен единым механизмом исключения и восстановления.
-- Обновлены README, AGENTS, specs, features, rules, roadmap, active/completed plans и Codex skill.
-- Проверено: `npm.cmd run test` — 62 tests passed. `lint` и `build` выполняются перед коммитом.
+## 2026-06-25 - WebApp persistence hardening
 
-## Предыдущая история
+- Укреплены update/delete server actions для sale items.
+- Добавлен soft delete через `deleted_at`.
+- Report начал отделять active и deleted items.
+- Добавлены regression tests для report totals after update/delete.
 
-- 2026-06-22: стабилизированы Telegram WebApp initData, reply/inline/menu `web_app` buttons, debug route и cookie bootstrap.
-- 2026-06-21: добавлена проверка production Web App URL и webhook diagnostics.
-- 2026-06-20: добавлены soft delete fields, `owners`, `save_voice_sale`, shop isolation, report calculation, records journal и regression tests.
-- 2026-06-16: создан базовый Telegram bot, voice download/conversion, STT/LLM parsing, Supabase schema/storage, webhook и mobile Web App.
+## 2026-06-20 - Sales flow stabilization
+
+- Уверенные voice-записи сохраняются как `processed`.
+- Неполные или низкоуверенные распознавания сохраняются как `needs_review`.
+- Добавлены audit logs для ключевых этапов обработки.
+- Сохранение voice sale стало проверять read-back identifiers.
+
+## 2026-06-18 - Soft delete foundation
+
+- Добавлены `sale_items.deleted_at`, `deleted_reason`, `deleted_previous_status`.
+- Исключённые товары перестали попадать в active report.
+- Restore сохраняет previous status.
+
+## 2026-06-17 - Parser diagnostics
+
+- Добавлены parser JSON diagnostics.
+- STT/LLM fallback переводит запись в review вместо тихого failure, если продажу можно сохранить для проверки.
+
+## 2026-06-16 - Initial product baseline
+
+- Создан Telegram bot voice pipeline.
+- Созданы Supabase таблицы `shops`, `sellers`, `voice_records`, `sales`, `sale_items`, `products`, `audit_logs`.
+- Добавлен Next.js WebApp с отчётом и журналом записей.

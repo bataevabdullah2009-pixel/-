@@ -35,7 +35,6 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             <nav className="desktopNav" aria-label="Основная навигация">
               <Link href="/daily-report">Отчёт</Link>
               <Link href="/records">Записи</Link>
-              <Link href="/review">Проверка</Link>
               <Link href="/sellers">Продавцы</Link>
             </nav>
           </header>

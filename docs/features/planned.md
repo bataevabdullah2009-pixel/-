@@ -1,20 +1,24 @@
-# Планируемые функции
+# Запланированные функции
 
-Статус ниже не означает готовность.
+## Перед сдачей
 
-## Частично
+- Production smoke с реальным Telegram bot и тестовой Supabase БД.
+- Проверка реального audio playback из Supabase Storage.
+- Проверка Vercel logs после deploy: webhook callbacks, permission errors, missing columns.
+- Ручная проверка шести сценариев из README product smoke.
 
-- Автоматизированный production smoke после deploy: серверные проверки существуют, запуск из реального Telegram-клиента пока ручной.
-- Наблюдаемость WebApp mutations: `statusCode`/`code` и server logs есть, отдельные метрики latency/error rate не реализованы.
-- Визуальная регрессия WebApp: CSS уплотнён для мобильного UI, но нет автоматических screenshot-сравнений.
+## После сдачи
 
-## Запланировано
+- Роль владельца магазина с отдельной страницей управления продавцами.
+- Экспорт отчёта в CSV/XLSX.
+- Фильтр по товару в журнале записей.
+- Восстановление soft-deleted items через отдельный audit-safe экран.
+- Улучшенный мониторинг parser confidence и STT failures.
 
-- Удобное управление seller/owner bindings из панели.
-- E2E-тесты WebApp с отдельной тестовой Supabase средой.
-- E2E Telegram/WebApp сценарий confirm/cancel на тестовом боте и тестовой БД.
-- Улучшение доступности и визуальная регрессия для нескольких мобильных viewport.
+## Не планируется в текущем scope
 
-## Не планируется в текущем продукте
-
-CRM, склад, касса, платежи, клиентская база и массовая переработка voice pipeline.
+- Подтверждение сомнительных voice-записей в WebApp.
+- Переписывание STT.
+- Переписывание parser.
+- Замена Supabase persistence.
+- Полный desktop admin dashboard.

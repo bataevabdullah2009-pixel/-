@@ -1,11 +1,17 @@
-# Планы
+# Plans
 
-Текущая работа находится в `active`, завершённые результаты — в `completed`.
+Планы фиксируют завершённые этапы продукта и текущий backlog.
 
-Актуальное состояние на 2026-06-30: WebApp валидирует raw Telegram initData, использует seller shop для report/records/sellers, показывает auth/DB ошибки, поддерживает inline update/soft delete товарных карточек, а сомнительные voice-записи подтверждаются или отменяются Telegram inline-кнопками.
+## Current status
 
-Production smoke с session cookie и live `sales/sale_items` завершён в [плане 008](./completed/008-p0-production-verification-hardening.md).
+Активного плана разработки нет. Текущий handoff polish завершён в [012 - Product handoff polish](./completed/012-product-handoff-polish.md).
 
-Продуктовая доработка карточек и сохранения товара завершена в [плане 009](./completed/009-webapp-sale-item-product-polish.md).
+## Completed
 
-Актуальная стабилизация callback/review/premium WebApp завершена в [плане 011](./completed/011-release-stabilization-callbacks-review-premium-webapp.md). Исторический Telegram confirm/cancel и продуктовый WebApp polish описан в [плане 010](./completed/010-telegram-confirmation-and-product-webapp-polish.md).
+Список завершённых этапов находится в [completed/README.md](./completed/README.md).
+
+## Rules
+
+- Исторические планы могут описывать решения, которые позже superseded.
+- Актуальное поведение всегда проверять по `README.md`, `AGENTS.md` и `docs/specs`.
+- Новый план добавлять только для реальной работы, не для общих идей.

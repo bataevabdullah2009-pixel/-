@@ -1,146 +1,109 @@
 # Голосовой журнал продаж
 
-«Голосовой журнал продаж» — MVP-продукт для малого бизнеса. Продавец диктует продажу в Telegram, бот распознаёт товар, количество и цену, сохраняет данные в Supabase, а владелец смотрит отчёт, записи, проверку и продавцов в мобильном WebApp.
+Telegram bot + Telegram WebApp для магазина, где продавец надиктовывает продажи голосом, а система сохраняет распознанные товары, цены, количество и выручку в Supabase.
 
-## Как работает
+## Текущая модель продукта
 
 ```text
-Telegram voice
-  -> download/audio preparation
-  -> STT
-  -> LLM parser + deterministic evidence rules
-  -> Supabase voice_records/sales/sale_items
-  -> Telegram confirm/cancel or WebApp review for review sales
-  -> Telegram Mini App или browser fallback
-  -> отчёт, записи, продавцы, edit/delete товаров
+Продавец -> Telegram voice
+  -> bot downloads audio
+  -> audio is prepared for STT
+  -> STT returns Russian transcript
+  -> LLM/parser returns sale items
+  -> Supabase saves voice_records, sales, sale_items
+  -> Telegram sends success or review decision buttons
+  -> WebApp shows report, records and sellers
 ```
 
-Уверенная запись сразу получает `processed` и входит в выручку. Сомнительная запись получает `needs_review`, не входит в выручку и решается кнопками `✅ Подтвердить`, `❌ Отмена` и `Открыть отчёт`. Callback data короткие: `confirm:<record_id>` и `cancel:<record_id>`. Отмена переводит запись в `cancelled` и soft-delete её активные товары.
+Уверенная запись получает `processed`, сразу входит в выручку и получает обычный ответ бота без inline-кнопок.
 
-WebApp имеет отдельную вкладку «Проверка». Внутри server-derived магазина пользователь может исправить товары и явно подтвердить или отменить review-запись. Редактирование товара сохраняет поля; если родительская запись ещё `needs_review`, позиция не входит в выручку до confirm.
+Сомнительная запись получает `needs_review`, не входит в выручку и подтверждается только Telegram inline-кнопками `✅ Подтвердить` и `❌ Отмена`. В сообщении сомнительной записи нет кнопки `Открыть отчёт`.
 
-## Роли
-
-- `seller` — отправляет voice-продажи и может подтвердить/отменить свою сомнительную запись в Telegram.
-- `owner` — открывает WebApp, смотрит отчёт, записи, проверку, продавцов, редактирует и исключает товары.
-- `system` — валидирует Telegram, сохраняет Supabase rows, пересчитывает отчёт и пишет безопасные logs.
-
-## Статусы
-
-- `processed` — запись подтверждена или уверенно распознана, входит в отчёт.
-- `needs_review` — запись сохранена, но ждёт решения в Telegram.
-- `cancelled` — пользователь отменил запись, она не входит в отчёт.
-- `failed` — voice pipeline не смог завершить обработку.
-- `sale_items.status = excluded` + `deleted_at` — товар исключён через soft delete.
+Отмена переводит запись в `cancelled`, soft-delete active items и оставляет запись вне выручки. `failed` используется для voice pipeline failures и не входит в отчёт.
 
 ## WebApp
 
-Нижняя навигация:
+Нижняя навигация содержит три раздела:
 
-- Отчёт.
-- Записи.
-- Проверка.
-- Продавцы.
+- `Отчёт`;
+- `Записи`;
+- `Продавцы`.
 
-Отчёт выполнен в dark premium стиле и показывает название магазина, период, refresh, четыре метрики, мини-график продаж по дням, топ товаров и последние продажи.
+Экран `Отчёт` показывает:
 
-Журнал записей показывает дату/время, продавца, распознанный текст, статус, сумму, кнопку прослушивания аудио и раскрытие «Товары».
+- название продукта `Голосовой журнал продаж`;
+- подзаголовок `Сводка магазина`;
+- карточки `Выручка`, `Количество товаров`, `Записей`, `Нужно проверить`;
+- компактный выбор периода: сегодня, вчера, неделя, месяц, год, дата;
+- топ товаров;
+- продажи за период;
+- блок `Нужно проверить`, если есть active `needs_review` данные.
 
-Страница «Проверка» показывает сомнительные записи, parsed text, товары и действия confirm/cancel/edit.
+Экран `Записи` показывает voice-sale журнал: дата, продавец, распознанный текст, статус, сумма, аудио при наличии и раскрытие товаров. Для `needs_review` показывается бейдж `Нужно подтвердить в Telegram`.
 
-Страница продавцов показывает активность, последнюю запись, количество записей и выручку за выбранный период.
+Экран `Продавцы` показывает имя, активность, количество записей и выручку за выбранный период.
 
-## Auth и безопасность
+## Редактирование товаров
 
-`shop_id` никогда не приходит от клиента. Сервер определяет магазин по валидному raw Telegram `initData` либо через явно включённый server-side fallback.
+Карточка товара в WebApp имеет компактный обычный режим:
 
-Telegram WebApp HMAC:
-
-- использует `TELEGRAM_BOT_TOKEN`;
-- исключает только `hash`;
-- сохраняет `signature`;
-- не использует `TELEGRAM_WEBHOOK_SECRET`.
-
-`SUPABASE_SERVICE_ROLE_KEY` используется только сервером.
-
-Production diagnostics доступны только при `DEBUG_TELEGRAM_WEBAPP=true`.
-
-## Локальный запуск
-
-1. Установите зависимости:
-
-   ```bash
-   npm install
-   ```
-
-2. Скопируйте `.env.example` в `.env.local` и заполните значения.
-3. Примените Supabase migrations.
-4. Создайте shop, owner и seller records с корректными Telegram id.
-5. Запустите:
-
-   ```bash
-   npm run dev
-   ```
-
-Отдельно доступны:
-
-```bash
-npm run bot:dev
-npm run web:dev
+```text
+Сникерс
+5 шт × 100 ₽
+500 ₽                         ✏️ 🗑
 ```
 
-## Переменные окружения
+Карандаш открывает compact edit mode с полями `Товар`, `Количество`, `Цена, ₽`, кнопками `Сохранить` и `Отмена`.
 
-| Переменная | Назначение |
-| --- | --- |
-| `TELEGRAM_BOT_TOKEN` | Токен бота и секрет HMAC для WebApp initData. |
-| `TELEGRAM_WEBHOOK_SECRET` | Только secret header Telegram webhook. |
-| `NEXT_PUBLIC_APP_URL` | Публичный HTTPS URL WebApp. |
-| `PUBLIC_WEBHOOK_URL` | Необязательная отдельная база или полный URL webhook. |
-| `SUPABASE_URL` | URL проекта Supabase. |
-| `SUPABASE_ANON_KEY` | Public key Supabase. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Только server-side bot/WebApp. |
-| `SUPABASE_STORAGE_BUCKET` | Приватный bucket voice records. |
-| `STT_API_KEY`, `STT_API_URL`, `STT_MODEL` | STT provider. |
-| `LLM_API_KEY`, `LLM_API_URL`, `LLM_MODEL` | Parser provider. |
-| `DEMO_MODE` | Явно включает demo behavior для разработки. |
-| `DEFAULT_SHOP_NAME` | Demo shop при `DEMO_MODE=true`. |
-| `ALLOW_WEBAPP_FALLBACK` | Разрешает browser fallback. |
-| `DEFAULT_SHOP_ID` | Shop id для fallback, только server-side. |
-| `DEFAULT_SELLER_ID` | Seller id для fallback, только server-side. |
-| `DEBUG_TELEGRAM_WEBAPP` | Включает diagnostics route и кнопку. |
+Корзина открывает локальный confirm dialog `Удалить товар из отчёта?` с действиями `Удалить` и `Отмена`.
 
-## Supabase migrations
+Сохранение и удаление выполняются через server actions, которые используют Supabase admin client, проверяют shop access через Telegram WebApp session и пересчитывают `sales.total_amount`.
 
-Migrations создают shops, sellers, owners, products, voice_records, sales, sale_items, audit_logs, Storage bucket, soft-delete поля и RPC `save_voice_sale`.
+## Выручка
 
-Актуальная схема допускает `cancelled` для `sales` и `voice_records`. Товары исключаются только через `sale_items.status = excluded` + `sale_items.deleted_at`, не через физический delete. Migration `20260630153000_ensure_sale_item_soft_delete_columns.sql` повторно гарантирует наличие soft-delete колонок на live-схеме.
+В выручку входят только позиции, которые одновременно удовлетворяют условиям:
 
-## Проверка продукта
+- родительская `sales.status = processed`;
+- `sale_items.status = processed`;
+- `sale_items.deleted_at is null`;
+- `sale_items.price is not null`;
+- `sale_items.total is not null`;
+- количество и цена валидны.
 
-1. Уверенная запись: `Сникерс, 5 штук по 100 рублей`.
-   - status `processed`;
-   - входит в выручку;
-   - видна в WebApp.
-2. Сомнительная запись:
-   - status `needs_review`;
-   - не входит в выручку;
-   - под сообщением есть `✅ Подтвердить`, `❌ Отмена` и `Открыть отчёт`.
-3. Confirm:
-   - sale становится `processed`;
-   - товары входят в отчёт.
-4. Cancel:
-   - sale становится `cancelled`;
-   - товары soft-deleted и не входят в отчёт.
-5. Edit товара:
-   - сохраняет `product_name`, `quantity`, `price`;
-   - пересчитывает `total`;
-   - processed sale пересчитывает выручку.
-6. Delete товара:
-   - soft-delete row;
-   - после reload row не возвращается в active list.
+Не входят:
 
-## Качество
+- `needs_review`;
+- `cancelled`;
+- `failed`;
+- `excluded`;
+- soft-deleted rows;
+- processed-looking items внутри `needs_review` sale.
+
+## Telegram bot
+
+Основные команды и сценарии:
+
+- `/start` регистрирует или проверяет продавца, выдаёт WebApp кнопку отчёта и persistent menu button;
+- voice message запускает pipeline распознавания;
+- уверенная запись отвечает `✅ Запись сохранена: ...`;
+- сомнительная запись отвечает `⚠️ Запись сохранена, но нужно подтвердить товары и цены. Распознано: ...`;
+- `✅ Подтвердить` переводит sale/voice/items в `processed`;
+- `❌ Отмена` переводит sale/voice в `cancelled` и soft-delete active items.
+
+Callback data:
+
+```text
+confirm:<sale_id>
+cancel:<sale_id>
+```
+
+Legacy callback prefix `voice_sale_review:` принимается для уже отправленных старых сообщений, но новые сообщения используют короткий формат.
+
+## Diagnostics
+
+Telegram diagnostics доступны только через `/debug-telegram` в development или при `DEBUG_TELEGRAM_WEBAPP=true` в production. Основной пользовательский сценарий не показывает диагностические кнопки.
+
+## Команды
 
 ```bash
 npm run lint
@@ -149,20 +112,40 @@ npm run build
 npm run web:build
 ```
 
-Не заявляйте, что проект работает, если эти команды или внешние smoke checks не запускались.
+В PowerShell на машине с заблокированным `npm.ps1` используйте `npm.cmd`:
+
+```bash
+npm.cmd run test
+```
+
+## Структура
+
+- `apps/bot` - Telegram bot, voice pipeline, callback handlers.
+- `apps/web` - Next.js WebApp, report, records, sellers, server actions.
+- `packages/shared` - общие типы, parser/report utilities, date range.
+- `supabase/migrations` - schema migrations.
+- `docs/specs` - product/technical specs.
+- `codex/skills/voice-sales-log/SKILL.md` - локальные правила работы агента с проектом.
 
 ## Документация
 
-Карта находится в [`docs/INDEX.md`](./docs/INDEX.md).
+Перед изменениями читать:
 
-Главный spec: [`docs/specs/global.md`](./docs/specs/global.md).
+- [AGENTS.md](./AGENTS.md)
+- [docs/specs/product/telegram-confirmation-flow.md](./docs/specs/product/telegram-confirmation-flow.md)
+- [docs/specs/product/webapp-report.md](./docs/specs/product/webapp-report.md)
+- [docs/specs/product/sale-item-editing.md](./docs/specs/product/sale-item-editing.md)
+- [docs/specs/technical/database.md](./docs/specs/technical/database.md)
+- [docs/specs/technical/telegram-webhook.md](./docs/specs/technical/telegram-webhook.md)
+- [docs/specs/technical/telegram-webapp-session.md](./docs/specs/technical/telegram-webapp-session.md)
 
-Ключевые specs:
+## Product smoke
 
-- [`docs/specs/product/telegram-confirmation-flow.md`](./docs/specs/product/telegram-confirmation-flow.md);
-- [`docs/specs/product/webapp-report.md`](./docs/specs/product/webapp-report.md);
-- [`docs/specs/product/sale-item-editing.md`](./docs/specs/product/sale-item-editing.md);
-- [`docs/specs/technical/database.md`](./docs/specs/technical/database.md);
-- [`docs/specs/technical/webapp-api.md`](./docs/specs/technical/webapp-api.md);
-- [`docs/specs/technical/telegram-webhook.md`](./docs/specs/technical/telegram-webhook.md);
-- [`docs/specs/technical/telegram-webapp-session.md`](./docs/specs/technical/telegram-webapp-session.md).
+Проверять перед сдачей:
+
+1. `Сникерс, 5 штук по 100 рублей` сохраняется как `processed`, входит в выручку и виден в WebApp.
+2. Длинная сомнительная запись сохраняется как `needs_review`, не входит в выручку и получает только `✅ Подтвердить` / `❌ Отмена`.
+3. `✅ Подтвердить` переводит запись в `processed`, добавляет товары в выручку и обновляет WebApp после refresh.
+4. `❌ Отмена` переводит запись в `cancelled`, товары не входят в выручку.
+5. `✏️` редактирует товар, сохраняет Supabase row, пересчитывает item total и report totals.
+6. `🗑` soft-delete товар, он исчезает из active отчёта и не возвращается после reload.

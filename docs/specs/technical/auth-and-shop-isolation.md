@@ -38,9 +38,9 @@ Telegram callback:
 3. Читает sale по `sale_id`, `seller_id` и `shop_id`.
 4. Чужой seller/shop не меняет запись.
 
-WebApp вкладка «Проверка»:
+WebApp review visibility:
 
 1. Использует `requireOwner()`.
-2. Читает sale по `saleId` и server-derived `shop_id`.
+2. Читает review records/items только через server-derived `shop_id`.
 3. Не принимает `shop_id` от клиента.
-4. Confirm/cancel выполняется только после sale -> shop проверки.
+4. Не предоставляет confirm/cancel controls; решения выполняет Telegram callback.

@@ -1,37 +1,41 @@
-# Редактирование и удаление товарной позиции
+# Product Spec: Sale Item Editing
 
-Статус: реализовано.
+## 1. Цель
 
-## Цель
+1. Пользователь должен быстро исправить товар, количество или цену в WebApp.
+2. Исправление должно сохраняться в Supabase.
+3. Сумма позиции должна пересчитываться сразу после сохранения.
+4. Общая выручка должна пересчитываться после update/delete.
+5. Удаление товара должно исключать позицию из active отчёта без физического удаления.
+6. Review voice-запись не должна подтверждаться через edit.
 
-Владелец должен быстро исправить товарную позицию без перехода на отдельную страницу.
+## 2. Роли
 
-Редактирование товара — это управление данными позиции.
+1. `seller` или `owner` открывает WebApp.
+2. `system` проверяет Telegram WebApp session.
+3. `Supabase` хранит sale item rows.
+4. `report` пересчитывает выручку.
 
-Редактирование товара не является подтверждением сомнительной голосовой записи.
+## 3. Область UI
 
-Review-запись начинает входить в выручку только после явного confirm в Telegram или во вкладке WebApp «Проверка».
+1. Компонент: `SaleItemCard`.
+2. Используется на report page.
+3. Используется для active processed items.
+4. Используется для review items в блоке `Нужно проверить`.
+5. Не используется как per-item confirmation surface.
 
-## Роли
+## 4. Обычный режим карточки
 
-1. Владелец WebApp инициирует edit/delete.
-2. Server Action принимает форму.
-3. `requireOwner()` определяет server-derived магазин.
-4. Records API проверяет item -> sale -> shop.
-5. Supabase service role выполняет update.
-6. UI показывает pending/error state.
-
-## Обычная карточка
-
-Карточка товара показывает:
-
-1. Название товара.
-2. Количество.
-3. Единицу.
-4. Цену за единицу.
-5. Сумму позиции.
-6. Иконку карандаша.
-7. Иконку корзины.
+1. Показывает название товара.
+2. Показывает количество.
+3. Показывает unit.
+4. Показывает цену за единицу.
+5. Показывает сумму.
+6. Справа показывает `✏️`.
+7. Справа показывает `🗑`.
+8. Не содержит больших постоянных кнопок.
+9. Не содержит `Подтвердить позицию`.
+10. Не содержит текстовую ссылку `Исключить из отчёта`.
 
 Пример:
 
@@ -41,199 +45,202 @@ Review-запись начинает входить в выручку тольк
 500 ₽                         ✏️ 🗑
 ```
 
-В обычном режиме нет:
+## 5. Edit mode
 
-1. Постоянной формы.
-2. Большой кнопки «Сохранить».
-3. Кнопки «Подтвердить позицию».
-4. Текстовой ссылки «Исключить из отчёта».
-5. Третьей кнопки для открытия отчёта.
+1. Открывается только по `✏️`.
+2. Повторное нажатие закрывает edit mode.
+3. Delete panel закрывается при открытии edit mode.
+4. Edit mode compact и не раскрыт по умолчанию.
+5. Поля:
+   - `Товар`;
+   - `Количество`;
+   - `Цена, ₽`.
+6. Кнопки:
+   - `Сохранить`;
+   - `Отмена`.
+7. `Отмена` сбрасывает form и закрывает edit mode.
+8. Ошибка не очищает введённые данные.
+9. Успех закрывает edit mode и вызывает `router.refresh()`.
 
-## Edit mode
+## 6. Validation
 
-Открывается после нажатия карандаша.
+1. `itemId` обязателен.
+2. `productName` обязателен.
+3. `quantity` должна быть finite number.
+4. `quantity` должна быть больше нуля.
+5. `price` должна быть finite number.
+6. `price` должна быть больше нуля.
+7. Empty product name возвращает validation error.
+8. Invalid price возвращает validation error.
+9. Deleted item нельзя обновить без restore.
 
-Поля:
+## 7. Update behavior
 
-1. `Товар`.
-2. `Количество`.
-3. `Цена, ₽`.
+1. Client submits `updateSaleItemAction`.
+2. Action вызывает `updateSaleItem`.
+3. Server вызывает `requireOwner`.
+4. Server получает Supabase admin client.
+5. Server загружает текущий item.
+6. Server проверяет, что item не deleted.
+7. Server загружает sale context текущего shop.
+8. Server вызывает `requireShopAccess`.
+9. Server строит patch через `buildManualSaleItemPatch`.
+10. Server ищет product match в `products`.
+11. Server обновляет `sale_items`.
+12. Update фильтруется по `id`.
+13. Update требует `deleted_at is null`.
+14. Update возвращает updated row через `.select(...).single()`.
+15. После update вызывается `recalculateSale`.
+16. Audit log пишется best effort.
 
-Кнопки:
+## 8. Status after update
 
-1. `Сохранить`.
-2. `Отмена`.
+1. Если parent sale `processed`, item остаётся `processed`.
+2. Если parent sale `needs_review`, item остаётся `needs_review`.
+3. Edit не подтверждает review voice-запись.
+4. Review sale начинает входить в выручку только после Telegram `✅ Подтвердить`.
+5. Processed sale пересчитывает revenue сразу.
+6. Cancelled sale не должен получить revenue через update.
+7. Failed sale не должен получить revenue через update.
 
-Форма компактная.
+## 9. Recalculation
 
-На мобильном экране товар занимает всю ширину, количество и цена стоят рядом.
+1. `recalculateSale` читает active items.
+2. Active means `deleted_at is null`.
+3. Revenue total складывает только item `processed`.
+4. Cancelled sale получает total `0`.
+5. Failed sale получает total `0`.
+6. Needs_review sale остаётся `needs_review`.
+7. Processed sale остаётся `processed`, если active items удалены.
+8. Voice record status обновляется вместе с sale status.
+9. Report after refresh читает новые totals.
 
-Кнопки имеют высоту не меньше 44 px.
+## 10. Delete mode
 
-## Поведение сохранения
+1. Открывается только по `🗑`.
+2. Edit mode закрывается при открытии delete mode.
+3. Показывается confirm dialog/panel.
+4. Текст: `Удалить товар из отчёта?`
+5. Кнопки:
+   - `Удалить`;
+   - `Отмена`.
+6. `Отмена` закрывает dialog/panel.
+7. Delete error оставляет card visible.
+8. Delete success скрывает card locally and refreshes route.
 
-1. UI отправляет `itemId`, `productName`, `quantity`, `price`.
-2. Server Action валидирует наличие item id.
-3. Server Action валидирует непустое название.
-4. Server Action валидирует `quantity > 0`.
-5. Server Action валидирует `price > 0`.
-6. `updateSaleItem()` повторно получает owner context.
-7. Сервер читает текущий `sale_items`.
-8. Сервер запрещает edit soft-deleted rows.
-9. Сервер читает родительскую sale.
-10. Сервер проверяет `sale.shop_id`.
-11. Сервер нормализует product name.
-12. Сервер ищет product match в active catalog best-effort.
-13. Сервер обновляет `product_name`.
-14. Сервер обновляет `quantity`.
-15. Сервер обновляет `unit`.
-16. Сервер обновляет `price`.
-17. Сервер пересчитывает `total`.
-18. Сервер обновляет `updated_at`.
-19. Сервер читает изменённую строку через `.select().single()`.
-20. Сервер пересчитывает родительскую sale.
+## 11. Delete behavior
 
-## Важное правило review
+1. Client submits `excludeSaleItemAction`.
+2. Action вызывает `excludeSaleItem`.
+3. Server вызывает `requireOwner`.
+4. Server получает Supabase admin client.
+5. Server загружает item.
+6. Server проверяет sale context текущего shop.
+7. Server вызывает `requireShopAccess`.
+8. Server строит patch через `buildExcludedSaleItemPatch`.
+9. Patch устанавливает `status = excluded`.
+10. Patch устанавливает `deleted_at`.
+11. Patch устанавливает `deleted_reason = excluded_by_owner`.
+12. Patch устанавливает `deleted_previous_status`.
+13. Update фильтруется по `id`.
+14. Update требует `deleted_at is null`.
+15. Update возвращает row через `.select(...).single()`.
+16. После delete вызывается `recalculateSale`.
+17. Audit log пишется best effort.
 
-Если родительская `sales.status = processed`, сохранённая валидная позиция получает `status = processed` и входит в выручку.
+## 12. Persistence
 
-Если родительская `sales.status = needs_review`, сохранённая позиция остаётся `status = needs_review`.
+1. Update persists in Supabase.
+2. Delete persists in Supabase.
+3. Page reload не возвращает deleted item в active list.
+4. Page reload показывает updated product name.
+5. Page reload показывает updated quantity.
+6. Page reload показывает updated price.
+7. Page reload показывает recalculated total.
 
-Такой edit сохраняет исправленные поля, но не делает голосовую запись подтверждённой.
+## 13. Business logic
 
-Чтобы review-запись вошла в выручку, нужно нажать `✅ Подтвердить` в Telegram или `Подтвердить` во вкладке «Проверка».
+1. В active report входят только non-deleted items.
+2. В revenue входят только parent sale `processed`.
+3. В revenue входят только item `processed`.
+4. Item without price не входит в revenue.
+5. Item without total не входит в revenue.
+6. Deleted item не входит в quantity.
+7. Deleted item не входит в revenue.
+8. Review item может быть отредактирован, но не counted.
 
-Это правило защищает продукт от скрытого подтверждения обычным edit flow.
+## 14. API and server logic
 
-## Delete mode
+1. `updateSaleItemAction` returns structured state.
+2. `excludeSaleItemAction` returns structured state.
+3. Structured state contains `status`, `message`, optional `code`.
+4. Update success includes updated item.
+5. Delete success includes item id.
+6. Server actions revalidate `/daily-report`.
+7. Server actions revalidate `/records`.
+8. Server actions do not expose raw Supabase errors to users.
 
-Открывается после нажатия корзины.
+## 15. Database fields
 
-Текст:
+1. `sale_items.id`.
+2. `sale_items.sale_id`.
+3. `sale_items.product_id`.
+4. `sale_items.product_name`.
+5. `sale_items.quantity`.
+6. `sale_items.unit`.
+7. `sale_items.price`.
+8. `sale_items.total`.
+9. `sale_items.status`.
+10. `sale_items.confidence`.
+11. `sale_items.updated_at`.
+12. `sale_items.deleted_at`.
+13. `sale_items.deleted_reason`.
+14. `sale_items.deleted_previous_status`.
 
-```text
-Исключить товар из отчёта?
-```
+## 16. Errors
 
-Кнопки:
+1. Missing item id -> validation error.
+2. Invalid data -> validation error.
+3. Missing admin client -> generic save/delete error.
+4. Item not found -> user-friendly not found message.
+5. Sale not found -> user-friendly not found message.
+6. Unauthorized shop -> access denied.
+7. Product lookup failure -> catalog check error.
+8. Recalculation failure -> mutation returns error.
+9. Audit log failure is logged but does not fail user mutation.
 
-1. `Исключить`.
-2. `Отмена`.
+## 17. Edge cases
 
-Удаление не физическое.
+1. User double-clicks save.
+2. User deletes item while another refresh is pending.
+3. Item already deleted.
+4. Item belongs to another shop.
+5. Sale has all items deleted.
+6. Sale has mix of processed and review items.
+7. Product name matches catalog with different casing.
+8. Product unit comes from catalog.
+9. Price value with decimal part.
+10. Quantity value with decimal part.
 
-Удаление всегда soft delete.
+## 18. Acceptance criteria
 
-## Soft delete patch
+1. `✏️` opens compact edit form.
+2. Save updates Supabase.
+3. Save recalculates item total.
+4. Save recalculates report revenue for processed sale.
+5. Save does not confirm needs_review sale.
+6. Error does not clear form data.
+7. `🗑` opens delete confirmation.
+8. Delete soft-deletes row.
+9. Deleted item disappears from active report.
+10. Deleted item does not return after reload.
+11. Revenue and quantity recalculate after delete.
+12. No permanent large buttons appear under item card.
 
-```text
-status = excluded
-deleted_at = now()
-deleted_reason = excluded_by_owner
-deleted_previous_status = <previous status>
-updated_at = now()
-```
+## 19. Out of scope
 
-Физический `DELETE` не используется.
-
-Soft-deleted row остаётся в БД.
-
-После reload она не возвращается в активный отчёт.
-
-## Restore
-
-Восстановление доступно в блоке исключённых товаров.
-
-Restore очищает:
-
-1. `deleted_at`.
-2. `deleted_reason`.
-3. `deleted_previous_status`.
-
-Статус возвращается из `deleted_previous_status`.
-
-Если previous status был `needs_review`, позиция снова требует confirm.
-
-## API и server actions
-
-`updateSaleItemAction(previousState, formData)` возвращает:
-
-```ts
-{
-  status: "success" | "error";
-  message: string;
-  item?: {
-    id: string;
-    sale_id: string;
-    product_name: string;
-    quantity: number;
-    unit: string;
-    price: number | null;
-    total: number | null;
-    status: string;
-    updated_at: string;
-  };
-}
-```
-
-`excludeSaleItemAction(previousState, formData)` возвращает:
-
-```ts
-{
-  status: "success" | "error";
-  message: string;
-  itemId?: string;
-}
-```
-
-После успеха actions вызывают revalidation для:
-
-1. `/daily-report`.
-2. `/records`.
-
-Клиент выполняет `router.refresh()`.
-
-## Ошибки
-
-1. Пустое название отклоняется до Supabase.
-2. Quantity `<= 0` отклоняется до Supabase.
-3. Price `<= 0` отклоняется до Supabase.
-4. Чужой item не меняется.
-5. Soft-deleted item не редактируется.
-6. Supabase error логируется на сервере.
-7. Пользователь видит стабильное русское сообщение.
-8. Ошибка не закрывает форму.
-9. Ошибка не очищает ввод.
-10. Audit log failure логируется отдельно.
-
-## Edge cases
-
-1. Product отсутствует в каталоге — сохраняется свободное название.
-2. Legacy `excluded` без `deleted_at` не попадает в active UI.
-3. Повторное удаление идемпотентно.
-4. Sale без active items остаётся в БД.
-5. Review sale после edit остаётся review.
-6. Processed sale после edit пересчитывает выручку.
-
-## Acceptance criteria
-
-1. Карандаш открывает компактную форму.
-2. Отмена сбрасывает несохранённый ввод.
-3. Сохранение реально меняет Supabase row.
-4. `total = quantity × price`.
-5. Processed item меняет report total.
-6. Review item не входит в report total до явного confirm.
-7. Корзина показывает confirm dialog.
-8. Delete soft-delete row.
-9. Reload не возвращает deleted item в active list.
-10. Ошибка не очищает форму.
-11. Touch targets не меньше 44 px.
-12. `npm run lint`, `npm run test`, `npm run build` проходят.
-
-## Не входит в scope
-
-1. Массовое редактирование.
-2. Изменение даты продажи.
-3. Изменение продавца продажи.
-4. Редактирование audio/STT/parser данных.
-5. Физическое удаление row.
+1. Physical deletion.
+2. Bulk editing.
+3. Product catalog management UI.
+4. Per-item Telegram conversation.
+5. WebApp review confirm/cancel.

@@ -2,7 +2,7 @@
 
 Статус: завершено 30 июня 2026.
 
-Актуальное состояние после стабилизации описано в `011-release-stabilization-callbacks-review-premium-webapp.md`: review-message снова содержит `Открыть отчёт` как `web_app`, callback data сокращены до `confirm:<record_id>` / `cancel:<record_id>`, а WebApp получил вкладку «Проверка».
+Актуальное состояние superseded планом `012-product-handoff-polish.md`: review-message содержит только `✅ Подтвердить` и `❌ Отмена`, callback data сокращены до `confirm:<record_id>` / `cancel:<record_id>`, а WebApp не имеет пользовательского review-confirm экрана.
 
 ## Цель
 
@@ -11,7 +11,7 @@
 ## Сделано
 
 - Добавлен sale-level Telegram callback flow `✅ Подтвердить` / `❌ Отмена`.
-- Исторически в 010 review voice-message убирал кнопку «Открыть отчёт»; это superseded в 011, где кнопка возвращена как `web_app`.
+- Review voice-message не смешивает confirm/cancel flow с открытием отчёта.
 - Confirm переводит sale/voice в `processed` и добавляет валидные items в выручку.
 - Cancel переводит sale/voice в `cancelled` и soft-delete active items.
 - Callback flow сделан идемпотентным: первое решение выигрывает.

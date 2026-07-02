@@ -1,335 +1,266 @@
-# База данных
-
-Статус: реализовано.
-
-## Цель
-
-Описать фактическую Supabase/Postgres схему, которую используют Telegram bot, WebApp и отчёт.
-
-Spec не описывает желаемую будущую схему.
-
-Если код обращается к колонке, она должна быть здесь или в migration.
-
-## Основные таблицы
-
-1. `shops`.
-2. `sellers`.
-3. `owners`.
-4. `products`.
-5. `voice_records`.
-6. `sales`.
-7. `sale_items`.
-8. `audit_logs`.
-9. `storage.objects` для voice audio.
-
-## Роли доступа
-
-1. `service_role` выполняет server-side bot/WebApp операции.
-2. `anon` и `authenticated` не получают прямой доступ к бизнес-таблицам после hardening.
-3. RLS включён на public tables.
-4. Прикладной сервер выполняет authorization до service-role запроса.
-5. Client не получает service role key.
-
-## `shops`
-
-Назначение: магазин.
-
-Ключевые поля:
-
-1. `id uuid`.
-2. `name text`.
-3. `created_at timestamptz`.
-
-`shop_id` используется как boundary данных.
-
-Клиентский ввод `shop_id` не доверенный.
-
-## `sellers`
-
-Назначение: Telegram-продавцы магазина.
-
-Ключевые поля:
-
-1. `id uuid`.
-2. `shop_id uuid`.
-3. `telegram_id bigint`.
-4. `name text`.
-5. `is_active boolean`.
-6. `created_at timestamptz`.
-
-Telegram bot ищет seller по `telegram_id`.
-
-При `DEMO_MODE=false` неизвестный seller не создаёт продажу.
-
-## `owners`
-
-Назначение: owner binding для WebApp.
-
-Ключевые поля:
-
-1. `id uuid`.
-2. `shop_id uuid`.
-3. `telegram_id bigint`.
-4. `name text`.
-5. `is_active boolean`.
-6. `created_at timestamptz`.
-7. `updated_at timestamptz`.
-
-Если seller отсутствует, но owner active, WebApp может создать seller только в owner shop.
-
-## `voice_records`
-
-Назначение: исходная voice-запись и результаты распознавания.
-
-Ключевые поля:
-
-1. `id uuid`.
-2. `shop_id uuid`.
-3. `seller_id uuid`.
-4. `telegram_message_id text`.
-5. `audio_path text`.
-6. `audio_url text`.
-7. `raw_text text`.
-8. `cleaned_text text`.
-9. `parser_json jsonb`.
-10. `status text`.
-11. `error_message text`.
-12. `created_at timestamptz`.
-
-Допустимые статусы:
-
-1. `pending`.
-2. `processed`.
-3. `needs_review`.
-4. `cancelled`.
-5. `failed`.
-
-`cancelled` добавлен migration `20260630120000_add_cancelled_voice_sale_status.sql`.
-
-## `sales`
-
-Назначение: родительская продажа.
-
-Ключевые поля:
-
-1. `id uuid`.
-2. `shop_id uuid`.
-3. `seller_id uuid`.
-4. `voice_record_id uuid`.
-5. `raw_text text`.
-6. `cleaned_text text`.
-7. `total_amount numeric(12,2)`.
-8. `status text`.
-9. `created_at timestamptz`.
-
-Допустимые статусы:
-
-1. `pending`.
-2. `processed`.
-3. `needs_review`.
-4. `cancelled`.
-5. `failed`.
-
-`sales.total_amount` хранит агрегат активных processed items.
-
-Для `needs_review`, `cancelled` и `failed` он не должен создавать выручку.
-
-Отменённая запись хранится как `sales.status = cancelled`, а её active items исключаются soft delete.
-
-## `sale_items`
-
-Назначение: товарные позиции продажи.
-
-Ключевые поля:
-
-1. `id uuid`.
-2. `sale_id uuid`.
-3. `product_id uuid null`.
-4. `product_name text`.
-5. `quantity numeric(12,3)`.
-6. `unit text`.
-7. `price numeric(12,2) null`.
-8. `total numeric(12,2) null`.
-9. `confidence numeric(3,2)`.
-10. `status text`.
-11. `created_at timestamptz`.
-12. `updated_at timestamptz`.
-13. `deleted_at timestamptz null`.
-14. `deleted_reason text null`.
-15. `deleted_previous_status text null`.
-
-Допустимые item statuses:
-
-1. `processed`.
-2. `needs_price` legacy.
-3. `needs_review`.
-4. `failed`.
-5. `excluded`.
-
-В проекте нет колонок:
-
-1. `name`.
-2. `unit_price`.
-3. `total_price`.
-
-Код использует:
-
-1. `product_name`.
-2. `quantity`.
-3. `price`.
-4. `total`.
-5. `status`.
-6. `deleted_at`.
-7. `updated_at`.
-
-## Soft delete
-
-Удаление товара из активного отчёта:
-
-```text
-status = excluded
-deleted_at = now()
-deleted_reason = excluded_by_owner
-deleted_previous_status = <previous status>
-updated_at = now()
-```
-
-Физический `DELETE` не используется.
-
-`deleted_reason` допускает:
-
-1. `manual` для legacy rows.
-2. `excluded_by_owner`.
-3. `day_reset`.
-
-`deleted_previous_status` допускает previous item statuses без `excluded`.
-
-## Save voice sale
-
-Функция `public.save_voice_sale(...)`:
-
-1. Проверяет, что seller active.
-2. Проверяет принадлежность seller к shop.
-3. Создаёт `voice_records`.
-4. Создаёт `sales`.
-5. Создаёт `sale_items`.
-6. Возвращает `voice_record_id` и `sale_id`.
-
-Bot после RPC выполняет read-back:
-
-1. Читает созданную sale по id/shop/seller/voice.
-2. Читает количество sale_items.
-3. Сравнивает с ожидаемым количеством.
-4. Только после этого отвечает success.
-
-## Confirm voice sale
-
-Telegram/WebApp confirm:
-
-1. Читает sale по `sale_id`, `seller_id`, `shop_id`.
-2. Читает active items.
-3. Валидные items получает `status = processed`.
-4. Items получает `confidence = 1`.
-5. Sale получает `status = processed`.
-6. Voice record получает `status = processed`.
-7. `total_amount` становится суммой валидных items.
-
-Callback/WebApp action не принимает `shop_id`.
-
-## Cancel voice sale
-
-Telegram/WebApp cancel:
-
-1. Читает sale по `sale_id`, `seller_id`, `shop_id`.
-2. Soft-delete active items.
-3. Sale получает `status = cancelled`.
-4. Voice record получает `status = cancelled`.
-5. `total_amount = 0`.
-
-Cancel сохраняет запись для аудита, но не добавляет её в активную выручку.
-
-## WebApp item update
-
-Update товара:
-
-1. Проверяет item id.
-2. Проверяет item не soft-deleted.
-3. Проверяет sale -> shop.
-4. Обновляет название, количество, цену и сумму.
-5. Если родительская sale `processed`, item становится `processed`.
-6. Если родительская sale `needs_review`, item остаётся `needs_review`.
-7. Это не подтверждает голосовую запись.
-8. После update sale пересчитывается.
-
-## Report calculation
-
-Report читает:
-
-1. `sales` по `shop_id` и периоду.
-2. `sale_items` по найденным sale IDs.
-
-В выручку входят только:
-
-1. `sale_items.status = processed`.
-2. `deleted_at is null`.
-3. `price is not null`.
-4. `total is not null`.
-
-Не входят:
-
-1. `needs_review`.
-2. `needs_price`.
-3. `failed`.
-4. `excluded`.
-5. `deleted_at is not null`.
-6. Parent sale `cancelled`.
-
-## Миграции
-
-Актуальные важные migrations:
-
-1. `001_init.sql` — базовая схема.
-2. `20260618082931_add_sale_item_soft_delete.sql` — soft-delete поля.
-3. `20260619132225_align_sale_item_update_and_exclusion.sql` — `excluded`, `updated_at`.
-4. `20260620135556_stabilize_sales_flow.sql` — owners, RPC, hardening.
-5. `20260623221651_repair_complete_single_item_sales.sql` — repair старых single-item продаж.
-6. `20260630120000_add_cancelled_voice_sale_status.sql` — `cancelled` для sale/voice statuses.
-7. `20260630153000_ensure_sale_item_soft_delete_columns.sql` — idempotent гарантия `deleted_at`, `deleted_reason`, `deleted_previous_status`, `updated_at` и soft-delete constraints.
-
-Миграции не должны удалять production data.
-
-DDL должен быть идемпотентным там, где это возможно.
-
-## Ошибки и edge cases
-
-1. Несуществующая колонка должна ловиться build/live schema check.
-2. Supabase update считается успехом только после `.select().single()`.
-3. Чужой item не изменяется.
-4. Чужая sale не подтверждается callback.
-5. Repeat callback не создаёт дубли.
-6. Sale с нулём active items остаётся валидной записью.
-7. Audit log failure не отменяет основную мутацию.
-8. Storage failure не отменяет voice sale.
-9. Невалидный parser JSON создаёт review запись.
-
-## Acceptance criteria
-
-1. `cancelled` проходит constraints для `sales` и `voice_records`.
-2. `sale_items.deleted_at` существует.
-3. Delete использует soft delete.
-4. Confirm переводит sale/voice в `processed`.
-5. Cancel переводит sale/voice в `cancelled`.
-6. Cancel soft-delete items.
-7. Report игнорирует deleted/review/cancelled/failed данные.
-8. WebApp update сохраняет реальные поля схемы.
-9. Reload показывает состояние из БД.
-10. Service role не доступен клиенту.
-
-## Не входит в scope
-
-1. Новые warehouse tables.
-2. Платежи.
-3. Клиентская база.
-4. Физическое удаление продаж.
-5. Reset production базы.
-6. Прямая client-side Supabase мутация бизнес-таблиц.
+# Technical Spec: Database
+
+## 1. Цель
+
+1. Supabase хранит магазины, продавцов, голосовые записи, продажи, товары и audit logs.
+2. Schema должна поддерживать быстрый отчёт по выручке.
+3. Schema должна сохранять сомнительные распознавания без включения в revenue.
+4. Schema должна поддерживать soft delete sale items.
+5. Schema не должна требовать destructive reset для текущих изменений.
+
+## 2. Migrations
+
+1. Base schema: `supabase/migrations/001_init.sql`.
+2. Parser diagnostics: `20260617184050_add_voice_parser_diagnostics.sql`.
+3. Sale item soft delete: `20260618082931_add_sale_item_soft_delete.sql`.
+4. Sale flow stabilization: `20260620135556_stabilize_sales_flow.sql`.
+5. Cancelled status: `20260630120000_add_cancelled_voice_sale_status.sql`.
+6. Soft delete repair: `20260630153000_ensure_sale_item_soft_delete_columns.sql`.
+7. Earlier repair migrations remain part of history.
+8. New DB fields must be added by migration.
+9. Code must not reference a column that migrations do not create.
+
+## 3. Tables
+
+1. `shops` - store tenant/shop boundary.
+2. `sellers` - Telegram sellers linked to shops.
+3. `products` - optional product catalog for name/unit matching.
+4. `voice_records` - audio/transcript/process status.
+5. `sales` - parent sale record.
+6. `sale_items` - individual product rows.
+7. `audit_logs` - operational audit trail.
+
+## 4. `shops`
+
+1. Primary key: `id`.
+2. Name identifies shop.
+3. Used as top-level tenant boundary.
+4. Every seller belongs to one shop.
+5. Every voice record belongs to one shop.
+6. Every sale belongs to one shop.
+
+## 5. `sellers`
+
+1. Primary key: `id`.
+2. `shop_id` references `shops`.
+3. `telegram_id` links Telegram user.
+4. `name` stores display name.
+5. `is_active` gates access.
+6. Bot uses `telegram_id` to resolve seller.
+7. WebApp session resolver can use seller to derive shop.
+
+## 6. `voice_records`
+
+1. Primary key: `id`.
+2. `shop_id` scopes row.
+3. `seller_id` links seller.
+4. `telegram_message_id` links Telegram message.
+5. `audio_path` may store Supabase Storage path.
+6. `audio_url` may store public/fallback URL.
+7. `raw_text` stores STT transcript.
+8. `cleaned_text` stores parser-cleaned display text.
+9. `parser_json` stores parser diagnostics.
+10. `status` mirrors processing state.
+11. `error_message` stores failure/fallback context.
+12. `created_at` supports period filters.
+
+## 7. `sales`
+
+1. Primary key: `id`.
+2. `shop_id` scopes sale.
+3. `seller_id` links seller.
+4. `voice_record_id` links voice record.
+5. `raw_text` duplicates useful transcript context.
+6. `cleaned_text` duplicates display text.
+7. `total_amount` stores current sale total.
+8. `status` controls revenue inclusion.
+9. `created_at` supports period filters.
+
+## 8. `sale_items`
+
+1. Primary key: `id`.
+2. `sale_id` links parent sale.
+3. `product_id` optionally links catalog.
+4. `product_name` stores display product name.
+5. `quantity` stores numeric quantity.
+6. `unit` stores normalized unit.
+7. `price` stores unit price.
+8. `total` stores quantity × price.
+9. `confidence` stores parser confidence or manual confidence.
+10. `status` stores item state.
+11. `updated_at` changes on edit/delete/restore.
+12. `deleted_at` marks soft delete.
+13. `deleted_reason` stores delete reason.
+14. `deleted_previous_status` stores restore target.
+
+## 9. Canonical sale statuses
+
+1. `processed` - sale is confirmed and can contribute revenue.
+2. `needs_review` - sale is saved but excluded from revenue.
+3. `cancelled` - sale was cancelled by user and excluded from revenue.
+4. `failed` - processing failed and excluded from revenue.
+5. `pending` may exist as legacy/base schema state but should not be emitted by current completed pipeline.
+
+## 10. Canonical item statuses
+
+1. `processed` - item can contribute revenue only with processed parent sale.
+2. `needs_review` - item excluded from revenue.
+3. `needs_price` - legacy review-like state, excluded from revenue.
+4. `failed` - item excluded from revenue.
+5. `excluded` - soft-deleted item excluded from active report.
+
+## 11. Soft delete
+
+1. Soft delete never physically deletes `sale_items`.
+2. Delete sets `status = excluded`.
+3. Delete sets `deleted_at = now`.
+4. Delete sets `deleted_reason`.
+5. Delete sets `deleted_previous_status`.
+6. Active report filters `deleted_at is null`.
+7. Legacy `excluded` with null `deleted_at` is still not active.
+8. Restore clears soft-delete fields.
+9. Restore uses `deleted_previous_status` or falls back to `needs_review`.
+
+## 12. Revenue rule
+
+An item contributes revenue only when:
+
+1. Parent sale belongs to current shop.
+2. Parent sale status is `processed`.
+3. Item belongs to scoped sale ids.
+4. Item status is `processed`.
+5. Item `deleted_at is null`.
+6. Item `price is not null`.
+7. Item `total is not null`.
+8. Item quantity is valid.
+
+Never count:
+
+1. Parent `needs_review`.
+2. Parent `cancelled`.
+3. Parent `failed`.
+4. Item `needs_review`.
+5. Item `needs_price`.
+6. Item `failed`.
+7. Item `excluded`.
+8. Any deleted row.
+
+## 13. Report scoping
+
+1. WebApp calls `getReport`.
+2. `getReport` resolves current owner/seller from session.
+3. Sales are selected with `shop_id = owner.shopId`.
+4. Items are selected only by those sale ids.
+5. `scopeReportRows` verifies every sale row shop matches owner shop.
+6. Cancelled/failed sales are excluded from active report scope.
+7. Items from `needs_review` sales are downgraded to review status for report aggregation.
+8. `buildSalesReport` aggregates only active processed rows.
+
+## 14. Voice persistence
+
+1. Bot builds payload with `buildVoiceSaleRpcPayload`.
+2. Payload includes shop id, seller id, telegram message id, audio data, transcript and resolved items.
+3. Bot calls RPC `save_voice_sale`.
+4. RPC returns identifiers.
+5. Code reads sale back.
+6. Code reads sale_items count back.
+7. Mismatch throws error.
+8. False success is not allowed.
+
+## 15. Confirm mutation
+
+1. Select sale by `id`, `shop_id`, `seller_id`.
+2. If already processed, return unchanged success.
+3. If already cancelled, return unchanged success.
+4. If failed, return error.
+5. Select active items by `sale_id` and `deleted_at is null`.
+6. Validate product, quantity, price and total.
+7. Update every confirmable item to `processed`.
+8. Set confidence to `1`.
+9. Recalculate item total.
+10. Update sale `status = processed`.
+11. Update sale `total_amount`.
+12. Update voice record `status = processed`.
+
+## 16. Cancel mutation
+
+1. Select sale by `id`, `shop_id`, `seller_id`.
+2. If already cancelled, return unchanged success.
+3. If already processed, return unchanged success.
+4. If failed, return error.
+5. Select active items.
+6. Soft-delete each active item.
+7. Update sale `status = cancelled`.
+8. Update sale `total_amount = 0`.
+9. Update voice record `status = cancelled`.
+
+## 17. Sale item update
+
+1. Select item by `id`.
+2. Reject if deleted.
+3. Select parent sale in current shop.
+4. Validate shop access.
+5. Build manual patch.
+6. Match product catalog if possible.
+7. Update active item.
+8. Return updated row.
+9. Recalculate parent sale.
+10. Write audit log best effort.
+
+## 18. Sale item delete
+
+1. Select item by `id`.
+2. Select parent sale in current shop.
+3. Validate shop access.
+4. Build excluded patch.
+5. Update active item.
+6. Recalculate parent sale.
+7. Write audit log best effort.
+
+## 19. Recalculation
+
+1. Reads active items.
+2. Sums only `processed` item totals.
+3. Current cancelled sale total becomes zero.
+4. Current failed sale total becomes zero.
+5. Current needs_review sale stays needs_review.
+6. Current processed sale stays processed when all items are deleted.
+7. Voice record status follows recalculated sale status.
+
+## 20. RLS and access
+
+1. Runtime mutations use server-side service role client.
+2. Service role key is never exposed to browser.
+3. WebApp still enforces shop access server-side.
+4. Client forms do not carry authoritative shop id.
+5. Bot callbacks derive shop from seller lookup.
+
+## 21. Errors
+
+1. Missing admin client returns server error state.
+2. Missing item returns not found state.
+3. Missing sale returns not found state.
+4. Supabase update returning zero rows becomes not found/update failed.
+5. Audit log failure is logged, not user-blocking.
+6. Missing soft-delete columns would break delete; migrations must prevent this.
+
+## 22. Acceptance criteria
+
+1. Processed sale enters revenue.
+2. Needs_review sale does not enter revenue.
+3. Cancelled sale does not enter revenue.
+4. Failed sale does not enter revenue.
+5. Deleted item does not enter active report.
+6. Item update persists after reload.
+7. Item delete persists after reload.
+8. Report totals recalculate after update.
+9. Report totals recalculate after delete.
+10. No code path references missing `deleted_at`.
+
+## 23. Out of scope
+
+1. Full accounting ledger.
+2. Inventory reservations.
+3. Physical delete flow.
+4. Public client-side writes to business tables.
+5. Schema reset.

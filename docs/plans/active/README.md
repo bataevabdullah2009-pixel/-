@@ -1,10 +1,7 @@
-# Активные планы
+# Active plans
 
 Активных планов нет.
 
-Последние завершённые работы:
+Последний завершённый этап: [012 - Product handoff polish](../completed/012-product-handoff-polish.md).
 
-- production verification hardening — `../completed/008-p0-production-verification-hardening.md`;
-- карточки товаров и update/delete — `../completed/009-webapp-sale-item-product-polish.md`;
-- Telegram confirm/cancel и продуктовый WebApp polish — `../completed/010-telegram-confirmation-and-product-webapp-polish.md`;
-- release stabilization callbacks/review/premium WebApp — `../completed/011-release-stabilization-callbacks-review-premium-webapp.md`.
+Перед новой работой создать новый plan-файл в этой папке или сразу зафиксировать небольшой завершённый change в `completed`, если работа выполнена одним проходом.

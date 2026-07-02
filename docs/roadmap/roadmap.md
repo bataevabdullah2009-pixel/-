@@ -1,47 +1,54 @@
 # Roadmap
 
-## Сейчас
+## Current release state
 
-Production-oriented MVP голосового журнала продаж:
+Продукт готовится к сдаче как Telegram bot + WebApp для реального магазина.
 
-- Telegram bot принимает voice;
-- STT/LLM parser извлекает товар, количество и цену;
-- уверенные позиции сразу входят в отчёт;
-- bot success выдаётся только после подтверждённой записи sale + sale_items;
-- сомнительные voice-записи получают Telegram кнопки `✅ Подтвердить`, `❌ Отмена`, `Открыть отчёт`;
-- callback data короткие: `confirm:<record_id>` и `cancel:<record_id>`;
-- confirm переводит запись в `processed` и добавляет валидные товары в выручку;
-- cancel переводит запись в `cancelled` и soft-delete товары;
-- Mini App работает в Telegram и browser fallback modes;
-- Telegram session валидируется по raw initData через bot token;
-- report, records и sellers используют server-derived shop;
-- WebApp не маскирует auth/DB ошибки пустыми данными;
-- отчёт показывает dark premium dashboard, четыре метрики, sparkline, топ товаров, последние продажи и review-блок;
-- журнал записей раскрывает товары и показывает audio, если оно сохранено;
-- вкладка «Проверка» показывает needs_review записи и server-side confirm/cancel;
-- продавцы показывают активность, последнюю запись, записи и выручку за период;
-- карточки товара имеют inline update, loading/error state и soft delete через корзину;
-- WebApp edit review item не подтверждает voice-запись без явного confirm;
-- diagnostics скрыты от обычного production-пользователя.
+Актуально реализовано:
 
-## Backlog
+- voice pipeline сохраняет уверенные продажи как `processed`;
+- сомнительные продажи сохраняются как `needs_review`;
+- Telegram review-message содержит только `✅ Подтвердить` и `❌ Отмена`;
+- WebApp показывает `Отчёт`, `Записи`, `Продавцы`;
+- WebApp не подтверждает и не отменяет review voice-записи;
+- edit/delete товаров сохраняются в Supabase и пересчитывают отчёт;
+- soft delete исключает товары из active revenue;
+- диагностика Telegram скрыта от обычного пользователя.
 
-- E2E Telegram/WebApp smoke check для confirm/cancel после production deploy.
-- E2E WebApp mutations в отдельной тестовой Supabase среде.
-- Наблюдаемость webhook/STT/LLM/callback latency и ошибок.
-- Метрики latency/error rate для ручных update/delete.
-- Улучшение parser prompts на реальных записях.
-- Удобное управление sellers/owners в панели.
-- Визуальная регрессия для нескольких мобильных viewport.
+## Release checklist
 
-## Не входит в MVP
+1. Прогнать `npm run lint`.
+2. Прогнать `npm run test`.
+3. Прогнать `npm run build`.
+4. Прогнать `npm run web:build`.
+5. Проверить production env vars.
+6. Проверить webhook URL.
+7. Проверить Supabase migrations.
+8. Проверить Storage bucket для audio.
+9. Выполнить ручной Telegram smoke.
+10. Проверить WebApp на мобильном viewport.
 
-CRM, склад, касса, онлайн-оплата и клиентская база.
+## Near-term backlog
 
-## Production verification
+- Реальный Telegram smoke для confirm/cancel после deploy.
+- Проверка логов Vercel и Supabase после первых production voice messages.
+- Экспорт отчёта в CSV/XLSX.
+- Более подробная аналитика parser confidence.
+- Улучшенный экран восстановления soft-deleted items.
 
-24 июня 2026 server-side smoke подтвердил raw initData auth, session cookie, единый seller shop и ненулевые `sales/sale_items` counts.
+## Out of scope for current release
 
-30 июня 2026 локальная проверка подтвердила tests и workspace build для коротких callback data, `/review`, dark premium WebApp и ensure soft-delete migration.
+- WebApp confirm/cancel для review voice-записей.
+- Замена STT provider.
+- Замена parser/LLM contract.
+- Большой desktop admin dashboard.
+- Сложная складская учётная модель.
 
-В backlog остаётся автоматизация запуска smoke из реального Telegram-клиента после deploy.
+## Decision log
+
+2026-07-02:
+
+- Review decision вынесен только в Telegram.
+- Третья кнопка `Открыть отчёт` удалена из review-message.
+- `/review` как пользовательский экран superseded и перенаправляет на `/records`.
+- Revenue защищён от processed-looking items внутри `needs_review` sale.

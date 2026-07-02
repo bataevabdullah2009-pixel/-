@@ -41,7 +41,7 @@ export function DateFilter({ basePath, currentPreset, currentDate, params, inclu
       <form className="inlineForm" action={basePath}>
         <input type="hidden" name="period" value="custom" />
         <input type="date" name="date" defaultValue={currentDate ?? todayInputValue()} aria-label="Выбор даты" />
-        <button type="submit">Показать дату</button>
+        <button type="submit">Дата</button>
       </form>
     </div>
   );

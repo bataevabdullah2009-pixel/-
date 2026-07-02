@@ -11,7 +11,7 @@ Pipeline: download Telegram file → audio preparation → Russian STT → LLM p
 
 Если все позиции готовы, sale и voice record становятся `processed`, а бот отвечает `✅ Запись сохранена: ...`. Общий parser-level `needs_review` не переопределяет полные уверенные items.
 
-Если хотя бы одна позиция неполная, низкоуверенная или parser fallback сработал, sale получает `needs_review`, а бот просит подтвердить товары и цены. Под сообщением есть `✅ Подтвердить`, `❌ Отмена` и `Открыть отчёт`.
+Если хотя бы одна позиция неполная, низкоуверенная или parser fallback сработал, sale получает `needs_review`, а бот просит подтвердить товары и цены. Под сообщением есть только `✅ Подтвердить` и `❌ Отмена`.
 
 Confirm переводит sale/voice в `processed`; cancel переводит sale/voice в `cancelled` и soft-delete active items.
 

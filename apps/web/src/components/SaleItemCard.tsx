@@ -138,7 +138,7 @@ export function SaleItemCard({ item }: SaleItemCardProps) {
           <button
             type="button"
             className="iconButton iconButtonDanger"
-            aria-label={`Исключить ${item.product_name} из отчёта`}
+            aria-label={`Удалить ${item.product_name} из отчёта`}
             aria-expanded={isDeleteOpen}
             onClick={() => {
               setShowDeleteError(false);
@@ -215,8 +215,8 @@ export function SaleItemCard({ item }: SaleItemCardProps) {
       ) : null}
 
       {isDeleteOpen ? (
-        <div className="saleItemDeletePanel">
-          <p>Исключить товар из отчёта?</p>
+        <div className="saleItemDeletePanel" role="dialog" aria-label="Удаление товара">
+          <p>Удалить товар из отчёта?</p>
           {showDeleteError ? (
             <p className="saleItemError" role="alert">{deleteState.message}</p>
           ) : null}
@@ -224,8 +224,8 @@ export function SaleItemCard({ item }: SaleItemCardProps) {
             <input type="hidden" name="itemId" value={item.id} />
             <SubmitButton
               className="deleteConfirmButton"
-              idleLabel="Исключить"
-              pendingLabel="Исключаем…"
+              idleLabel="Удалить"
+              pendingLabel="Удаляем…"
             />
             <button
               type="button"

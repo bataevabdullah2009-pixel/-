@@ -1,185 +1,197 @@
-# Архитектура Voice Sales Log
+# Architecture
 
-## Основной поток
+## System boundary
+
+`Голосовой журнал продаж` состоит из трёх основных частей:
+
+1. Telegram bot in `apps/bot`.
+2. Next.js Telegram WebApp in `apps/web`.
+3. Supabase database/storage.
+
+Shared business utilities находятся в `packages/shared`.
+
+## High-level flow
 
 ```text
-Telegram voice
-  -> POST /api/telegram/webhook
-  -> processTelegramUpdate
-  -> seller resolution
-  -> audio preparation
-  -> Russian STT
-  -> LLM parser + evidence rules
-  -> save_voice_sale RPC
-  -> sales/sale_items read-back verification
-  -> Telegram success or review decision/report buttons
-  -> Next.js App Router WebApp
-  -> report / records / review / sellers / item mutations
+Telegram user
+  -> bot webhook
+  -> voice.handler
+  -> Telegram file download
+  -> audio conversion/preparation
+  -> STT
+  -> cleanup/parser
+  -> records.service
+  -> Supabase RPC save_voice_sale
+  -> Telegram response
+  -> WebApp report/records/sellers
 ```
 
-## Telegram bot
+## Bot modules
 
-Bot работает через Telegraf.
+- `apps/bot/src/core/process-update.ts` registers handlers.
+- `apps/bot/src/handlers/start.handler.ts` handles `/start`.
+- `apps/bot/src/handlers/voice.handler.ts` owns voice pipeline orchestration.
+- `apps/bot/src/handlers/review.handler.ts` owns Telegram callback decisions.
+- `apps/bot/src/services/transcription.service.ts` calls STT.
+- `apps/bot/src/services/cleanup-text.service.ts` calls parser/LLM and fallback.
+- `apps/bot/src/services/records.service.ts` persists records and review decisions.
+- `apps/bot/src/services/storage.service.ts` archives voice audio.
+- `apps/bot/src/services/telegram.service.ts` creates Telegram keyboards/messages.
 
-Webhook защищён `TELEGRAM_WEBHOOK_SECRET`.
+## Web modules
 
-Bot success после voice save возможен только после Supabase read-back.
+- `apps/web/src/app/daily-report/page.tsx` renders report.
+- `apps/web/src/app/records/page.tsx` renders record journal.
+- `apps/web/src/app/sellers/page.tsx` renders seller stats.
+- `apps/web/src/app/review/page.tsx` redirects old `/review` links to `/records`.
+- `apps/web/src/app/daily-report/actions.ts` owns sale item update/delete/restore/reset actions.
+- `apps/web/src/features/records/records.api.ts` reads reports and performs mutations.
+- `apps/web/src/features/records/report-scope.ts` scopes sale_items through sales from current shop.
+- `apps/web/src/components/SaleItemCard.tsx` owns compact item edit/delete UX.
+- `apps/web/src/components/RecordCard.tsx` owns record display and Telegram review badge.
+- `apps/web/src/components/MobileNavigation.tsx` owns three-tab mobile navigation.
 
-Уверенная продажа получает обычный success message.
+## Data model
 
-Сомнительная продажа получает inline keyboard:
+Main tables:
 
-```text
-✅ Подтвердить
-❌ Отмена
-Открыть отчёт
-```
+- `shops`;
+- `sellers`;
+- `voice_records`;
+- `sales`;
+- `sale_items`;
+- `products`;
+- `audit_logs`.
 
-`Открыть отчёт` создаётся только как `web_app` кнопка.
+Audio lives in Supabase Storage bucket configured by `SUPABASE_STORAGE_BUCKET`.
 
-## Confirm/cancel service
+## Status lifecycle
 
-Callback flow:
+`sales` and `voice_records`:
 
-```text
-confirm:<sale_id> / cancel:<sale_id>
-  -> seller from ctx.from.id
-  -> sales by sale_id + seller_id + shop_id
-  -> confirm or cancel mutation
-  -> editMessageText or fallback reply
-```
+- `processed`;
+- `needs_review`;
+- `cancelled`;
+- `failed`.
 
-Confirm переводит sale/voice в `processed` и валидные items в `processed`.
+`sale_items`:
 
-Cancel переводит sale/voice в `cancelled` и soft-delete active items.
+- `processed`;
+- `needs_review`;
+- `needs_price` legacy;
+- `failed`;
+- `excluded`.
 
-Callback не принимает client `shop_id`.
+## Revenue boundary
 
-Повторные callback идемпотентны.
-
-Handler также принимает legacy `voice_sale_review:<action>:<sale_id>` для уже отправленных сообщений, но новые сообщения создаются только с короткими callback data.
-
-## WebApp auth
-
-```text
-Telegram mode:
-  telegram-web-app.js
-  -> window.Telegram.WebApp.initData
-  -> client checks WebApp + raw initData + initDataUnsafe.user.id
-  -> apiFetch(x-app-mode=telegram, x-telegram-init-data=<raw initData>)
-  -> resolveRequestContext()
-  -> HMAC via TELEGRAM_BOT_TOKEN
-  -> seller lookup by Telegram user id
-  -> optional seller creation from active owner binding
-  -> server-derived shop_id
-```
-
-```text
-Browser fallback:
-  no initData
-  -> apiFetch(x-app-mode=fallback)
-  -> ALLOW_WEBAPP_FALLBACK=true
-  -> DEFAULT_SHOP_ID / DEFAULT_SELLER_ID from server env
-  -> seller lookup
-  -> shop_id equality check
-```
-
-`TELEGRAM_WEBHOOK_SECRET` не участвует в WebApp auth.
-
-## WebApp data flow
-
-Report:
+Revenue is derived from scoped active rows only:
 
 ```text
-requireOwner()
-  -> sales by shop_id and period
-  -> sale_items by sale ids
-  -> scopeReportRows()
-  -> buildSalesReport()
-```
-
-Records:
-
-```text
-requireOwner()
-  -> sales by shop_id and period
-  -> signed audio url
-  -> sale_items by sale ids
-  -> RecordCard + details "Товары"
-```
-
-Sellers:
-
-```text
-requireOwner()
-  -> sellers by shop_id
-  -> sales by period
-  -> sale_items by sale ids
-  -> recordsCount + revenue
-```
-
-Review:
-
-```text
-requireOwner()
-  -> records by shop_id and period
-  -> filter needs_review
-  -> SaleItemCard edit/delete
-  -> confirmReviewSale / cancelReviewSale
-  -> revalidate report / records / review / sellers
-```
-
-## Item mutation flow
-
-```text
-SaleItemCard
-  -> updateSaleItemAction / excludeSaleItemAction
-  -> requireOwner()
-  -> sale_items.sale_id -> sales.shop_id access check
-  -> Supabase update + returned row
-  -> recalculate sales.total_amount/status
-  -> revalidate /daily-report and /records
-  -> router.refresh()
-```
-
-Processed sale item edit keeps item processed and updates revenue.
-
-Review sale item edit saves fields but keeps item review until explicit confirm.
-
-Delete is soft delete:
-
-```text
-status = excluded
-deleted_at = now()
-deleted_reason = excluded_by_owner
-```
-
-## Revenue architecture
-
-Revenue is derived from active processed items:
-
-```text
+sales.shop_id = current shop
+sales.status = processed
+sale_items.sale_id in scoped sales
 sale_items.status = processed
-and deleted_at is null
-and price is not null
-and total is not null
+sale_items.deleted_at is null
+sale_items.price is not null
+sale_items.total is not null
 ```
 
-`needs_review`, `cancelled`, `failed`, `excluded` and deleted rows do not participate.
+`scopeReportRows` prevents cross-shop reads and downgrades items from `needs_review` sales to review state for report purposes.
+
+`buildSalesReport` then aggregates only `processed` active items.
+
+## Telegram review decision
+
+```text
+needs_review sale
+  -> Telegram message with:
+       ✅ Подтвердить
+       ❌ Отмена
+  -> callback:
+       confirm:<sale_id>
+       cancel:<sale_id>
+  -> requireSeller resolves Telegram user
+  -> records.service validates sale shop and seller
+  -> mutation updates Supabase
+```
+
+Confirm:
+
+- validates active items;
+- requires meaningful product, quantity and price;
+- sets valid items to `processed`;
+- sets sale/voice to `processed`;
+- recalculates total.
+
+Cancel:
+
+- sets sale/voice to `cancelled`;
+- soft-delete active items;
+- stores previous item status;
+- total becomes zero.
+
+## WebApp responsibility
+
+WebApp is not a review decision surface. It does not expose confirm/cancel controls for `needs_review` voice records.
+
+WebApp responsibilities:
+
+- show report;
+- show records;
+- show sellers;
+- edit sale item fields;
+- delete sale item from active report;
+- display that review records need Telegram confirmation.
+
+## Authentication and shop isolation
+
+Telegram WebApp session:
+
+- client receives Telegram initData;
+- server verifies initData with bot token;
+- server resolves owner/seller principal;
+- session cookie stores derived context;
+- mutations call `requireOwner()`;
+- `shop_id` is never accepted from client form data as authority.
+
+Bot callback:
+
+- resolves seller by `ctx.from.id`;
+- filters sale by `shop_id` and `seller_id`;
+- does not trust callback data beyond sale id and action.
 
 ## Diagnostics
 
-Diagnostics route `/debug-telegram` is separate from the main product UI.
+`/debug-telegram` is available only:
 
-Production access requires `DEBUG_TELEGRAM_WEBAPP=true`.
+- in development;
+- or in production when `DEBUG_TELEGRAM_WEBAPP=true`.
 
-Diagnostics never prints raw initData or secrets.
+No diagnostics button is shown in the ordinary review-message. `/start` report keyboard can include diagnostics only behind the debug flag.
 
-## References
+## Non-goals
 
-- [Global spec](../specs/global.md)
-- [Telegram confirmation flow](../specs/product/telegram-confirmation-flow.md)
-- [WebApp report](../specs/product/webapp-report.md)
-- [Sale item editing](../specs/product/sale-item-editing.md)
-- [Database](../specs/technical/database.md)
-- [WebApp API](../specs/technical/webapp-api.md)
+- No WebApp confirm/cancel for review voice records.
+- No rewrite of STT.
+- No rewrite of parser.
+- No database schema reset.
+- No broad UI framework rewrite.
+
+## Verification
+
+Architecture-sensitive tests:
+
+- `tests/stabilization.test.ts`;
+- `tests/telegram-web-app.test.ts`;
+- `tests/records.test.ts`;
+- `tests/sale-parser.test.ts`;
+- `tests/transcript.test.ts`.
+
+Required commands:
+
+```bash
+npm run lint
+npm run test
+npm run build
+npm run web:build
+```

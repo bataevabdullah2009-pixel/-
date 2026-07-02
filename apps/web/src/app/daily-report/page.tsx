@@ -3,7 +3,6 @@ import { DateFilter } from "@/components/DateFilter";
 import { EmptyState } from "@/components/EmptyState";
 import { RefreshButton } from "@/components/RefreshButton";
 import { SaleItemCard } from "@/components/SaleItemCard";
-import Link from "next/link";
 import { getCurrentShopName, getReport } from "@/features/records/records.api";
 import type { SearchParams } from "@/features/records/records.types";
 import {
@@ -57,7 +56,8 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
         <div className="pageTitle">
           <div>
             <p className="eyebrow">{shopName}</p>
-            <h2>Отчёт</h2>
+            <h2>Голосовой журнал продаж</h2>
+            <p className="pageLead">Сводка магазина</p>
           </div>
         </div>
         <div className="actionNotice actionNotice-error" role="alert">{error}</div>
@@ -77,7 +77,8 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
       <div className="pageTitle">
         <div>
           <p className="eyebrow">{shopName}</p>
-          <h2>Отчёт</h2>
+          <h2>Голосовой журнал продаж</h2>
+          <p className="pageLead">Сводка магазина</p>
         </div>
       </div>
 
@@ -216,7 +217,7 @@ export default async function DailyReportPage({ searchParams }: DailyReportPageP
               <p className="eyebrow">Нужно проверить</p>
               <h3 id="review-items-heading">Нужно проверить</h3>
             </div>
-            <Link className="attentionPill" href="/review">Открыть проверку</Link>
+            <span className="attentionPill">Подтвердите в Telegram</span>
           </div>
           <div className="itemEditorList">
             {reviewItems.map((item) => <SaleItemCard item={item} key={item.id} />)}
