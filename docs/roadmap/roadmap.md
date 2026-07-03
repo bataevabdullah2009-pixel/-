@@ -50,4 +50,4 @@
 - Review decision доступен в Telegram и на WebApp вкладке `Проверка`.
 - Третья кнопка `Открыть отчёт` удалена из review-message.
 - `/review` снова является пользовательским экраном для active `needs_review`.
-- Revenue защищён от processed-looking items внутри `needs_review` sale.
+- Revenue защищён от неполных review items; active `processed` items внутри `needs_review` sale учитываются.

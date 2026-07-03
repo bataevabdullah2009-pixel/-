@@ -43,7 +43,7 @@
 
 - `sales.status = needs_review`;
 - `voice_records.status = needs_review`;
-- active items не входят в выручку;
+- active review items не входят в выручку; active `processed` items могут учитываться;
 - бот отвечает предупреждением;
 - под сообщением только `✅ Подтвердить` и `❌ Отмена`;
 - WebApp показывает запись на вкладке `Проверка`.

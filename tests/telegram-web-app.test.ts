@@ -448,7 +448,7 @@ describe("Telegram Mini App authentication", () => {
     });
   });
 
-  it("does not count processed-looking items from a needs_review sale", () => {
+  it("counts processed items from a needs_review sale while keeping incomplete items in review", () => {
     const scoped = scopeReportRows(
       [{
         id: "sale-review",
@@ -456,28 +456,41 @@ describe("Telegram Mini App authentication", () => {
         status: "needs_review",
         created_at: "2026-06-25T10:00:00.000Z"
       }],
-      [{
-        id: "item-review",
-        sale_id: "sale-review",
-        product_name: "Сникерс",
-        quantity: 5,
-        unit: "шт",
-        price: 100,
-        total: 500,
-        confidence: 1,
-        status: "processed"
-      }],
+      [
+        {
+          id: "item-confirmed",
+          sale_id: "sale-review",
+          product_name: "Сникерс",
+          quantity: 5,
+          unit: "шт",
+          price: 100,
+          total: 500,
+          confidence: 1,
+          status: "processed"
+        },
+        {
+          id: "item-review",
+          sale_id: "sale-review",
+          product_name: "Корзина продуктов",
+          quantity: 1,
+          unit: "шт",
+          price: null,
+          total: null,
+          confidence: 0.4,
+          status: "needs_review"
+        }
+      ],
       "shop-1"
     );
     const report = buildSalesReport(scoped.items);
 
-    expect(scoped.saleItemsCount).toBe(1);
-    expect(scoped.items[0]?.status).toBe("needs_review");
+    expect(scoped.saleItemsCount).toBe(2);
     expect(report).toMatchObject({
-      totalQuantity: 0,
-      totalRevenue: 0
+      totalQuantity: 5,
+      totalRevenue: 500
     });
     expect(report.reviewItems).toHaveLength(1);
+    expect(report.reviewItems[0]).toMatchObject({ id: "item-review", status: "needs_review" });
   });
 
   it("counts processed items and keeps review items visible inside a processed mixed sale", () => {

@@ -19,7 +19,7 @@ Deterministic fallback делил текст по запятой слишком 
 - Invalid LLM JSON/parser fallback тоже использует deterministic item extraction.
 - Confirm logs now include sale id, found count, valid count and invalid reasons.
 - Successful confirm message: `✅ Подтверждено: N позиций, сумма X ₽`.
-- WebApp manual save persists item fields, recalculates `total`, sets item `processed`, and keeps parent `needs_review` sale out of revenue until explicit confirm.
+- Superseded 2026-07-03: WebApp manual save persists item fields, recalculates `total`, sets item `processed`, and that item can enter revenue while parent `needs_review` remains for incomplete siblings.
 
 ## Проверка
 

@@ -81,14 +81,14 @@ Cancel:
 
 ```text
 processed sale + valid item edit -> processed item
-needs_review sale + valid item edit -> processed item, parent sale stays needs_review
+needs_review sale + valid item edit -> processed item, parent sale stays needs_review if other review items remain
 ```
 
 WebApp edit не подтверждает сомнительную voice-запись.
 
 Он только сохраняет товар, количество, цену, статус item и пересчитанный total.
 
-Чтобы review-запись вошла в отчёт, требуется confirm в Telegram или WebApp `Проверка`.
+Сохранённый `processed` item может войти в отчёт сразу; confirm нужен, чтобы обработать оставшиеся review items или завершить parent sale.
 
 ## Soft delete
 
@@ -125,7 +125,7 @@ Internal enum не показываются в UI.
 В выручку входит только:
 
 ```text
-sale.status = processed
+sale.status is not cancelled/failed
 and
 sale_item.status = processed
 and sale_item.deleted_at is null
@@ -134,6 +134,6 @@ and quantity_or_weight is valid
 and (price is not null or price can be derived from total)
 ```
 
-`needs_review`, `cancelled`, `failed`, `excluded` и soft-deleted rows не входят.
+Item statuses `needs_review`, `needs_price`, `failed`, `excluded`, parent statuses `cancelled`/`failed` и soft-deleted rows не входят.
 
-Mixed processed sale допустима после confirm: parent sale получает `processed`, валидные items получают `processed`, а неполные active items остаются `needs_review` и продолжают отображаться в review list без влияния на revenue.
+Mixed sale допустима после confirm: валидные items получают `processed` и входят в revenue, а неполные active items остаются `needs_review`. Parent sale становится `processed` только когда неполных active items больше нет; иначе остаётся `needs_review`.

@@ -90,7 +90,7 @@ Revenue is derived from scoped active rows only:
 
 ```text
 sales.shop_id = current shop
-sales.status = processed
+sales.status is not cancelled/failed
 sale_items.sale_id in scoped sales
 sale_items.status = processed
 sale_items.deleted_at is null
@@ -99,7 +99,7 @@ sale_items.quantity/weight is valid
 sale_items.price is valid or derivable from total
 ```
 
-`scopeReportRows` prevents cross-shop reads and downgrades items from `needs_review` sales to review state for report purposes.
+`scopeReportRows` prevents cross-shop reads, excludes cancelled/failed parent sales, and keeps item status as the revenue source of truth. A `needs_review` sale can contribute revenue through active `processed` items while incomplete items remain in review.
 
 `buildSalesReport` then aggregates only `processed` active items.
 

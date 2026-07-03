@@ -36,6 +36,10 @@ type AdminClient = NonNullable<ReturnType<typeof getSupabaseAdminClient>>;
 type MutationResult = {
   ok: boolean;
   message: string;
+  recordId?: string;
+  confirmedItemsCount?: number;
+  totalAmount?: number;
+  status?: string;
   statusCode?: 401 | 403 | 404 | 422 | 500;
   code?: string;
   item?: {
@@ -56,7 +60,7 @@ function mutationError(
   message: string,
   statusCode: NonNullable<MutationResult["statusCode"]>,
   code: string
-): MutationResult {
+): MutationResult & { ok: false } {
   return { ok: false, message, statusCode, code };
 }
 
@@ -583,7 +587,7 @@ export async function getReviewItems(filters: ReportFilters) {
 async function getSaleContext(admin: AdminClient, saleId: string, shopId: string) {
   const { data, error } = await admin
     .from("sales")
-    .select("id, shop_id, seller_id, voice_record_id, status")
+    .select("id, shop_id, seller_id, voice_record_id, status, total_amount")
     .eq("id", saleId)
     .eq("shop_id", shopId)
     .single();
@@ -659,9 +663,7 @@ async function recalculateSale(admin: AdminClient, saleId: string, shopId: strin
   const hasReviewItems = activeItems.some((item: any) => !isRevenueSaleItemStatus(String(item.status)));
   const saleStatus = currentStatus === "cancelled" || currentStatus === "failed"
     ? currentStatus
-    : currentStatus === "processed"
-      ? "processed"
-      : hasReviewItems
+    : hasReviewItems
       ? "needs_review"
       : "processed";
 
@@ -669,29 +671,59 @@ async function recalculateSale(admin: AdminClient, saleId: string, shopId: strin
     .from("sales")
     .update({ total_amount: totalAmount, status: saleStatus })
     .eq("id", saleId)
-    .eq("shop_id", shopId)
-    .select("id")
-    .single();
+    .eq("shop_id", shopId);
 
-  if (saleUpdateError) {
-    return mutationError("Не удалось пересчитать продажу.", 500, "SALE_RECALC_FAILED");
-  }
+  console.info("[records] recalculate sale update result", {
+    saleRecordId: saleId,
+    targetStatus: saleStatus,
+    totalAmount,
+    error: saleUpdateError?.message ?? null
+  });
 
   if (context.data.voice_record_id) {
     const { error: voiceRecordUpdateError } = await admin
       .from("voice_records")
       .update({ status: saleStatus })
       .eq("id", context.data.voice_record_id)
-      .eq("shop_id", shopId)
-      .select("id")
-      .single();
+      .eq("shop_id", shopId);
 
     if (voiceRecordUpdateError) {
-      return mutationError("Не удалось обновить статус записи.", 500, "VOICE_RECORD_RECALC_FAILED");
+      console.warn("[records] recalculate voice record update failed", {
+        saleRecordId: saleId,
+        voiceRecordId: context.data.voice_record_id,
+        targetStatus: saleStatus,
+        error: voiceRecordUpdateError.message
+      });
     }
   }
 
-  return { ok: true, message: "Итоги продажи пересчитаны." };
+  const finalContext = await getSaleContext(admin, saleId, shopId);
+  const finalSale = finalContext.data;
+  console.info("[records] recalculate final sale", {
+    saleRecordId: saleId,
+    finalStatus: finalSale?.status ?? null,
+    finalTotalAmount: finalSale?.total_amount ?? null
+  });
+
+  if (
+    !finalSale ||
+    String(finalSale.status) !== saleStatus ||
+    Number(finalSale.total_amount ?? 0) !== totalAmount
+  ) {
+    return mutationError(
+      saleUpdateError ? "Не удалось пересчитать продажу." : "Статус продажи не совпал после пересчёта.",
+      500,
+      saleUpdateError ? "SALE_RECALC_FAILED" : "SALE_RECALC_READBACK_MISMATCH"
+    );
+  }
+
+  return {
+    ok: true,
+    message: "Итоги продажи пересчитаны.",
+    recordId: saleId,
+    totalAmount,
+    status: saleStatus
+  };
 }
 
 export async function updateSaleItem(params: {
@@ -1094,6 +1126,26 @@ function inspectConfirmableReviewItem(item: ReviewMutationItemRow) {
   };
 }
 
+function calculateProcessedReviewTotal(items: ReviewMutationItemRow[]) {
+  return Number(
+    items
+      .filter((item) => item.status === "processed" && item.total !== null)
+      .reduce((sum, item) => sum + Number(item.total), 0)
+      .toFixed(2)
+  );
+}
+
+function hasPendingReviewItems(items: ReviewMutationItemRow[]) {
+  return items.some((item) => item.status !== "processed" && item.status !== "excluded");
+}
+
+function buildConfirmMessage(confirmedCount: number, totalAmount: number, remainingReviewCount: number) {
+  const base = `✅ Подтверждено: ${confirmedCount} позиций, сумма ${formatRubles(totalAmount)}`;
+  return remainingReviewCount > 0
+    ? `${base}. Неполных позиций осталось: ${remainingReviewCount}.`
+    : base;
+}
+
 async function getActiveReviewMutationItems(admin: AdminClient, saleId: string) {
   const { data, error } = await admin
     .from("sale_items")
@@ -1114,40 +1166,69 @@ async function getActiveReviewMutationItems(admin: AdminClient, saleId: string) 
   };
 }
 
+type ReviewSaleContextRow = NonNullable<Awaited<ReturnType<typeof getSaleContext>>["data"]>;
+type ReviewSaleStatusResult =
+  | { ok: true; sale: ReviewSaleContextRow }
+  | (MutationResult & { ok: false });
+
 async function setReviewSaleStatus(
   admin: AdminClient,
-  sale: NonNullable<Awaited<ReturnType<typeof getSaleContext>>["data"]>,
+  sale: ReviewSaleContextRow,
   shopId: string,
-  status: "processed" | "cancelled",
+  status: "processed" | "needs_review" | "cancelled",
   totalAmount: number
-) {
+): Promise<ReviewSaleStatusResult> {
   const { error: saleError } = await admin
     .from("sales")
     .update({ status, total_amount: totalAmount })
     .eq("id", sale.id)
-    .eq("shop_id", shopId)
-    .select("id")
-    .single();
+    .eq("shop_id", shopId);
 
-  if (saleError) {
-    return mutationError("Не удалось обновить статус записи.", 500, "REVIEW_SALE_UPDATE_FAILED");
-  }
+  console.info("[records] confirm sale update result", {
+    saleRecordId: sale.id,
+    targetStatus: status,
+    totalAmount,
+    error: saleError?.message ?? null
+  });
 
   if (sale.voice_record_id) {
     const { error: voiceError } = await admin
       .from("voice_records")
       .update({ status })
       .eq("id", sale.voice_record_id)
-      .eq("shop_id", shopId)
-      .select("id")
-      .single();
+      .eq("shop_id", shopId);
 
     if (voiceError) {
-      return mutationError("Не удалось обновить voice-запись.", 500, "REVIEW_VOICE_UPDATE_FAILED");
+      console.warn("[records] confirm voice record update failed", {
+        saleRecordId: sale.id,
+        voiceRecordId: sale.voice_record_id,
+        targetStatus: status,
+        error: voiceError.message
+      });
     }
   }
 
-  return null;
+  const finalContext = await getSaleContext(admin, sale.id, shopId);
+  const finalSale = finalContext.data;
+  console.info("[records] confirm final sale", {
+    saleRecordId: sale.id,
+    finalStatus: finalSale?.status ?? null,
+    finalTotalAmount: finalSale?.total_amount ?? null
+  });
+
+  if (
+    !finalSale ||
+    String(finalSale.status) !== status ||
+    Number(finalSale.total_amount ?? 0) !== totalAmount
+  ) {
+    return mutationError(
+      saleError ? "Не удалось обновить статус записи." : "Статус записи не совпал после подтверждения.",
+      500,
+      saleError ? "REVIEW_SALE_UPDATE_FAILED" : "REVIEW_SALE_READBACK_MISMATCH"
+    );
+  }
+
+  return { ok: true, sale: finalSale };
 }
 
 async function resolveReviewMutationContext(saleId: string) {
@@ -1199,21 +1280,53 @@ async function resolveReviewMutationContext(saleId: string) {
 }
 
 export async function confirmReviewSale(saleId: string): Promise<MutationResult> {
+  console.info("[records] confirm review started", { saleRecordId: saleId });
   const context = await resolveReviewMutationContext(saleId);
-  if (context.error) return context.error;
+  if (context.error) {
+    console.info("[records] confirm review returned", {
+      saleRecordId: saleId,
+      ok: context.error.ok,
+      code: context.error.code
+    });
+    return context.error;
+  }
   const { owner, admin, sale } = context;
   if (!owner || !admin || !sale) {
     return mutationError("Не удалось подтвердить запись.", 500, "REVIEW_CONTEXT_MISSING");
   }
 
   if (sale.status === "processed") {
-    return { ok: true, message: "Запись уже подтверждена и входит в отчёт." };
+    const response = {
+      ok: true,
+      recordId: sale.id,
+      confirmedItemsCount: 0,
+      totalAmount: Number(sale.total_amount ?? 0),
+      status: "processed",
+      message: "✅ Уже подтверждено"
+    };
+    console.info("[records] confirm review returned", response);
+    return response;
   }
   if (sale.status === "cancelled") {
-    return { ok: true, message: "Запись уже отменена и не входит в отчёт." };
+    const response = {
+      ok: true,
+      recordId: sale.id,
+      confirmedItemsCount: 0,
+      totalAmount: Number(sale.total_amount ?? 0),
+      status: "cancelled",
+      message: "Запись уже отменена и не входит в отчёт."
+    };
+    console.info("[records] confirm review returned", response);
+    return response;
   }
   if (sale.status === "failed") {
-    return mutationError("Не удалось подтвердить неуспешную запись.", 422, "FAILED_SALE_CONFIRM_FORBIDDEN");
+    const response = mutationError("Не удалось подтвердить неуспешную запись.", 422, "FAILED_SALE_CONFIRM_FORBIDDEN");
+    console.info("[records] confirm review returned", {
+      saleRecordId: sale.id,
+      ok: response.ok,
+      code: response.code
+    });
+    return response;
   }
 
   const activeItems = await getActiveReviewMutationItems(admin, sale.id);
@@ -1227,11 +1340,16 @@ export async function confirmReviewSale(saleId: string): Promise<MutationResult>
     item,
     ...inspectConfirmableReviewItem(item)
   }));
-  const confirmableItems = inspectedItems.flatMap((item) => item.confirmable ? [item.confirmable] : []);
+  const validItems = inspectedItems.flatMap((item) => item.confirmable ? [item.confirmable] : []);
+  const alreadyProcessedIds = new Set(
+    activeItems.items.filter((item) => item.status === "processed").map((item) => String(item.id))
+  );
+  const confirmableItems = validItems.filter((item) => !alreadyProcessedIds.has(item.id));
   console.info("[records] confirm review items validated", {
     saleRecordId: sale.id,
     foundItemsCount: activeItems.items.length,
-    validItemsCount: confirmableItems.length,
+    validItemsCount: validItems.length,
+    updateItemsCount: confirmableItems.length,
     invalidItems: inspectedItems
       .filter((item) => item.invalidReasons.length)
       .map(({ item, invalidReasons }) => ({
@@ -1242,14 +1360,21 @@ export async function confirmReviewSale(saleId: string): Promise<MutationResult>
       }))
   });
 
-  if (!confirmableItems.length) {
-    return mutationError(
+  if (!validItems.length) {
+    const response = mutationError(
       "Не удалось подтвердить: нет ни одной полной позиции.",
       422,
       "NO_CONFIRMABLE_ITEMS"
     );
+    console.info("[records] confirm review returned", {
+      saleRecordId: sale.id,
+      ok: response.ok,
+      code: response.code
+    });
+    return response;
   }
 
+  const itemUpdateErrors: unknown[] = [];
   for (const item of confirmableItems) {
     const { error } = await admin
       .from("sale_items")
@@ -1261,30 +1386,71 @@ export async function confirmReviewSale(saleId: string): Promise<MutationResult>
         updated_at: new Date().toISOString()
       })
       .eq("id", item.id)
-      .is("deleted_at", null)
-      .select("id")
-      .single();
+      .is("deleted_at", null);
 
+    console.info("[records] confirm review item update result", {
+      saleRecordId: sale.id,
+      itemId: item.id,
+      error: error?.message ?? null
+    });
     if (error) {
-      return mutationError("Не удалось подтвердить товары записи.", 500, "REVIEW_ITEM_CONFIRM_FAILED");
+      itemUpdateErrors.push(error);
     }
   }
 
-  const totalAmount = Number(confirmableItems.reduce((sum, item) => sum + item.total, 0).toFixed(2));
-  const statusError = await setReviewSaleStatus(admin, sale, owner.shopId, "processed", totalAmount);
-  if (statusError) return statusError;
+  const finalItems = await getActiveReviewMutationItems(admin, sale.id);
+  if (finalItems.error) return finalItems.error;
+  const finalProcessedIds = new Set(
+    finalItems.items.filter((item) => item.status === "processed").map((item) => String(item.id))
+  );
+  const missingConfirmedItem = confirmableItems.find((item) => !finalProcessedIds.has(item.id));
+  if (missingConfirmedItem) {
+    return mutationError(
+      itemUpdateErrors.length ? "Не удалось подтвердить товары записи." : "Не все товары были подтверждены.",
+      500,
+      itemUpdateErrors.length ? "REVIEW_ITEM_CONFIRM_FAILED" : "REVIEW_ITEM_CONFIRM_INCOMPLETE"
+    );
+  }
+
+  const totalAmount = calculateProcessedReviewTotal(finalItems.items);
+  const remainingReviewCount = finalItems.items.filter((item) => item.status !== "processed").length;
+  const nextStatus = hasPendingReviewItems(finalItems.items) ? "needs_review" : "processed";
+  const statusResult = await setReviewSaleStatus(admin, sale, owner.shopId, nextStatus, totalAmount);
+  if (!statusResult.ok) return statusResult;
+  const finalSale = statusResult.sale;
+
+  if (!confirmableItems.length) {
+    const response = {
+      ok: true,
+      recordId: sale.id,
+      confirmedItemsCount: validItems.length,
+      totalAmount,
+      status: String(finalSale.status),
+      message: "✅ Уже подтверждено"
+    };
+    console.info("[records] confirm review returned", response);
+    return response;
+  }
 
   const auditError = await writeAuditLog(admin, sale, "voice_sale_confirmed_webapp", {
     sale_id: sale.id,
-    item_count: confirmableItems.length,
-    total_amount: totalAmount
+    item_count: validItems.length,
+    updated_item_count: confirmableItems.length,
+    total_amount: totalAmount,
+    status: finalSale.status
   });
   logAuditFailure("voice_sale_confirmed_webapp", auditError);
 
-  return {
+  const response = {
     ok: true,
-    message: `✅ Подтверждено: ${confirmableItems.length} позиций, сумма ${formatRubles(totalAmount)}`
+    recordId: sale.id,
+    confirmedItemsCount: validItems.length,
+    totalAmount,
+    status: String(finalSale.status),
+    message: buildConfirmMessage(validItems.length, totalAmount, remainingReviewCount)
   };
+  console.info("[records] confirm review returned", response);
+  return response;
 }
 
 export async function cancelReviewSale(saleId: string): Promise<MutationResult> {
@@ -1325,8 +1491,8 @@ export async function cancelReviewSale(saleId: string): Promise<MutationResult> 
     excludedCount += 1;
   }
 
-  const statusError = await setReviewSaleStatus(admin, sale, owner.shopId, "cancelled", 0);
-  if (statusError) return statusError;
+  const statusResult = await setReviewSaleStatus(admin, sale, owner.shopId, "cancelled", 0);
+  if (!statusResult.ok) return statusResult;
 
   const auditError = await writeAuditLog(admin, sale, "voice_sale_cancelled_webapp", {
     sale_id: sale.id,

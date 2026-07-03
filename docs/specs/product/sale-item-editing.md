@@ -100,8 +100,8 @@
 1. Если parent sale `processed`, item остаётся `processed`.
 2. Если пользователь сохранил валидные `product_name`, `quantity`, `unit` и `price`, item получает `processed` даже внутри parent sale `needs_review`.
 3. Edit не подтверждает review voice-запись и не переводит parent sale в `processed`.
-4. Review sale начинает входить в выручку только после явного confirm.
-5. Processed sale пересчитывает revenue сразу.
+4. Review sale может остаться `needs_review`, но сохранённый `processed` item пересчитывает revenue сразу.
+5. Parent sale становится `processed`, только если после сохранения не осталось active review items.
 6. Для `unit = г` сумма считается как `quantity / 1000 * price`; `price` трактуется как цена за кг.
 7. Cancelled sale не должен получить revenue через update.
 8. Failed sale не должен получить revenue через update.
@@ -165,13 +165,13 @@
 ## 13. Business logic
 
 1. В active report входят только non-deleted items.
-2. В revenue входят только parent sale `processed`.
+2. В revenue не входят parent sale `cancelled` и `failed`.
 3. В revenue входят только item `processed`.
 4. Item without price не входит в revenue.
 5. Item without total не входит в revenue.
 6. Deleted item не входит в quantity.
 7. Deleted item не входит в revenue.
-8. Review sale item может стать `processed` после edit, но не counted, пока parent sale не подтверждён.
+8. Review sale item может стать `processed` после edit и counted после refresh; parent sale остаётся `needs_review`, если есть другие неполные items.
 
 ## 14. API and server logic
 

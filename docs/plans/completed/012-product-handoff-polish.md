@@ -31,7 +31,7 @@
 
 ### Data
 
-- Report scope не считает processed-looking items из parent sale `needs_review`.
+- Superseded 2026-07-03: current report scope counts active `processed` items inside parent sale `needs_review`; only incomplete sibling items stay in review.
 - Revenue status predicate принимает только `processed`.
 - Recalculate после delete не переводит processed sale в review, если все active items удалены.
 - Cancelled/failed sale получают zero revenue при recalculation.
@@ -39,7 +39,7 @@
 ### Tests
 
 - Обновлён keyboard regression.
-- Добавлен тест для processed-looking item внутри needs_review sale.
+- Superseded 2026-07-03: test expectation changed to count processed item inside needs_review sale while keeping incomplete item in review.
 - Пройден `npm.cmd run test`: 8 files, 93 tests.
 
 ## Backlog

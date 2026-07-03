@@ -184,8 +184,8 @@ Records не показывает пустое состояние при auth/DB
 6. Чужой item не редактируется.
 7. Изменённая строка читается через `.select().single()`.
 8. Валидный save сохраняет item как `processed` и `confidence = 1`.
-9. Review sale остаётся parent `needs_review`, поэтому processed-looking item не входит в выручку до confirm.
-10. Review edit не добавляет выручку до confirm.
+9. Review sale может остаться parent `needs_review`, если есть неполные active items.
+10. Review edit с полными данными может сделать item `processed`; такая позиция входит в выручку после refresh.
 
 После успеха:
 
@@ -301,7 +301,7 @@ Records не показывает пустое состояние при auth/DB
 3. Legacy `excluded` без `deleted_at` не показывается active.
 4. Product match отсутствует — свободное название сохраняется.
 5. Audit log failure не отменяет update/delete.
-6. Review sale item after edit can be stored as `processed`, but parent `needs_review` sale keeps it out of revenue.
+6. Review sale item after edit can be stored as `processed` and counted in revenue; parent `needs_review` only means unresolved sibling items remain.
 7. Repeated review confirm/cancel is idempotent.
 8. Wrong sale id returns readable error.
 

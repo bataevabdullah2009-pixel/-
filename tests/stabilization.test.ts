@@ -76,6 +76,7 @@ type ReviewDecisionSaleItem = {
 
 function createReviewDecisionClient(options: {
   saleItems?: ReviewDecisionSaleItem[];
+  emptyUpdateData?: boolean;
 } = {}) {
   const defaultSaleItems: ReviewDecisionSaleItem[] = [{
     id: "item-1",
@@ -122,6 +123,9 @@ function createReviewDecisionClient(options: {
         if (patch) {
           const matches = applyFilters();
           for (const row of matches) Object.assign(row, patch);
+          if (options.emptyUpdateData) {
+            return { data: null, error: null };
+          }
           return { data: matches.length === 1 ? matches[0] : matches, error: null };
         }
         return { data: applyFilters(), error: null };
@@ -329,13 +333,32 @@ describe("sales flow stabilization", () => {
     expect(result).toMatchObject({
       ok: true,
       status: "processed",
+      confirmedItemsCount: 1,
+      totalAmount: 500,
       message: "✅ Подтверждено: 1 позиций, сумма 500 ₽"
     });
-    expect(repeat).toMatchObject({ ok: true, status: "unchanged" });
+    expect(repeat).toMatchObject({ ok: true, status: "unchanged", message: "✅ Уже подтверждено" });
     expect(state.sales[0]).toMatchObject({ status: "processed", total_amount: 500 });
     expect(state.voice_records[0]).toMatchObject({ status: "processed" });
     expect(state.sale_items[0]).toMatchObject({ status: "processed", confidence: 1 });
+    expect(state.sale_items).toHaveLength(1);
     expect(report.totalRevenue).toBe(500);
+  });
+
+  it("treats empty Supabase update data as success after read-back confirms status", async () => {
+    const { client, state } = createReviewDecisionClient({ emptyUpdateData: true });
+    const seller = { id: "seller-1", shopId: "shop-1" };
+
+    const result = await confirmVoiceSaleWithClient(client as never, seller, "sale-1");
+
+    expect(result).toMatchObject({
+      ok: true,
+      status: "processed",
+      confirmedItemsCount: 1,
+      totalAmount: 500
+    });
+    expect(state.sales[0]).toMatchObject({ status: "processed", total_amount: 500 });
+    expect(state.sale_items[0]).toMatchObject({ status: "processed", confidence: 1 });
   });
 
   it("confirms a full cart with multiple valid items and calculates revenue", async () => {
@@ -415,8 +438,10 @@ describe("sales flow stabilization", () => {
 
     expect(result).toMatchObject({
       ok: true,
-      status: "processed",
-      message: "✅ Подтверждено: 1 позиций, сумма 250 ₽"
+      status: "unchanged",
+      message: "✅ Уже подтверждено",
+      confirmedItemsCount: 1,
+      totalAmount: 250
     });
     expect(state.sales[0]).toMatchObject({ status: "processed", total_amount: 250 });
     expect(state.sale_items[0]).toMatchObject({ status: "processed", total: 250 });
@@ -472,9 +497,15 @@ describe("sales flow stabilization", () => {
       created_at: "2026-06-30T09:00:00.000Z"
     })) as SaleItem[]);
 
-    expect(result).toMatchObject({ ok: true, status: "processed", itemCount: 2 });
-    expect(state.sales[0]).toMatchObject({ status: "processed", total_amount: 650 });
-    expect(state.voice_records[0]).toMatchObject({ status: "processed" });
+    expect(result).toMatchObject({
+      ok: true,
+      status: "needs_review",
+      itemCount: 2,
+      totalAmount: 650,
+      message: "✅ Подтверждено: 2 позиций, сумма 650 ₽. Неполных позиций осталось: 1."
+    });
+    expect(state.sales[0]).toMatchObject({ status: "needs_review", total_amount: 650 });
+    expect(state.voice_records[0]).toMatchObject({ status: "needs_review" });
     expect(state.sale_items).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: "item-snickers", status: "processed", total: 500 }),
       expect.objectContaining({ id: "item-bread", status: "processed", total: 150 }),

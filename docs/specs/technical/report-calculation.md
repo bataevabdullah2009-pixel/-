@@ -66,7 +66,7 @@ Review items показываются отдельно.
 
 Они не добавляются в `totalQuantity`.
 
-Если WebApp edit сохранил поля review item, item row может стать `processed`, но parent sale остаётся `needs_review`, пока Telegram callback или WebApp review action не подтвердит sale. Поэтому processed-looking item внутри parent `needs_review` не входит в выручку.
+Если WebApp edit сохранил поля review item, item row может стать `processed` и войти в выручку. Parent sale остаётся `needs_review`, если в записи ещё есть другие review items.
 
 ## Confirm decision
 
@@ -100,7 +100,7 @@ Review items показываются отдельно.
 
 Processed item update меняет выручку.
 
-Review item update сохраняет поля, пересчитывает item total и может поставить item `processed`, но не меняет выручку до явного confirm parent sale.
+Review item update сохраняет поля, пересчитывает item total и может поставить item `processed`; после refresh такая позиция участвует в выручке.
 
 Soft delete уменьшает выручку, если item входил в неё.
 
@@ -136,7 +136,7 @@ Raw initData и секреты не логируются.
 4. Deleted item не входит.
 5. Delete пересчитывает totals.
 6. Update processed item пересчитывает totals.
-7. Update review item не добавляет revenue.
-8. Confirm добавляет revenue.
+7. Update review item с полными данными добавляет revenue.
+8. Confirm добавляет revenue для валидных items и оставляет неполные в review.
 9. Cancel сохраняет zero revenue.
 10. Auth/DB error не выглядит как пустой отчёт.

@@ -62,10 +62,16 @@ function finishMutation(returnTo: string, result: { ok: boolean; message: string
 }
 
 function revalidateReports() {
-  revalidatePath("/daily-report");
-  revalidatePath("/review");
-  revalidatePath("/records");
-  revalidatePath("/sellers");
+  try {
+    revalidatePath("/daily-report");
+    revalidatePath("/review");
+    revalidatePath("/records");
+    revalidatePath("/sellers");
+    return true;
+  } catch (error) {
+    console.error("Report mutation revalidation failed", error);
+    return false;
+  }
 }
 
 export async function updateSaleItemAction(
@@ -99,10 +105,12 @@ export async function updateSaleItemAction(
       return actionError(result.message || UPDATE_ERROR_MESSAGE, result.statusCode ?? 500, result.code ?? "ITEM_UPDATE_FAILED");
     }
 
-    revalidateReports();
+    const refreshed = revalidateReports();
     return {
       status: "success",
-      message: result.message,
+      message: refreshed
+        ? result.message
+        : "Статус обновлён, но не удалось обновить экран. Нажмите обновить.",
       item: result.item
     };
   } catch (error) {
@@ -131,10 +139,12 @@ export async function excludeSaleItemAction(
       return actionError(result.message || EXCLUDE_ERROR_MESSAGE, result.statusCode ?? 500, result.code ?? "ITEM_EXCLUDE_FAILED");
     }
 
-    revalidateReports();
+    const refreshed = revalidateReports();
     return {
       status: "success",
-      message: result.message,
+      message: refreshed
+        ? result.message
+        : "Статус обновлён, но не удалось обновить экран. Нажмите обновить.",
       itemId: result.itemId ?? itemId
     };
   } catch (error) {

@@ -5,7 +5,7 @@
 - Production smoke с реальным Telegram bot и тестовой Supabase БД.
 - Проверка реального audio playback из Supabase Storage.
 - Проверка Vercel logs после deploy: webhook callbacks, permission errors, missing columns.
-- Ручная проверка шести сценариев из README product smoke.
+- Ручная проверка сценариев из README product smoke.
 
 ## После сдачи
 
@@ -17,7 +17,7 @@
 
 ## Не планируется в текущем scope
 
-- Подтверждение сомнительных voice-записей в WebApp.
+- Переписывание уже работающего WebApp confirm/cancel flow.
 - Переписывание STT.
 - Переписывание parser.
 - Замена Supabase persistence.
