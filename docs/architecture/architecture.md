@@ -20,6 +20,7 @@ Telegram user
   -> audio conversion/preparation
   -> STT
   -> cleanup/parser
+  -> deterministic evidence fallback
   -> records.service
   -> Supabase RPC save_voice_sale
   -> Telegram response
@@ -101,6 +102,16 @@ sale_items.price is valid or derivable from total
 `scopeReportRows` prevents cross-shop reads and downgrades items from `needs_review` sales to review state for report purposes.
 
 `buildSalesReport` then aggregates only `processed` active items.
+
+## Parser fallback boundary
+
+`packages/shared/utils/sale-parser.ts` is the deterministic guard between LLM output and persistence:
+
+- it verifies quantity/price evidence against the STT transcript;
+- it splits glued parser output into separate `sale_items`;
+- it handles comma after product name, dot, newline, conjunctions and adjacent products;
+- it supports `шт`, `кг`, `г`, bottles as pieces, and bare `5 по 100`;
+- it keeps incomplete leftovers as separate review items instead of folding them into a valid product.
 
 ## Telegram review decision
 

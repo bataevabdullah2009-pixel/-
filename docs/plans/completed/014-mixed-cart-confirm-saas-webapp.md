@@ -10,7 +10,7 @@
 
 - Root cause: прежний confirm требовал, чтобы все active `sale_items` были полными. Если parser создавал одну валидную позицию и одну неполную строку, handler считал всю корзину невалидной.
 - Telegram `confirmVoiceSaleWithClient` и WebApp `confirmReviewSale` теперь работают на уровне `sale_items`.
-- Валидная позиция: осмысленный `product_name`, положительное `quantity` или весовая величина, а также `unit_price` или `total_price`, из которого можно вычислить unit price.
+- Валидная позиция: осмысленный `product_name`, положительное `quantity` или весовая величина, а также сохранённый `price` или `total`, из которого можно вычислить unit price.
 - Валидные items получают `processed`, `confidence = 1`, пересчитанные `price` и `total`.
 - Неполные active items остаются в `needs_review` и не входят в выручку.
 - Если нет ни одной полной позиции, confirm не меняет sale/items и возвращает `Не удалось подтвердить: нет ни одной полной позиции.`

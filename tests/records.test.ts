@@ -220,6 +220,25 @@ describe("sales report", () => {
     });
   });
 
+  it("builds a complete manual WebApp save patch for bread", () => {
+    const patch = buildManualSaleItemPatch({
+      productName: "Буханка хлеба",
+      quantity: 5,
+      unit: "шт",
+      price: 50
+    });
+
+    expect(patch).toMatchObject({
+      product_name: "Буханка хлеба",
+      quantity: 5,
+      unit: "шт",
+      price: 50,
+      total: 250,
+      status: "processed",
+      confidence: 1
+    });
+  });
+
   it("recalculates report totals after an item update", () => {
     const patch = buildManualSaleItemPatch({
       productName: "Сникерс",

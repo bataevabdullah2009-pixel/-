@@ -1,5 +1,32 @@
 # CHANGELOG
 
+## 2026-07-03 - Parser fallback restores multi-item sale_items
+
+### Root cause
+
+- Причина склейки товаров была в deterministic evidence fallback: он грубо делил по запятой, поэтому `Сникерс, 3 штуки по 200 рублей` распадался на `Сникерс` и `3 штуки...`, а complete item не создавался. Если LLM возвращал один длинный item, в `sale_items` уходила одна строка с полным текстом, `quantity = 1`, `price = null`, `total = null`.
+- Read-only Supabase проверка последних записей подтвердила старые glued rows: последние multi-item voice sales имели один `sale_items.product_name` с полным текстом и `needs_review`/неполные цены.
+
+### Parser and normalization
+
+- Fallback parser теперь ищет complete item evidence по всей фразе без split по запятой между названием и количеством.
+- Поддержаны формы `Сникерс 5 по 100`, `Пицца 1 штука 500 рублей`, `Хлеб 3 штуки по 50, шоколад 2 штуки по 100`, `Кола 2 бутылки по 150 рублей`.
+- Неполные остатки вроде `Корзина продуктов` сохраняются отдельными `needs_review` items и не блокируют валидные позиции.
+- Parser fallback используется также при invalid LLM JSON/parser fallback, чтобы recoverable parser failure не превращал всю продажу в одну строку.
+
+### Confirm and WebApp save
+
+- Telegram и WebApp confirm логируют найденные items, валидные items и причины невалидности по каждой позиции.
+- Успешный confirm теперь отвечает `✅ Подтверждено: N позиций, сумма X ₽`.
+- Ручное сохранение товара в WebApp обновляет `sale_items`, пересчитывает `total`, ставит item `processed` и revalidate затронутые report/review/records/sellers routes. Parent sale `needs_review` не входит в выручку до явного confirm.
+
+### Verification
+
+- Добавлены regression tests для точного сценария `Сникерс, 3 штуки по 200 рублей. Буханка хлеба, 5 штук по 50 рублей.`: 2 items, сумма `850`, оба valid.
+- Добавлены tests для mixed valid+incomplete sale, text-only incomplete sale, bare quantity `5 по 100`, bottles и ручного WebApp save patch.
+- Пройдены `npm.cmd run test` (8 files, 109 tests), `npm.cmd run lint`, `npm.cmd run build`, `npm.cmd run web:build`.
+- Supabase smoke через реальный `save_voice_sale` RPC создал временную запись с двумя `sale_items` (`600 + 250 = 850`) и затем удалил созданные `sales`, `sale_items`, `voice_records`; cleanup check вернул нули.
+
 ## 2026-07-02 - Mixed cart confirmation and calm SaaS WebApp
 
 ### Confirm flow

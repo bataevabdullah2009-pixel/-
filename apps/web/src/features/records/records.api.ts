@@ -622,6 +622,10 @@ function logAuditFailure(action: string, error: string | null) {
   }
 }
 
+function formatRubles(amount: number) {
+  return `${amount.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽`;
+}
+
 async function recalculateSale(admin: AdminClient, saleId: string, shopId: string): Promise<MutationResult> {
   const context = await getSaleContext(admin, saleId, shopId);
 
@@ -766,7 +770,7 @@ export async function updateSaleItem(params: {
     throw error;
   }
   const saleStatus = String(saleContext.data.status);
-  const nextItemStatus = saleStatus === "processed" ? patch.status : "needs_review";
+  const nextItemStatus = patch.status;
 
   const { data: products, error: productsError } = await admin
     .from("products")
@@ -840,7 +844,7 @@ export async function updateSaleItem(params: {
 
   return {
     ok: true,
-    message: nextItemStatus === "processed"
+    message: saleStatus === "processed"
       ? "Изменения сохранены. Позиция учтена в отчёте."
       : "Изменения сохранены. Подтвердите запись в Telegram.",
     item: {
@@ -1050,7 +1054,7 @@ function normalizePreviousItemStatus(status: string): Exclude<SaleItem["status"]
   return "needs_review";
 }
 
-function toConfirmableReviewItem(item: ReviewMutationItemRow) {
+function inspectConfirmableReviewItem(item: ReviewMutationItemRow) {
   const quantity = Number(item.quantity);
   const sourcePrice = item.price === null ? null : Number(item.price);
   const sourceTotal = item.total === null ? null : Number(item.total);
@@ -1060,21 +1064,34 @@ function toConfirmableReviewItem(item: ReviewMutationItemRow) {
   const total = sourceTotal !== null && Number.isFinite(sourceTotal) && sourceTotal > 0
     ? Number(sourceTotal.toFixed(2))
     : calculateItemTotal(quantity, price, item.unit);
+  const invalidReasons: string[] = [];
 
-  if (
-    item.status === "excluded" ||
-    !isMeaningfulProductName(item.product_name) ||
-    !Number.isFinite(quantity) ||
-    quantity <= 0 ||
-    price === null ||
-    !Number.isFinite(price) ||
-    price <= 0 ||
-    total === null
-  ) {
-    return null;
+  if (item.status === "excluded") {
+    invalidReasons.push("excluded_status");
+  }
+  if (!isMeaningfulProductName(item.product_name)) {
+    invalidReasons.push("missing_product_name");
+  }
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    invalidReasons.push("missing_quantity_or_weight");
+  }
+  if (price === null || !Number.isFinite(price) || price <= 0) {
+    invalidReasons.push("missing_unit_price");
+  }
+  if (total === null || !Number.isFinite(total) || total <= 0) {
+    invalidReasons.push("missing_total_price");
   }
 
-  return { id: String(item.id), price, total };
+  return {
+    confirmable: invalidReasons.length
+      ? null
+      : {
+          id: String(item.id),
+          price: price as number,
+          total: total as number
+        },
+    invalidReasons
+  };
 }
 
 async function getActiveReviewMutationItems(admin: AdminClient, saleId: string) {
@@ -1201,10 +1218,28 @@ export async function confirmReviewSale(saleId: string): Promise<MutationResult>
 
   const activeItems = await getActiveReviewMutationItems(admin, sale.id);
   if (activeItems.error) return activeItems.error;
+  console.info("[records] confirm review items loaded", {
+    saleRecordId: sale.id,
+    foundItemsCount: activeItems.items.length
+  });
 
-  const confirmableItems = activeItems.items.flatMap((item) => {
-    const confirmable = toConfirmableReviewItem(item);
-    return confirmable ? [confirmable] : [];
+  const inspectedItems = activeItems.items.map((item) => ({
+    item,
+    ...inspectConfirmableReviewItem(item)
+  }));
+  const confirmableItems = inspectedItems.flatMap((item) => item.confirmable ? [item.confirmable] : []);
+  console.info("[records] confirm review items validated", {
+    saleRecordId: sale.id,
+    foundItemsCount: activeItems.items.length,
+    validItemsCount: confirmableItems.length,
+    invalidItems: inspectedItems
+      .filter((item) => item.invalidReasons.length)
+      .map(({ item, invalidReasons }) => ({
+        itemId: String(item.id),
+        productName: item.product_name,
+        status: item.status,
+        invalidReasons
+      }))
   });
 
   if (!confirmableItems.length) {
@@ -1241,11 +1276,15 @@ export async function confirmReviewSale(saleId: string): Promise<MutationResult>
 
   const auditError = await writeAuditLog(admin, sale, "voice_sale_confirmed_webapp", {
     sale_id: sale.id,
-    item_count: confirmableItems.length
+    item_count: confirmableItems.length,
+    total_amount: totalAmount
   });
   logAuditFailure("voice_sale_confirmed_webapp", auditError);
 
-  return { ok: true, message: "Запись подтверждена и добавлена в выручку." };
+  return {
+    ok: true,
+    message: `✅ Подтверждено: ${confirmableItems.length} позиций, сумма ${formatRubles(totalAmount)}`
+  };
 }
 
 export async function cancelReviewSale(saleId: string): Promise<MutationResult> {

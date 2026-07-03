@@ -20,7 +20,8 @@ WebApp `Проверка` показывает только active `needs_review
 2. `Сохранить` обновляет Supabase row.
 3. `Отмена` сбрасывает несохранённый ввод.
 4. Processed sale после edit пересчитывает выручку.
-5. Review sale после edit остаётся review до явного confirm.
+5. Parent review sale после edit остаётся `needs_review` до явного confirm, даже если исправленная item row стала `processed`.
+6. Валидный edit убирает ошибку цены/количества, потому что `sale_items.total` пересчитывается и сохраняется в Supabase.
 
 Подтверждение в WebApp:
 

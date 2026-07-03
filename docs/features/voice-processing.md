@@ -1,6 +1,6 @@
 # Voice Processing
 
-Pipeline: download Telegram file → audio preparation → Russian STT → LLM parse → deterministic evidence check → transactional `save_voice_sale` → read-back verification → bot reply.
+Pipeline: download Telegram file → audio preparation → Russian STT → LLM parse → deterministic evidence check/fallback split → transactional `save_voice_sale` → read-back verification → bot reply.
 
 Правило готовности:
 
@@ -13,7 +13,7 @@ Pipeline: download Telegram file → audio preparation → Russian STT → LLM p
 
 Если хотя бы одна позиция неполная, низкоуверенная или parser fallback сработал, sale получает `needs_review`, а бот просит подтвердить товары и цены. Под сообщением есть только `✅ Подтвердить` и `❌ Отмена`.
 
-Parser поддерживает `шт`, `кг` и `г`; для `г` total считается как доля килограмма от цены за кг. Confirm переводит sale/voice и валидные active items в `processed`; неполные active items mixed-корзины остаются `needs_review`. Cancel переводит sale/voice в `cancelled` и soft-delete active items.
+Parser поддерживает `шт`, `кг`, `г` и нормализует `бутылка/бутылки/бутылок` в `шт`; для `г` total считается как доля килограмма от цены за кг. Fallback разделяет `Сникерс, 3 штуки по 200 рублей. Буханка хлеба, 5 штук по 50 рублей.` на две `sale_items`, а неполные хвосты вроде `Корзина продуктов` сохраняет отдельной review-позицией. Confirm переводит sale/voice и валидные active items в `processed`; неполные active items mixed-корзины остаются `needs_review`. Cancel переводит sale/voice в `cancelled` и soft-delete active items.
 
 Success разрешён только после проверки, что sale существует в ожидаемом `shop_id`/`seller_id`, а число вставленных `sale_items` совпадает с числом подготовленных items. Ошибка Supabase возвращает пользователю только сообщение о невозможности сохранить.
 

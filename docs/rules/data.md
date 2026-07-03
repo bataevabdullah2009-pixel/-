@@ -5,6 +5,8 @@
 - Активный отчёт учитывает только `processed` и `deleted_at is null`.
 - Revenue требует валидный `total`; unit price может быть сохранён или выведен из total.
 - Confirm работает по active `sale_items`: валидные позиции входят в выручку, неполные остаются `needs_review`.
+- Parser fallback должен создавать отдельные `sale_items` для каждого товара и отдельные review rows для неполных остатков.
+- Валидный WebApp edit ставит item `processed`, но parent `needs_review` sale не входит в выручку до confirm.
 - Исключение позиции выполняется только через soft delete.
 - Review voice-запись не входит в выручку до явного confirm.
 - Отмена voice-записи хранится как `cancelled` и не удаляет sale физически.

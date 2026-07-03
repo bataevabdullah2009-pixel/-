@@ -25,6 +25,114 @@ function parseExample(rawText: string, productName: string) {
 }
 
 describe("sale parser evidence rules", () => {
+  function parseGluedTranscript(rawText: string) {
+    return enforceTranscriptEvidence(
+      {
+        items: [{
+          product_name: rawText,
+          quantity: 1,
+          unit: "шт",
+          price: null,
+          total: null,
+          confidence: 0.95
+        }],
+        raw_text: "",
+        cleaned_text: "",
+        needs_review: true
+      },
+      rawText,
+      rawText
+    );
+  }
+
+  it("splits Snickers and bread from one glued parser item", () => {
+    const parsed = parseGluedTranscript(
+      "Сникерс, 3 штуки по 200 рублей. Буханка хлеба, 5 штук по 50 рублей."
+    );
+    const normalized = parsed.items.map((item) => normalizeSaleItemFields(item));
+
+    expect(parsed.items).toHaveLength(2);
+    expect(normalized).toMatchObject([
+      {
+        product_name: "Сникерс",
+        quantity: 3,
+        unit: "шт",
+        price: 200,
+        total: 600,
+        status: "processed"
+      },
+      {
+        product_name: "Буханка хлеба",
+        quantity: 5,
+        unit: "шт",
+        price: 50,
+        total: 250,
+        status: "processed"
+      }
+    ]);
+    expect(normalized.reduce((sum, item) => sum + (item.total ?? 0), 0)).toBe(850);
+    expect(parsed.needs_review).toBe(false);
+  });
+
+  it("keeps valid and incomplete products as separate items", () => {
+    const parsed = parseGluedTranscript("Сникерс 3 штуки по 200 рублей. Корзина продуктов.");
+    const normalized = parsed.items.map((item) => normalizeSaleItemFields(item));
+
+    expect(parsed.items).toHaveLength(2);
+    expect(normalized).toMatchObject([
+      {
+        product_name: "Сникерс",
+        quantity: 3,
+        price: 200,
+        total: 600,
+        status: "processed"
+      },
+      {
+        product_name: "Корзина продуктов",
+        price: null,
+        total: null,
+        status: "needs_review"
+      }
+    ]);
+    expect(normalized.filter((item) => item.status === "processed")).toHaveLength(1);
+  });
+
+  it("keeps a text-only basket incomplete with zero valid items", () => {
+    const parsed = parseGluedTranscript("Корзина продуктов.");
+    const normalized = parsed.items.map((item) => normalizeSaleItemFields(item));
+
+    expect(parsed.items).toHaveLength(1);
+    expect(normalized[0]).toMatchObject({
+      product_name: "Корзина продуктов",
+      price: null,
+      total: null,
+      status: "needs_review"
+    });
+    expect(normalized.filter((item) => item.status === "processed")).toHaveLength(0);
+  });
+
+  it("parses a bare quantity before 'по' as pieces", () => {
+    expect(parseExample("Сникерс 5 по 100", "Сникерс 5 по 100")).toMatchObject({
+      product_name: "Сникерс",
+      quantity: 5,
+      unit: "шт",
+      price: 100,
+      total: 500,
+      status: "processed"
+    });
+  });
+
+  it("normalizes bottles as piece units", () => {
+    expect(parseExample("Кола 2 бутылки по 150 рублей", "Кола")).toMatchObject({
+      product_name: "Кола",
+      quantity: 2,
+      unit: "шт",
+      price: 150,
+      total: 300,
+      status: "processed"
+    });
+  });
+
   it("parses cream quantity written as a word and an explicit unit price", () => {
     expect(parseExample("Сливки 33%, пять штук по 100 рублей", "Сливки 33%")).toMatchObject({
       product_name: "Сливки 33%",

@@ -11,9 +11,11 @@
 
 Report сначала выбирает `sales` по seller `shop_id`, затем `sale_items` по найденным sale IDs. Ошибка auth/DB остаётся ошибкой и не преобразуется в нулевой отчёт.
 
+Parser evidence layer в `packages/shared/utils/sale-parser.ts` стоит между LLM и persistence: он проверяет STT transcript, разбивает glued multi-item output на отдельные `sale_items`, поддерживает `5 по 100` и нормализует бутылки как штучные единицы. Неполные остатки сохраняются отдельными review rows.
+
 WebApp mutations выполняются Server Actions. Клиентская карточка хранит только UI-состояние раскрытия/pending/error; доверенная проверка item → sale → shop повторяется на сервере. Успешный update возвращает сохранённую строку, пересчитывает `sales.total_amount`, инвалидирует report/records и запускает `router.refresh()`.
 
-WebApp `/review` подтверждает и отменяет сомнительную voice-запись через server actions. Если родительская sale ещё `needs_review`, обычный item update сохраняет товар, количество и цену, но item остаётся `needs_review` и не входит в выручку до явного confirm.
+WebApp `/review` подтверждает и отменяет сомнительную voice-запись через server actions. Если родительская sale ещё `needs_review`, обычный item update сохраняет товар, количество и цену, ставит item `processed`, но parent sale остаётся `needs_review` и не входит в выручку до явного confirm.
 
 Voice sale сохраняется только через RPC `save_voice_sale`. После RPC приложение проверяет sale и точное количество sale_items чтением из Supabase. Если RPC отсутствует или read-back не подтверждает строки, бот возвращает ошибку сохранения и не пишет success.
 

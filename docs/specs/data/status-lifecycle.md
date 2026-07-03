@@ -81,12 +81,12 @@ Cancel:
 
 ```text
 processed sale + valid item edit -> processed item
-needs_review sale + valid item edit -> needs_review item
+needs_review sale + valid item edit -> processed item, parent sale stays needs_review
 ```
 
 WebApp edit не подтверждает сомнительную voice-запись.
 
-Он только сохраняет товар, количество и цену.
+Он только сохраняет товар, количество, цену, статус item и пересчитанный total.
 
 Чтобы review-запись вошла в отчёт, требуется confirm в Telegram или WebApp `Проверка`.
 
@@ -125,11 +125,13 @@ Internal enum не показываются в UI.
 В выручку входит только:
 
 ```text
+sale.status = processed
+and
 sale_item.status = processed
 and sale_item.deleted_at is null
 and total is not null
 and quantity_or_weight is valid
-and (unit_price is not null or unit_price can be derived from total)
+and (price is not null or price can be derived from total)
 ```
 
 `needs_review`, `cancelled`, `failed`, `excluded` и soft-deleted rows не входят.

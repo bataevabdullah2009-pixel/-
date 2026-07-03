@@ -329,7 +329,7 @@ describe("sales flow stabilization", () => {
     expect(result).toMatchObject({
       ok: true,
       status: "processed",
-      message: "✅ Запись подтверждена и добавлена в выручку."
+      message: "✅ Подтверждено: 1 позиций, сумма 500 ₽"
     });
     expect(repeat).toMatchObject({ ok: true, status: "unchanged" });
     expect(state.sales[0]).toMatchObject({ status: "processed", total_amount: 500 });
@@ -382,6 +382,45 @@ describe("sales flow stabilization", () => {
       expect.objectContaining({ id: "item-bread", status: "processed", total: 150 })
     ]));
     expect(report.totalRevenue).toBe(650);
+  });
+
+  it("confirms a manually saved WebApp item after product, quantity and price are fixed", async () => {
+    const patch = buildManualSaleItemPatch({
+      productName: "Буханка хлеба",
+      quantity: 5,
+      unit: "шт",
+      price: 50
+    });
+    const { client, state } = createReviewDecisionClient({
+      saleItems: [{
+        id: "item-bread",
+        sale_id: "sale-1",
+        product_name: patch.product_name,
+        quantity: patch.quantity,
+        unit: patch.unit,
+        price: patch.price,
+        total: patch.total,
+        confidence: patch.confidence,
+        status: patch.status,
+        deleted_at: null
+      }]
+    });
+    const seller = { id: "seller-1", shopId: "shop-1" };
+
+    const result = await confirmVoiceSaleWithClient(client as never, seller, "sale-1");
+    const report = buildSalesReport(state.sale_items.map((row) => ({
+      ...row,
+      created_at: "2026-06-30T09:00:00.000Z"
+    })) as SaleItem[]);
+
+    expect(result).toMatchObject({
+      ok: true,
+      status: "processed",
+      message: "✅ Подтверждено: 1 позиций, сумма 250 ₽"
+    });
+    expect(state.sales[0]).toMatchObject({ status: "processed", total_amount: 250 });
+    expect(state.sale_items[0]).toMatchObject({ status: "processed", total: 250 });
+    expect(report.totalRevenue).toBe(250);
   });
 
   it("confirms valid items from a mixed cart and leaves incomplete items in review", async () => {
@@ -761,7 +800,12 @@ describe("sales flow stabilization", () => {
     }, "хлеб одна штука", "Хлеб, одна штука.");
 
     expect(result.parsedSale.needs_review).toBe(true);
-    expect(result.parsedSale.items).toEqual([]);
+    expect(result.parsedSale.items).toEqual([expect.objectContaining({
+      product_name: "хлеб",
+      quantity: 1,
+      price: null,
+      total: null
+    })]);
     expect(result.errorMessage).toContain("LLM parser fallback");
   });
 });

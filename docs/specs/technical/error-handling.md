@@ -17,7 +17,7 @@ WebApp mutations:
 Voice pipeline:
 
 - Storage upload best-effort и не блокирует продажу.
-- Невалидный LLM JSON создаёт fallback item «Нужно проверить».
+- Невалидный LLM JSON запускает deterministic fallback: полные товары сохраняются отдельными rows, неполные фрагменты становятся review items.
 - Ошибки этапов логируются как `voice_failed` с `stage`, идентификаторами Telegram/seller/shop, STT text, parsed items, final status и реальной Supabase ошибкой.
 - Пользователь не видит internal enum.
 

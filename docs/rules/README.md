@@ -6,6 +6,7 @@
 
 - Не переписывать STT/parser/webhook без прямой задачи.
 - Не терять voice record при recoverable parser failure.
+- Parser fallback обязан разделять glued multi-item transcript на отдельные rows.
 - Уверенная запись остаётся `processed`.
 - Сомнительная запись остаётся `needs_review` до Telegram или WebApp review decision.
 
@@ -29,6 +30,7 @@
 
 - Revenue только из parent sale `processed` и active item `processed`.
 - Revenue требует валидный `total`; unit price может быть сохранён или вычислен из total.
+- Processed-looking item внутри parent `needs_review` sale не входит в revenue.
 - Soft delete только через `deleted_at`.
 - `shop_id` не брать от клиента как источник прав.
 

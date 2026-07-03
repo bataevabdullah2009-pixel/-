@@ -11,9 +11,10 @@
 3. Bot prepares audio for STT.
 4. STT returns Russian text.
 5. Parser extracts sale items.
-6. Bot saves voice record, sale and sale items in Supabase.
-7. Bot replies with success or review decision.
-8. WebApp shows report, review, records and sellers.
+6. Deterministic fallback splits glued items and preserves incomplete leftovers.
+7. Bot saves voice record, sale and sale items in Supabase.
+8. Bot replies with success or review decision.
+9. WebApp shows report, review, records and sellers.
 
 ## Roles
 
@@ -63,6 +64,7 @@
 7. Bot sends warning text.
 8. Bot attaches only `✅ Подтвердить` and `❌ Отмена`.
 9. No `Открыть отчёт` button is attached to the review-message.
+10. Fallback keeps complete products and incomplete products as separate `sale_items`.
 
 ## Telegram decision
 
@@ -74,9 +76,10 @@
 6. Confirm leaves incomplete mixed-cart items in `needs_review`.
 7. Confirm fails only when there is no complete item and returns `Не удалось подтвердить: нет ни одной полной позиции.`
 8. Confirm recalculates total from confirmed items.
-9. Cancel sets sale/voice to `cancelled`.
-10. Cancel soft-deletes active items.
-11. Callbacks are idempotent.
+9. Successful confirm returns `✅ Подтверждено: N позиций, сумма X ₽`.
+10. Cancel sets sale/voice to `cancelled`.
+11. Cancel soft-deletes active items.
+12. Callbacks are idempotent.
 
 ## WebApp
 
@@ -95,10 +98,11 @@
 3. Save updates Supabase.
 4. Save recalculates item total.
 5. Save recalculates sale total.
-6. Review sale edit keeps item review.
-7. `🗑` opens delete confirmation.
-8. Delete soft-deletes item.
-9. Deleted item disappears from active report.
+6. Save with valid product, quantity and price stores the item as `processed`.
+7. Parent `needs_review` sale still stays out of revenue until explicit confirm.
+8. `🗑` opens delete confirmation.
+9. Delete soft-deletes item.
+10. Deleted item disappears from active report.
 
 ## Revenue
 
