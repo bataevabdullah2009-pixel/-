@@ -65,7 +65,7 @@
 - Не возвращать текстовую ссылку `Исключить из отчёта`.
 - Edit открывается только по `✏️`.
 - Сохранение edit с товаром, количеством и ценой обновляет реальную строку `sale_items`, пересчитывает `total`, ставит item `processed` и убирает ошибку цены.
-- Если parent sale ещё `needs_review`, такой item всё равно не входит в выручку до отдельного Telegram/WebApp confirm, потому что report требует parent sale `processed`.
+- Если parent sale ещё `needs_review`, валидный `processed` item может входить в выручку; неполные соседние items остаются в проверке.
 - Delete открывается только по `🗑` и требует confirm dialog.
 - После изменения UI обновлять product specs и, если нужно, screenshots/manual smoke notes.
 
@@ -85,13 +85,13 @@
 `sales.status` и `voice_records.status`:
 
 - `processed` - запись подтверждена и входит в выручку.
-- `needs_review` - запись сохранена, но не входит в выручку до confirm.
+- `needs_review` - запись сохранена и ещё содержит позиции на проверку; её active `processed` items могут входить в выручку.
 - `cancelled` - пользователь отменил запись, она не входит в выручку.
 - `failed` - voice processing failure.
 
 `sale_items.status`:
 
-- `processed` - active item может входить в выручку, если parent sale тоже `processed`.
+- `processed` - active item может входить в выручку, если parent sale не `cancelled` и не `failed`.
 - `needs_review` - active item не входит в выручку.
 - `needs_price` - legacy review-like state, не использовать для новых неполных items.
 - `failed` - item не входит в выручку.
@@ -101,15 +101,14 @@
 
 В выручку входят только:
 
-- parent sale `processed`;
 - item `processed`;
+- parent sale не `cancelled` и не `failed`;
 - `deleted_at is null`;
 - валидные `quantity`/вес и `total`;
 - валидный `price` или возможность вывести unit price из `total / quantity`.
 
 Не входят:
 
-- parent sale `needs_review`;
 - parent sale `cancelled`;
 - parent sale `failed`;
 - item `needs_review`;

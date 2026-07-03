@@ -73,7 +73,7 @@
 5. `raw_text` duplicates useful transcript context.
 6. `cleaned_text` duplicates display text.
 7. `total_amount` stores current sale total.
-8. `status` controls revenue inclusion.
+8. `status` controls lifecycle and excludes `cancelled`/`failed`; item status controls revenue inclusion.
 9. `created_at` supports period filters.
 
 ## 8. `sale_items`
@@ -95,15 +95,15 @@
 
 ## 9. Canonical sale statuses
 
-1. `processed` - sale is confirmed and can contribute revenue.
-2. `needs_review` - sale is saved but excluded from revenue.
+1. `processed` - sale has no active review items and can contribute revenue through processed items.
+2. `needs_review` - sale is saved and still has review items; active processed items can still contribute revenue.
 3. `cancelled` - sale was cancelled by user and excluded from revenue.
 4. `failed` - processing failed and excluded from revenue.
 5. `pending` may exist as legacy/base schema state but should not be emitted by current completed pipeline.
 
 ## 10. Canonical item statuses
 
-1. `processed` - item can contribute revenue only with processed parent sale.
+1. `processed` - item can contribute revenue when parent sale is not `cancelled` or `failed`.
 2. `needs_review` - item excluded from revenue.
 3. `needs_price` - legacy review-like state, excluded from revenue.
 4. `failed` - item excluded from revenue.
@@ -126,7 +126,7 @@
 An item contributes revenue only when:
 
 1. Parent sale belongs to current shop.
-2. Parent sale status is `processed`.
+2. Parent sale status is not `cancelled` or `failed`.
 3. Item belongs to scoped sale ids.
 4. Item status is `processed`.
 5. Item `deleted_at is null`.
@@ -136,14 +136,13 @@ An item contributes revenue only when:
 
 Never count:
 
-1. Parent `needs_review`.
-2. Parent `cancelled`.
-3. Parent `failed`.
-4. Item `needs_review`.
-5. Item `needs_price`.
-6. Item `failed`.
-7. Item `excluded`.
-8. Any deleted row.
+1. Parent `cancelled`.
+2. Parent `failed`.
+3. Item `needs_review`.
+4. Item `needs_price`.
+5. Item `failed`.
+6. Item `excluded`.
+7. Any deleted row.
 
 ## 13. Report scoping
 
@@ -153,8 +152,8 @@ Never count:
 4. Items are selected only by those sale ids.
 5. `scopeReportRows` verifies every sale row shop matches owner shop.
 6. Cancelled/failed sales are excluded from active report scope.
-7. Items from `needs_review` sales are downgraded to review status for report aggregation.
-8. `buildSalesReport` aggregates only active processed rows.
+7. Items from `needs_review` sales keep their own item status for report aggregation.
+8. `buildSalesReport` aggregates only active processed item rows.
 
 ## 14. Voice persistence
 
@@ -182,9 +181,10 @@ Never count:
 9. Leave incomplete active items as `needs_review`.
 10. Set confidence to `1` on confirmable items.
 11. Recalculate item price/total when possible.
-12. Update sale `status = processed`.
-13. Update sale `total_amount` to the sum of confirmable items.
-14. Update voice record `status = processed`.
+12. Update sale `status = processed` only when no active review items remain; otherwise keep/set `needs_review`.
+13. Update sale `total_amount` to the sum of active processed items.
+14. Update voice record to the same final status as sale.
+15. Refetch sale after updates; if DB state already matches, return success even when mutation returned empty `data`.
 
 ## 16. Cancel mutation
 
@@ -207,7 +207,7 @@ Never count:
 5. Build manual patch.
 6. Match product catalog if possible.
 7. Update active item with recalculated `total`, `confidence = 1` and `status = processed` when product/quantity/price are valid.
-8. Parent `needs_review` sale remains excluded from revenue until explicit confirm.
+8. Parent `needs_review` sale remains in review if other active review items remain; saved `processed` item can enter revenue.
 9. Return updated row.
 10. Recalculate parent sale.
 11. Write audit log best effort.
@@ -228,8 +228,8 @@ Never count:
 2. Sums only `processed` item totals with valid `total`.
 3. Current cancelled sale total becomes zero.
 4. Current failed sale total becomes zero.
-5. Current needs_review sale stays needs_review until explicit confirm.
-6. Current processed sale stays processed when all items are deleted or when mixed-cart review items remain active.
+5. Current needs_review sale stays needs_review while active review items remain.
+6. Current processed sale can become needs_review if restored/edited active review items remain.
 7. Voice record status follows recalculated sale status.
 
 ## 20. RLS and access
@@ -251,8 +251,8 @@ Never count:
 
 ## 22. Acceptance criteria
 
-1. Processed sale enters revenue.
-2. Needs_review sale does not enter revenue.
+1. Processed active item enters revenue when parent sale is not cancelled/failed.
+2. Needs_review item does not enter revenue.
 3. Cancelled sale does not enter revenue.
 4. Failed sale does not enter revenue.
 5. Deleted item does not enter active report.

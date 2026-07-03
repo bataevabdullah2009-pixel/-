@@ -34,7 +34,7 @@
 
 `sale_items`:
 
-1. `processed` - can count only with processed parent sale.
+1. `processed` - can count when parent sale is not `cancelled` or `failed`.
 2. `needs_review` - not counted.
 3. `needs_price` - legacy review, not counted.
 4. `failed` - not counted.
@@ -99,7 +99,7 @@
 4. Save recalculates item total.
 5. Save recalculates sale total.
 6. Save with valid product, quantity and price stores the item as `processed`.
-7. Parent `needs_review` sale still stays out of revenue until explicit confirm.
+7. Parent `needs_review` sale can still contain processed revenue items while other items remain in review.
 8. `🗑` opens delete confirmation.
 9. Delete soft-deletes item.
 10. Deleted item disappears from active report.
@@ -108,7 +108,7 @@
 
 Count only:
 
-1. Parent sale `processed`.
+1. Parent sale is not `cancelled` or `failed`.
 2. Item `processed`.
 3. `deleted_at is null`.
 4. Total exists.
@@ -135,7 +135,7 @@ Do not count:
 ## Acceptance
 
 1. Confident `Сникерс, 5 штук по 100 рублей` is processed.
-2. Review sale does not enter revenue.
+2. Review item does not enter revenue; processed item in review sale can enter revenue.
 3. Review message has exactly two buttons.
 4. Confirm adds revenue for complete items and leaves incomplete mixed-cart items in review.
 5. Cancel excludes revenue.

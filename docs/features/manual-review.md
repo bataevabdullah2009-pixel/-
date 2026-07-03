@@ -20,14 +20,14 @@ WebApp `Проверка` показывает только active `needs_review
 2. `Сохранить` обновляет Supabase row.
 3. `Отмена` сбрасывает несохранённый ввод.
 4. Processed sale после edit пересчитывает выручку.
-5. Parent review sale после edit остаётся `needs_review` до явного confirm, даже если исправленная item row стала `processed`.
+5. Parent review sale после edit остаётся `needs_review`, если есть другие неполные items; исправленная item row может стать `processed` и войти в выручку.
 6. Валидный edit убирает ошибку цены/количества, потому что `sale_items.total` пересчитывается и сохраняется в Supabase.
 
 Подтверждение в WebApp:
 
 1. `confirmReviewSaleAction` проверяет текущий shop через Telegram WebApp session.
 2. Confirm validates active items individually.
-3. Если есть хотя бы один валидный item, parent sale переводится в `processed`.
+3. Если есть хотя бы один валидный item, он переводится в `processed`; parent sale становится `processed` только когда неполных active items больше нет.
 4. Валидные review items переводятся в `processed`; неполные остаются `needs_review`.
 5. Если нет ни одной полной позиции, возвращается `Не удалось подтвердить: нет ни одной полной позиции.`
 6. Total пересчитывается по валидным items.
@@ -38,7 +38,7 @@ WebApp `Проверка` показывает только active `needs_review
 1. `cancelReviewSaleAction` проверяет текущий shop через Telegram WebApp session.
 2. Parent sale переводится в `cancelled`.
 3. Active items переводятся в `excluded`.
-4. Запись не входит в выручку.
+4. Неполные позиции не входят в выручку; уже processed позиции той же записи могут учитываться.
 
 Удаление товара:
 

@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## 2026-07-03 - Idempotent confirm without false status error
+
+### Root cause
+
+- Confirm/update flow relied on mutation response shape and secondary `voice_records` updates. When the main `sales`/`sale_items` update had already applied, an empty returned `data` or secondary update/read-back problem could still surface to WebApp as `Не удалось обновить статус записи.`.
+- Supabase `update()` does not return updated rows by default unless `.select()` is chained; code must not treat empty mutation data as failure when the final DB state can be read back as correct.
+
+### Fix
+
+- Telegram and WebApp confirm are idempotent: already confirmed records return `✅ Уже подтверждено`.
+- Confirm now updates valid active items, refetches active items and parent sale, recalculates `total_amount`, and returns a normalized success response with `ok`, `recordId`, `confirmedItemsCount`, `totalAmount`, `status`, `message`.
+- If incomplete items remain, the parent sale/voice record can stay `needs_review`; active `processed` items are still counted in revenue and incomplete items stay visible in `Проверка`.
+- WebApp review and daily-report actions no longer turn a successful backend mutation into a user-facing error if route revalidation fails; they show a soft refresh message instead.
+- Debug logs were added for confirm record id, found/valid item counts, item update results, sale update result, final sale read-back and returned response. Logs do not include tokens, initData or keys.
+
+### Verification
+
+- Added regression coverage for empty Supabase update `data` with no `error`, already-confirmed confirm, mixed valid+invalid confirm, no-valid-items confirm, cancel and WebApp-save-then-confirm behavior.
+- Revenue scope now counts active `processed` items when parent sale is `needs_review`, while `cancelled`/`failed` parents and deleted/excluded items remain excluded.
+
 ## 2026-07-03 - Parser fallback restores multi-item sale_items
 
 ### Root cause
@@ -18,7 +38,7 @@
 
 - Telegram и WebApp confirm логируют найденные items, валидные items и причины невалидности по каждой позиции.
 - Успешный confirm теперь отвечает `✅ Подтверждено: N позиций, сумма X ₽`.
-- Ручное сохранение товара в WebApp обновляет `sale_items`, пересчитывает `total`, ставит item `processed` и revalidate затронутые report/review/records/sellers routes. Parent sale `needs_review` не входит в выручку до явного confirm.
+- Ручное сохранение товара в WebApp обновляет `sale_items`, пересчитывает `total`, ставит item `processed` и revalidate затронутые report/review/records/sellers routes. Active `processed` item может входить в выручку, даже если parent sale остаётся `needs_review` из-за других неполных позиций.
 
 ### Verification
 
@@ -83,7 +103,7 @@
 
 - Confirm переводит sale/voice/items в `processed`, пересчитывает `total_amount` и добавляет запись в выручку.
 - Cancel переводит sale/voice в `cancelled`, items в `excluded` с `deleted_at`, и оставляет выручку нулевой.
-- Report scope считает только parent sale `processed` + item `processed` + active non-deleted rows.
+- Report scope rule from this entry was superseded on 2026-07-03: current revenue counts active item `processed` when parent sale is not `cancelled`/`failed`.
 
 ### Tests
 

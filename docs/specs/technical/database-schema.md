@@ -19,6 +19,6 @@
 
 `save_voice_sale` проверяет, что seller активен и принадлежит `shop_id`, затем атомарно создаёт `voice_records`, `sales` и `sale_items`. Приложение после RPC читает sale и items обратно и сравнивает точное количество строк.
 
-Confirm переводит sale/voice в `processed`. Cancel переводит sale/voice в `cancelled` и soft-delete active items. Решение может прийти из Telegram callback или WebApp `/review`; обычный WebApp item edit/delete сам по себе не подтверждает и не отменяет review voice-записи. Валидный edit может поставить item row в `processed`, но parent sale остаётся gate для выручки до confirm.
+Confirm переводит валидные items в `processed`; sale/voice становятся `processed`, если неполных active items больше нет, иначе остаются `needs_review`. Cancel переводит sale/voice в `cancelled` и soft-delete active items. Решение может прийти из Telegram callback или WebApp `/review`; обычный WebApp item edit/delete сам по себе не подтверждает и не отменяет review voice-записи. Валидный edit может поставить item row в `processed` и добавить её в выручку, пока остальные неполные items остаются на проверке.
 
 `20260623221651_repair_complete_single_item_sales.sql` переводит старые однозначные single-item записи в `processed`, только если parser JSON содержит полный уверенный item, а cleaned text явно содержит единицу и цену.

@@ -30,4 +30,4 @@
 - Сомнительные voice-записи решаются Telegram `✅ Подтвердить` / `❌ Отмена` или WebApp `/review`.
 - WebApp review actions выполняются только через server actions и server-derived shop context.
 - В review-message нет кнопки `Открыть отчёт`.
-- Выручка считается только из parent sale `processed` и active item `processed`.
+- Выручка считается из active item `processed`, если parent sale не `cancelled` и не `failed`.

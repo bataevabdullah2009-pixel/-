@@ -23,14 +23,14 @@
 
 - Навигация: `Отчёт`, `Проверка`, `Записи`, `Продавцы`.
 - `/review` показывает только active `needs_review` и подтверждает/отменяет через server actions.
-- `needs_review` показывать как review state без смешивания с выручкой.
+- `needs_review` показывать как review state для неполных позиций; processed sibling items могут быть в выручке.
 - Карточка товара компактная: display mode, `✏️`, `🗑`.
 
 ## Data
 
-- Revenue только из parent sale `processed` и active item `processed`.
+- Revenue только из active item `processed`, если parent sale не `cancelled` и не `failed`.
 - Revenue требует валидный `total`; unit price может быть сохранён или вычислен из total.
-- Processed-looking item внутри parent `needs_review` sale не входит в revenue.
+- Processed item внутри parent `needs_review` sale входит в revenue; неполные items той же записи остаются в review.
 - Soft delete только через `deleted_at`.
 - `shop_id` не брать от клиента как источник прав.
 

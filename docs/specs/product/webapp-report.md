@@ -113,7 +113,7 @@
 2. Panel не входит в active revenue.
 3. Restore action оставлен для audit-safe восстановления soft-deleted rows.
 4. Restored item получает previous status.
-5. Если previous status был review, restored item не входит в выручку до confirm.
+5. Если previous status был review, restored item остаётся review item и не входит в выручку, пока его не исправят или не подтвердят.
 
 ## 12. Экран `Записи`
 
@@ -148,12 +148,12 @@
 3. `getReport` читает sales текущего shop.
 4. `sale_items` читаются только через sale ids текущего shop.
 5. `scopeReportRows` исключает cancelled/failed sales для report.
-6. `scopeReportRows` не даёт processed-looking item из `needs_review` sale войти в выручку.
-7. Processed sale может содержать mixed items: `processed` items входят в revenue, `needs_review` items остаются видимыми в review list.
+6. `scopeReportRows` исключает parent `cancelled`/`failed` и считает revenue по active item status.
+7. Mixed sale может оставаться `needs_review`: `processed` items входят в revenue, `needs_review` items остаются видимыми в review list.
 8. `buildSalesReport` агрегирует только `processed` items без `deleted_at` и с валидным `total`.
-9. `needs_review` не входит в revenue.
-10. `cancelled` не входит в revenue.
-11. `failed` не входит в revenue.
+9. Item `needs_review` не входит в revenue.
+10. Parent `cancelled` не входит в revenue.
+11. Parent `failed` не входит в revenue.
 12. `excluded` не входит в active list.
 
 ## 15. API and server logic
@@ -198,7 +198,7 @@
 
 1. Sale exists with zero active items after delete.
 2. Processed sale with all items deleted remains not review-required.
-3. Needs_review sale with item status `processed` is still excluded from revenue.
+3. Needs_review sale with active item status `processed` contributes that item to revenue.
 4. Legacy `needs_price` is shown as review.
 5. Legacy `excluded` without `deleted_at` is not active.
 6. Deleted row with previous review status restores as review.
@@ -216,7 +216,7 @@
 6. Records page shows review state without duplicating report controls.
 7. Seller page shows records count and revenue.
 8. Processed sale items enter revenue.
-9. Needs_review sale items do not enter revenue until confirm.
+9. Needs_review sale items enter revenue only when the item itself is `processed`.
 10. Cancelled sale items do not enter revenue.
 11. Deleted/excluded items do not enter revenue.
 12. Debug UI is not visible to ordinary users.

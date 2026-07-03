@@ -26,6 +26,6 @@
 
 Deterministic parser fallback создаёт отдельную `sale_items` row для каждого товара, найденного по evidence в transcript. Если часть фразы неполная, она сохраняется отдельной `needs_review` row, а не склеивается с валидным товаром.
 
-`sales.total_amount` равен сумме активных `processed` items с валидным `total`. `sales.status = processed`, если запись уверенная или явно подтверждена. После mixed confirm parent sale может быть `processed`, while неполные active `sale_items` остаются `needs_review` и не входят в выручку. `sales.status = needs_review`, если запись ждёт confirm/cancel. `sales.status = cancelled`, если пользователь нажал `❌ Отмена` или WebApp `Отмена`.
+`sales.total_amount` равен сумме активных `processed` items с валидным `total`. `sales.status = processed`, если запись уверенная или после confirm не осталось active review items. После mixed confirm parent sale может остаться `needs_review`, while валидные active `sale_items` становятся `processed` и входят в выручку, а неполные active `sale_items` остаются `needs_review`. `sales.status = cancelled`, если пользователь нажал `❌ Отмена` или WebApp `Отмена`.
 
-WebApp edit review item сохраняет поля, пересчитывает `total` и может перевести item row в `processed`, но не переводит parent sale в `processed`. Такая позиция войдёт в выручку только после Telegram/WebApp confirm parent sale.
+WebApp edit review item сохраняет поля, пересчитывает `total` и может перевести item row в `processed`. Такая позиция может войти в выручку сразу; parent sale остаётся `needs_review`, если рядом ещё есть неполные active items.

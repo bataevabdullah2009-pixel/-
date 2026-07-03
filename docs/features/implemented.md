@@ -30,7 +30,7 @@
 ## Sale item management
 
 - `✏️` открывает compact edit form.
-- Валидное ручное сохранение обновляет `sale_items`, пересчитывает `total` и ставит item `processed`; parent `needs_review` sale всё равно не входит в выручку до confirm.
+- Валидное ручное сохранение обновляет `sale_items`, пересчитывает `total` и ставит item `processed`; parent `needs_review` sale может оставаться на проверке для других неполных items.
 - Edit сохраняет товар, количество, единицу и цену в Supabase.
 - Edit пересчитывает item total.
 - Edit пересчитывает sale total и report totals.
@@ -42,11 +42,10 @@
 
 ## Revenue rules
 
-- В выручку входит только parent sale `processed`.
-- В выручку входит только item `processed`.
+- В выручку входит active item `processed`, если parent sale не `cancelled` и не `failed`.
 - Item с валидным `total` может войти в выручку даже если unit price был восстановлен из total.
-- `needs_review`, `cancelled`, `failed`, `excluded` и deleted rows не входят.
-- Processed-looking item внутри `needs_review` sale не входит в выручку.
+- Item `needs_review`/`needs_price`/`failed`/`excluded`, parent `cancelled`/`failed` и deleted rows не входят.
+- Processed item внутри `needs_review` sale входит в выручку; неполные sibling items остаются в проверке.
 
 ## Tests
 

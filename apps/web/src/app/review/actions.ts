@@ -21,11 +21,27 @@ function redirectWithResult(returnTo: string, result: { ok: boolean; message: st
   redirect(`${url.pathname}${url.search}${url.hash}`);
 }
 
+function revalidateReviewViews() {
+  try {
+    revalidatePath("/review");
+    revalidatePath("/daily-report");
+    revalidatePath("/records");
+    revalidatePath("/sellers");
+    return true;
+  } catch (error) {
+    console.error("Review mutation revalidation failed", error);
+    return false;
+  }
+}
+
 function finishReviewMutation(returnTo: string, result: { ok: boolean; message: string }): never {
-  revalidatePath("/review");
-  revalidatePath("/daily-report");
-  revalidatePath("/records");
-  revalidatePath("/sellers");
+  const refreshed = revalidateReviewViews();
+  if (result.ok && !refreshed) {
+    redirectWithResult(returnTo, {
+      ok: true,
+      message: "Статус обновлён, но не удалось обновить экран. Нажмите обновить."
+    });
+  }
   redirectWithResult(returnTo, result);
 }
 
