@@ -63,7 +63,9 @@ function finishMutation(returnTo: string, result: { ok: boolean; message: string
 
 function revalidateReports() {
   revalidatePath("/daily-report");
+  revalidatePath("/review");
   revalidatePath("/records");
+  revalidatePath("/sellers");
 }
 
 export async function updateSaleItemAction(

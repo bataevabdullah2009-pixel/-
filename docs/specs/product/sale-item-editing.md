@@ -98,13 +98,13 @@
 ## 8. Status after update
 
 1. Если parent sale `processed`, item остаётся `processed`.
-2. Если parent sale `needs_review`, item остаётся `needs_review`.
-3. Edit не подтверждает review voice-запись.
+2. Если пользователь сохранил валидные `product_name`, `quantity`, `unit` и `price`, item получает `processed` даже внутри parent sale `needs_review`.
+3. Edit не подтверждает review voice-запись и не переводит parent sale в `processed`.
 4. Review sale начинает входить в выручку только после явного confirm.
 5. Processed sale пересчитывает revenue сразу.
 6. Для `unit = г` сумма считается как `quantity / 1000 * price`; `price` трактуется как цена за кг.
-6. Cancelled sale не должен получить revenue через update.
-7. Failed sale не должен получить revenue через update.
+7. Cancelled sale не должен получить revenue через update.
+8. Failed sale не должен получить revenue через update.
 
 ## 9. Recalculation
 
@@ -155,11 +155,12 @@
 
 1. Update persists in Supabase.
 2. Delete persists in Supabase.
-3. Page reload не возвращает deleted item в active list.
-4. Page reload показывает updated product name.
-5. Page reload показывает updated quantity.
-6. Page reload показывает updated price.
-7. Page reload показывает recalculated total.
+3. Валидный update сохраняет `status = processed`, `confidence = 1` и пересчитанный `total`.
+4. Page reload не возвращает deleted item в active list.
+5. Page reload показывает updated product name.
+6. Page reload показывает updated quantity.
+7. Page reload показывает updated price.
+8. Page reload показывает recalculated total.
 
 ## 13. Business logic
 
@@ -170,7 +171,7 @@
 5. Item without total не входит в revenue.
 6. Deleted item не входит в quantity.
 7. Deleted item не входит в revenue.
-8. Review item может быть отредактирован, но не counted.
+8. Review sale item может стать `processed` после edit, но не counted, пока parent sale не подтверждён.
 
 ## 14. API and server logic
 
@@ -231,7 +232,7 @@
 2. Save updates Supabase.
 3. Save recalculates item total.
 4. Save recalculates report revenue for processed sale.
-5. Save does not confirm needs_review sale.
+5. Save does not confirm needs_review sale, but complete saved item becomes `processed`.
 6. Error does not clear form data.
 7. `🗑` opens delete confirmation.
 8. Delete soft-deletes row.

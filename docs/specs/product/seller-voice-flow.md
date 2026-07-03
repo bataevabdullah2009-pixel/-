@@ -13,23 +13,22 @@
 ## Уверенный пример
 
 ```text
-Сникерс 5 штук по 100 рублей
+Сникерс, 3 штуки по 200 рублей. Буханка хлеба, 5 штук по 50 рублей.
 ```
 
 Ожидаемый результат:
 
-1. Товар: `Сникерс`.
-2. Quantity: `5`.
-3. Price: `100`.
-4. Total: `500`.
-5. Confidence `>= 0.80`.
-6. Item status `processed`.
-7. Sale status `processed`.
-8. Voice record status `processed`.
-9. Bot отвечает:
+1. `sale_items[0]`: `Сникерс`, quantity `3`, unit `шт`, price `200`, total `600`.
+2. `sale_items[1]`: `Буханка хлеба`, quantity `5`, unit `шт`, price `50`, total `250`.
+3. Sale total: `850`.
+4. Confidence `>= 0.80`.
+5. Item status `processed`.
+6. Sale status `processed`.
+7. Voice record status `processed`.
+8. Bot отвечает:
 
 ```text
-✅ Запись сохранена: Сникерс, 5 штук по 100 рублей.
+✅ Запись сохранена: Сникерс, 3 штуки по 200 рублей. Буханка хлеба, 5 штук по 50 рублей.
 ```
 
 Запись сразу входит в отчёт.
@@ -66,11 +65,12 @@
 1. Переводит sale в `processed`.
 2. Переводит voice record в `processed`.
 3. Делает валидные items `processed`.
-4. Добавляет выручку в отчёт.
-5. Bot пишет:
+4. Неполные mixed-cart items оставляет `needs_review`.
+5. Добавляет выручку в отчёт.
+6. Bot пишет:
 
 ```text
-✅ Запись подтверждена и добавлена в выручку.
+✅ Подтверждено: N позиций, сумма X ₽
 ```
 
 ## Cancel

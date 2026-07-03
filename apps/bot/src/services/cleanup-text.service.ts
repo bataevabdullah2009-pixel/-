@@ -1,6 +1,9 @@
 import { parsedSaleSchema } from "@voice-sales-log/shared/schemas/record.schema";
 import type { ParsedSale } from "@voice-sales-log/shared/types";
-import { enforceTranscriptEvidence } from "@voice-sales-log/shared/utils/sale-parser";
+import {
+  buildFallbackSaleItemsFromTranscript,
+  enforceTranscriptEvidence
+} from "@voice-sales-log/shared/utils/sale-parser";
 import type { AppEnv } from "../config/env";
 
 type ChatCompletionResponse = {
@@ -63,9 +66,11 @@ export async function cleanupTranscript(env: AppEnv, rawText: string) {
 }
 
 export function buildNeedsReviewParseResult(rawText: string, cleanedText: string, errorMessage: string) {
+  const fallbackItems = buildFallbackSaleItemsFromTranscript(rawText, cleanedText, 0.6);
+
   return {
     parsedSale: {
-      items: [],
+      items: fallbackItems,
       raw_text: rawText,
       cleaned_text: cleanedText,
       needs_review: true

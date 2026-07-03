@@ -4,6 +4,7 @@
 
 - `/start` проверяет продавца и даёт WebApp доступ к отчёту.
 - Voice messages проходят download, audio prepare, STT, parser, Supabase persistence.
+- Deterministic fallback разделяет glued multi-item transcript на отдельные `sale_items` и сохраняет неполные остатки отдельными review rows.
 - Уверенные продажи сохраняются как `processed`.
 - Сомнительные продажи сохраняются как `needs_review`.
 - Review-message содержит только `✅ Подтвердить` и `❌ Отмена`.
@@ -29,6 +30,7 @@
 ## Sale item management
 
 - `✏️` открывает compact edit form.
+- Валидное ручное сохранение обновляет `sale_items`, пересчитывает `total` и ставит item `processed`; parent `needs_review` sale всё равно не входит в выручку до confirm.
 - Edit сохраняет товар, количество, единицу и цену в Supabase.
 - Edit пересчитывает item total.
 - Edit пересчитывает sale total и report totals.

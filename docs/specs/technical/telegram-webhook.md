@@ -93,20 +93,23 @@ Each stage logs context for diagnostics.
 1. `cleanupTranscript` creates cleaned text.
 2. `parseSaleTranscript` returns parsed sale.
 3. Parser returns items and `needs_review` flag.
-4. Invalid LLM JSON falls back to review instead of hard failing when possible.
-5. Parser JSON and error message are stored for diagnostics.
+4. Deterministic fallback verifies transcript evidence and can split one glued parser item into multiple `sale_items`.
+5. Fallback supports dot, comma before quantity, conjunctions, newline, `5 по 100`, bottles, kilograms and grams.
+6. Invalid LLM JSON falls back to review with deterministic items when possible instead of hard failing.
+7. Parser JSON and error message are stored for diagnostics.
 
 ## 12. Persistence
 
 1. `saveProcessedSale` is alias for `saveVoiceSale`.
 2. Source items are normalized.
-3. If parser returns no items, `ensureReviewableSaleItems` creates a fallback review item.
-4. Item statuses are resolved with shared utilities.
-5. Sale status is `processed` only if all resolved items are processed and no parser error.
-6. Otherwise sale status is `needs_review`.
-7. Payload is saved through RPC `save_voice_sale`.
-8. Persistence verifies saved sale and item count.
-9. False success throws.
+3. Logs include parsed items before normalization and normalized items.
+4. If parser returns no items, `ensureReviewableSaleItems` creates a fallback review item.
+5. Item statuses are resolved with shared utilities.
+6. Sale status is `processed` only if all resolved items are processed and no parser error.
+7. Otherwise sale status is `needs_review`.
+8. Payload is saved through RPC `save_voice_sale`.
+9. Persistence verifies saved sale and item count and logs inserted `sale_items` ids.
+10. False success throws.
 
 ## 13. Success message
 
@@ -189,6 +192,8 @@ voice_sale_review:cancel:<uuid>
 10. Recalculates total from confirmable items.
 11. Updates sale and voice record to `processed`.
 12. If no item is valid, returns `Не удалось подтвердить: нет ни одной полной позиции.`
+13. Logs sale id, found item count, valid item count and invalid reasons.
+14. Success message is `✅ Подтверждено: N позиций, сумма X ₽`.
 
 ## 18. Cancel service
 

@@ -160,12 +160,14 @@ Never count:
 
 1. Bot builds payload with `buildVoiceSaleRpcPayload`.
 2. Payload includes shop id, seller id, telegram message id, audio data, transcript and resolved items.
-3. Bot calls RPC `save_voice_sale`.
-4. RPC returns identifiers.
-5. Code reads sale back.
-6. Code reads sale_items count back.
-7. Mismatch throws error.
-8. False success is not allowed.
+3. Deterministic parser fallback must split glued transcript into one payload item per product when evidence exists.
+4. Bot calls RPC `save_voice_sale`.
+5. RPC returns identifiers.
+6. Code reads sale back.
+7. Code reads sale_items count back.
+8. Inserted `sale_items` ids are logged for diagnostics.
+9. Mismatch throws error.
+10. False success is not allowed.
 
 ## 15. Confirm mutation
 
@@ -204,10 +206,11 @@ Never count:
 4. Validate shop access.
 5. Build manual patch.
 6. Match product catalog if possible.
-7. Update active item.
-8. Return updated row.
-9. Recalculate parent sale.
-10. Write audit log best effort.
+7. Update active item with recalculated `total`, `confidence = 1` and `status = processed` when product/quantity/price are valid.
+8. Parent `needs_review` sale remains excluded from revenue until explicit confirm.
+9. Return updated row.
+10. Recalculate parent sale.
+11. Write audit log best effort.
 
 ## 18. Sale item delete
 

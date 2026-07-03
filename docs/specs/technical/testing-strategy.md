@@ -3,6 +3,9 @@
 Regression tests покрывают:
 
 - parser evidence rules;
+- exact multi-item fallback: `Сникерс, 3 штуки по 200 рублей. Буханка хлеба, 5 штук по 50 рублей.` -> 2 items, total 850;
+- mixed valid + incomplete fallback: valid item confirms, incomplete item stays review;
+- bare quantity `5 по 100` and bottle units;
 - threshold `confidence >= 0.80`;
 - отсутствие обязательного review для полных voice-продаж;
 - фразы «Ники четыре штуки по сто рублей» и «Сникерс 5 штук по 100 рублей»;
@@ -17,6 +20,7 @@ Regression tests покрывают:
 - единый seller shop для bot и WebApp;
 - московские границы даты;
 - ручное сохранение processed patch;
+- ручное сохранение `Буханка хлеба`, quantity `5`, price `50` -> total `250`, item `processed`, confirm succeeds;
 - сохранение `product_name`, `quantity`, `price` и пересчёт `total`;
 - пересчёт отчёта после update и delete;
 - отсутствие excluded/deleted items в active UI;
@@ -45,6 +49,6 @@ npm run build
 
 Дополнительный P0-контроль использует фиксированный Telegram Mini App fixture с `signature`, `chat_instance`, `photo_url` и tamper-проверкой. Production smoke проверяет `POST /api/auth/telegram`, session cookie, seller/shop в Vercel logs и совпадение live Supabase counts с rendered report.
 
-Ручной WebApp smoke 25 июня 2026 проверил update quantity, update price, reload persistence, soft delete, reload после delete и restore. После проверки исходные значения позиции восстановлены. 2 июля 2026 локальные tests покрыли короткий callback contract, confirm/cancel, cancelled report filtering, `needs_review` parent sale filtering, отсутствие третьей review-кнопки, parser split и WebApp `/review` route; реальный Telegram smoke остаётся backlog после deploy.
+Ручной WebApp smoke 25 июня 2026 проверил update quantity, update price, reload persistence, soft delete, reload после delete и restore. После проверки исходные значения позиции восстановлены. 2 июля 2026 локальные tests покрыли короткий callback contract, confirm/cancel, cancelled report filtering, `needs_review` parent sale filtering, отсутствие третьей review-кнопки, parser split и WebApp `/review` route. 3 июля 2026 Supabase RPC smoke создал временную продажу с двумя `sale_items` и суммой `850`, затем удалил созданные rows; cleanup check показал 0 оставшихся `sales`, `sale_items`, `voice_records`.
 
 Если команда не запускалась или упала, это указывается явно.

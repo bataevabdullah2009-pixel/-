@@ -4,7 +4,7 @@
 
 ## Current status
 
-Активного плана разработки нет. Последний завершённый этап: [014 - Mixed cart confirmation and calm SaaS WebApp](./completed/014-mixed-cart-confirm-saas-webapp.md).
+Активного плана разработки нет. Последний завершённый этап: [015 - Parser sale_items confirm revenue](./completed/015-parser-sale-items-confirm-revenue.md).
 
 ## Completed
 

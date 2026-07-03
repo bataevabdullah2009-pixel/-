@@ -183,8 +183,8 @@ Records не показывает пустое состояние при auth/DB
 5. Soft-deleted item не редактируется.
 6. Чужой item не редактируется.
 7. Изменённая строка читается через `.select().single()`.
-8. Processed sale сохраняет item как `processed`.
-9. Review sale сохраняет item как `needs_review`.
+8. Валидный save сохраняет item как `processed` и `confidence = 1`.
+9. Review sale остаётся parent `needs_review`, поэтому processed-looking item не входит в выручку до confirm.
 10. Review edit не добавляет выручку до confirm.
 
 После успеха:
@@ -301,7 +301,7 @@ Records не показывает пустое состояние при auth/DB
 3. Legacy `excluded` без `deleted_at` не показывается active.
 4. Product match отсутствует — свободное название сохраняется.
 5. Audit log failure не отменяет update/delete.
-6. Review item after edit остаётся review.
+6. Review sale item after edit can be stored as `processed`, but parent `needs_review` sale keeps it out of revenue.
 7. Repeated review confirm/cancel is idempotent.
 8. Wrong sale id returns readable error.
 
@@ -311,7 +311,7 @@ Records не показывает пустое состояние при auth/DB
 2. Все мутации повторно проверяют shop.
 3. Update возвращает фактически сохранённую строку.
 4. Delete — только soft delete/status excluded.
-5. Review edit не подтверждает voice sale.
+5. Review edit не подтверждает voice sale, даже если item row становится `processed`.
 6. `/review` подтверждает и отменяет parent sale только через server action.
 7. Records раскрывает товары без отдельного client-side Supabase доступа.
 8. Sellers показывает recordsCount и revenue за период.

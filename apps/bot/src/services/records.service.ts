@@ -301,6 +301,13 @@ async function verifyVoiceSalePersistence(
     );
   }
 
+  logger.info("sale_items_insert_verified", {
+    saleId,
+    voiceRecordId,
+    insertedSaleItemIds: (items ?? []).map((item) => String(item.id)),
+    insertedItemCount
+  });
+
   return {
     voice_record_id: voiceRecordId,
     sale_id: saleId,
@@ -334,6 +341,10 @@ function calculateProcessedTotal(items: ResolvedSaleItem[]) {
       .reduce((sum, item) => sum + Number(item.total), 0)
       .toFixed(2)
   );
+}
+
+function formatRubles(amount: number) {
+  return `${amount.toLocaleString("ru-RU", { maximumFractionDigits: 2 })} ₽`;
 }
 
 type ReviewSaleRow = {
@@ -398,7 +409,7 @@ async function getActiveReviewItems(supabase: SupabaseClient, saleId: string) {
   return (data ?? []) as ReviewSaleItemRow[];
 }
 
-function toConfirmableItem(item: ReviewSaleItemRow) {
+function inspectConfirmableItem(item: ReviewSaleItemRow) {
   const quantity = Number(item.quantity);
   const sourcePrice = item.price === null ? null : Number(item.price);
   const sourceTotal = item.total === null ? null : Number(item.total);
@@ -408,24 +419,33 @@ function toConfirmableItem(item: ReviewSaleItemRow) {
   const total = sourceTotal !== null && Number.isFinite(sourceTotal) && sourceTotal > 0
     ? Number(sourceTotal.toFixed(2))
     : calculateItemTotal(quantity, price, item.unit);
+  const invalidReasons: string[] = [];
 
-  if (
-    item.status === "excluded" ||
-    !isMeaningfulProductName(item.product_name) ||
-    !Number.isFinite(quantity) ||
-    quantity <= 0 ||
-    price === null ||
-    !Number.isFinite(price) ||
-    price <= 0 ||
-    total === null
-  ) {
-    return null;
+  if (item.status === "excluded") {
+    invalidReasons.push("excluded_status");
+  }
+  if (!isMeaningfulProductName(item.product_name)) {
+    invalidReasons.push("missing_product_name");
+  }
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    invalidReasons.push("missing_quantity_or_weight");
+  }
+  if (price === null || !Number.isFinite(price) || price <= 0) {
+    invalidReasons.push("missing_unit_price");
+  }
+  if (total === null || !Number.isFinite(total) || total <= 0) {
+    invalidReasons.push("missing_total_price");
   }
 
   return {
-    id: String(item.id),
-    price,
-    total
+    confirmable: invalidReasons.length
+      ? null
+      : {
+          id: String(item.id),
+          price: price as number,
+          total: total as number
+        },
+    invalidReasons
   };
 }
 
@@ -516,9 +536,28 @@ export async function confirmVoiceSaleWithClient(
 
   const activeItems = (await getActiveReviewItems(supabase, sale.id))
     .filter((item) => item.status !== "excluded");
-  const confirmableItems = activeItems.flatMap((item) => {
-    const confirmable = toConfirmableItem(item);
-    return confirmable ? [confirmable] : [];
+  logger.info("voice_sale_confirm_items_loaded", {
+    saleRecordId: sale.id,
+    foundItemsCount: activeItems.length
+  });
+
+  const inspectedItems = activeItems.map((item) => ({
+    item,
+    ...inspectConfirmableItem(item)
+  }));
+  const confirmableItems = inspectedItems.flatMap((item) => item.confirmable ? [item.confirmable] : []);
+  logger.info("voice_sale_confirm_items_validated", {
+    saleRecordId: sale.id,
+    foundItemsCount: activeItems.length,
+    validItemsCount: confirmableItems.length,
+    invalidItems: inspectedItems
+      .filter((item) => item.invalidReasons.length)
+      .map(({ item, invalidReasons }) => ({
+        itemId: String(item.id),
+        productName: item.product_name,
+        status: item.status,
+        invalidReasons
+      }))
   });
 
   if (!confirmableItems.length) {
@@ -561,7 +600,7 @@ export async function confirmVoiceSaleWithClient(
     status: "processed",
     oldStatus: sale.status,
     newStatus: "processed",
-    message: "✅ Запись подтверждена и добавлена в выручку.",
+    message: `✅ Подтверждено: ${confirmableItems.length} позиций, сумма ${formatRubles(totalAmount)}`,
     itemCount: confirmableItems.length
   };
 }
@@ -696,6 +735,28 @@ export async function saveVoiceSale(params: {
   const supabase = getSupabase(env);
   const sourceItems = ensureReviewableSaleItems(parsedSale);
   const resolvedItems = await Promise.all(sourceItems.map((item) => resolveSaleItem(env, seller.shopId, item)));
+  logger.info("voice_sale_items_normalized", {
+    telegramMessageId,
+    sellerId: seller.id,
+    shopId: seller.shopId,
+    parsedItemsBeforeNormalization: sourceItems.map((item) => ({
+      productName: item.product_name,
+      quantity: item.quantity ?? null,
+      unit: item.unit ?? null,
+      price: item.price,
+      total: item.total,
+      confidence: item.confidence
+    })),
+    normalizedItems: resolvedItems.map((item) => ({
+      productName: item.product_name,
+      quantity: item.quantity,
+      unit: item.unit,
+      price: item.price,
+      total: item.total,
+      confidence: item.confidence,
+      status: item.status
+    }))
+  });
   const needsAttention =
     Boolean(errorMessage) ||
     resolvedItems.length === 0 ||
