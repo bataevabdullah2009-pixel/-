@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## 2026-07-03 - Documentation audit and expanded specs
+
+### Docs
+
+- Проверены README, AGENTS, docs/specs, docs/features, docs/overview, docs/rules, roadmap и планы на соответствие текущему коду.
+- Расширен центральный `docs/INDEX.md`: теперь это подробная карта документации и инвариантов проекта, а не короткий список ссылок.
+- Расширены короткие product specs: owner dashboard, roles/access и production readiness.
+- Расширены короткие technical specs: API contract, architecture, deployment, database schema, auth/shop isolation и error handling.
+- Расширены feature docs: voice processing, sales report, manual review, mobile WebApp, records journal, sellers и acceptance matrix.
+- Расширены data specs: data model и soft delete.
+
+### Corrections
+
+- Исправлено устаревшее описание WebApp review edit: валидно отредактированная item row становится `processed` и может войти в выручку, даже если parent sale остаётся `needs_review` из-за других неполных items.
+- Уточнено cancel behavior: успешная отмена review sale soft-delete все active items этой sale, поэтому уже processed items этой отменённой записи больше не входят в выручку.
+- Уточнены fallback, owner-created seller binding, server-derived shop isolation, production webhook `callback_query`, Supabase RPC read-back и item-level revenue rules.
+
 ## 2026-07-03 - Idempotent confirm without false status error
 
 ### Root cause
