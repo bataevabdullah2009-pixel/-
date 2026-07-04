@@ -1,8 +1,8 @@
-# Auth и изоляция магазина
+# Авторизация и изоляция магазина
 
-Auth и изоляция магазина защищают dashboard от доступа к чужому магазину. Главный принцип: `shop_id` выводится только на сервере.
+Авторизация и изоляция магазина защищают dashboard от доступа к чужому магазину. Главный принцип: `shop_id` выводится только на сервере.
 
-## Контракт client
+## Контракт клиента
 
 `getAppAuthContext()` возвращает:
 
@@ -29,7 +29,7 @@ Client отправляет:
 
 Client не отправляет доверенный `shop_id`.
 
-## Контракт server
+## Контракт сервера
 
 `resolveRequestContext(request)`:
 
@@ -45,7 +45,7 @@ Client не отправляет доверенный `shop_id`.
 10. Если initData нет и fallback разрешён, загружает fallback seller.
 11. Если initData нет и fallback выключен, возвращает auth error.
 
-## Контракт fallback
+## Контракт резервного режима
 
 Fallback требует:
 
@@ -65,7 +65,7 @@ Server:
 
 Отсутствующий или несовпадающий fallback env является `AUTH_MISCONFIGURED`.
 
-## Cookie session
+## Cookie-сессия
 
 `/api/auth/telegram` сохраняет raw initData в httpOnly cookie:
 

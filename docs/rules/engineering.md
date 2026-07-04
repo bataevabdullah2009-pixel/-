@@ -1,6 +1,6 @@
 # Инженерные правила
 
-- Сначала читать `README.md`, локальные спеки и текущий diff.
+- Сначала читать `README.md`, `docs/specs/global.md`, локальные спеки и текущий diff.
 - Перед WebApp изменением читать `docs/specs/product/webapp-report.md` и `docs/specs/product/sale-item-editing.md`.
 - Перед БД изменением читать `docs/specs/technical/database.md`.
 - Перед Telegram изменением читать `docs/specs/technical/telegram-webapp-session.md`.

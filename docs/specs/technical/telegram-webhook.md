@@ -34,7 +34,7 @@
 6. Может показывать diagnostics button только при `DEBUG_TELEGRAM_WEBAPP=true`.
 7. Не обрабатывает sales.
 
-## 5. Стадии voice flow
+## 5. Стадии голосового потока
 
 1. `seller_resolve`.
 2. `telegram_reply`.
@@ -88,7 +88,7 @@
 5. Raw transcript сохраняется в voice/sale data.
 6. STT failure может создать failed voice record, если sale не была persisted.
 
-## 11. Parser/cleanup
+## 11. Парсер и очистка
 
 1. `cleanupTranscript` создаёт cleaned text.
 2. `parseSaleTranscript` возвращает parsed sale.
