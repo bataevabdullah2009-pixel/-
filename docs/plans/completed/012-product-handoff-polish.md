@@ -1,55 +1,55 @@
-# 012 - Product handoff polish
+# 012 - Продуктовая полировка передачи
 
 Дата: 2026-07-02
 
 ## Цель
 
-Довести Telegram bot + WebApp `Голосовой журнал продаж` до аккуратного продуктового состояния перед сдачей: Telegram review decision через две кнопки, корректная выручка, чистый mobile UX, актуальная документация.
+Довести Telegram-бот + WebApp `Голосовой журнал продаж` до аккуратного продуктового состояния перед сдачей: решение проверки Telegram через две кнопки, корректная выручка, чистый мобильный UX, актуальная документация.
 
 ## Изменено
 
 ### Telegram
 
-- Review keyboard теперь содержит только:
+- Клавиатура проверки теперь содержит только:
   - `✅ Подтвердить`;
   - `❌ Отмена`.
 - `Открыть отчёт` удалён из сообщения сомнительной записи.
 - `/start`, reply keyboard и menu button сохраняют доступ к отчёту.
-- Callback data остаются `confirm:<sale_id>` и `cancel:<sale_id>`.
-- Legacy prefix `voice_sale_review:` остаётся для уже отправленных старых сообщений.
+- Данные callback остаются `confirm:<sale_id>` и `cancel:<sale_id>`.
+- Устаревший префикс `voice_sale_review:` остаётся для уже отправленных старых сообщений.
 
 ### WebApp
 
 - Нижняя навигация на момент 012: `Отчёт`, `Записи`, `Продавцы`.
 - Примечание 2026-07-02: этот пункт superseded планом 013; текущее состояние имеет `Отчёт`, `Проверка`, `Записи`, `Продавцы`, а `/review` является рабочим экраном.
-- Report title: `Голосовой журнал продаж`.
-- Report subtitle: `Сводка магазина`.
-- Review items на момент 012 показывались без WebApp confirm/cancel controls.
+- Заголовок отчёта: `Голосовой журнал продаж`.
+- Подзаголовок отчёта: `Сводка магазина`.
+- Позиции проверки на момент 012 показывались без WebApp controls подтверждения/отмены.
 - Примечание 2026-07-02: актуальный WebApp подтверждает/отменяет review на вкладке `Проверка`.
-- Delete wording в карточке товара приведён к `Удалить товар из отчёта?`.
-- Date filters уплотнены.
+- Формулировка удаления в карточке товара приведена к `Удалить товар из отчёта?`.
+- Фильтры дат уплотнены.
 
-### Data
+### Данные
 
-- Superseded 2026-07-03: current report scope counts active `processed` items inside parent sale `needs_review`; only incomplete sibling items stay in review.
-- Revenue status predicate принимает только `processed`.
-- Recalculate после delete не переводит processed sale в review, если все active items удалены.
-- Cancelled/failed sale получают zero revenue при recalculation.
+- Заменено 2026-07-03: текущая область отчёта считает активные позиции `processed` внутри родительской продажи `needs_review`; только неполные соседние позиции остаются на проверке.
+- Предикат статуса выручки принимает только `processed`.
+- Пересчёт после удаления не переводит продажу `processed` в проверку, если все активные позиции удалены.
+- Продажи `cancelled`/`failed` получают нулевую выручку при пересчёте.
 
-### Tests
+### Тесты
 
-- Обновлён keyboard regression.
-- Superseded 2026-07-03: test expectation changed to count processed item inside needs_review sale while keeping incomplete item in review.
-- Пройден `npm.cmd run test`: 8 files, 93 tests.
+- Обновлена регрессия клавиатуры.
+- Заменено 2026-07-03: test expectation изменён, чтобы считать обработанную позицию внутри продажи `needs_review`, сохраняя неполную позицию на проверке.
+- Пройден `npm.cmd run test`: 8 файлов, 93 теста.
 
-## Backlog
+## Задел
 
-- Production smoke с реальным Telegram bot.
-- Проверка deployed logs после release.
-- Ручная проверка audio playback.
-- Возможный отдельный audit screen для restore soft-deleted items.
+- Production smoke с реальным Telegram-ботом.
+- Проверка deployed logs после релиза.
+- Ручная проверка воспроизведения аудио.
+- Возможный отдельный audit screen для восстановления мягко удалённых позиций.
 
 ## Риски
 
-- Реальный Telegram callback flow требует smoke после deploy, потому что локальные тесты покрывают service и keyboard contract, но не Telegram API editMessage delivery.
-- Supabase production schema должна иметь migrations с `deleted_at`, `deleted_reason`, `deleted_previous_status`.
+- Реальный сценарий callback Telegram требует smoke после развертывания, потому что локальные тесты покрывают сервис и контракт клавиатуры, но не доставку Telegram API editMessage.
+- Production-схема Supabase должна иметь миграции с `deleted_at`, `deleted_reason`, `deleted_previous_status`.

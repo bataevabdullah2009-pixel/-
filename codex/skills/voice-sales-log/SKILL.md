@@ -1,19 +1,19 @@
 ---
 name: voice-sales-log
-description: Work on Telegram bot + WebApp "Голосовой журнал продаж" without breaking voice pipeline, Supabase revenue rules, Telegram confirmation flow, or product documentation.
+description: Работа с Telegram-ботом + WebApp "Голосовой журнал продаж" без поломки голосового конвейера, правил выручки Supabase, сценария подтверждения в Telegram или продуктовой документации.
 ---
 
-# Voice Sales Log Skill
+# Skill голосового журнала продаж
 
-Use this skill for any change in this repository.
+Используйте этот skill для любого изменения в этом репозитории.
 
-## Product
+## Продукт
 
-`Голосовой журнал продаж` is a Telegram bot and Telegram WebApp for a shop. Sellers record sales by voice. The bot recognizes products, quantities and prices. Supabase stores the data. WebApp shows report, records and sellers.
+`Голосовой журнал продаж` - это Telegram-бот и Telegram WebApp для магазина. Продавцы записывают продажи голосом. Бот распознаёт товары, количества и цены. Supabase хранит данные. WebApp показывает отчёт, записи и продавцов.
 
-## Read first
+## Сначала читать
 
-Before code changes, read:
+Перед изменениями кода читать:
 
 - `AGENTS.md`
 - `README.md`
@@ -24,111 +24,111 @@ Before code changes, read:
 - `docs/specs/technical/telegram-webhook.md`
 - `docs/specs/technical/telegram-webapp-session.md`
 
-## Do not break voice pipeline
+## Не ломать голосовой конвейер
 
-Do not rewrite these areas unless the task explicitly requires it:
+Не переписывать эти области, если задача явно этого не требует:
 
-- STT call;
-- parser prompt/schema;
-- Telegram webhook route;
-- voice audio persistence;
+- вызов STT;
+- prompt/schema парсера;
+- маршрут Telegram webhook;
+- сохранение голосового аудио;
 - `saveVoiceSale` RPC payload;
-- failure persistence.
+- сохранение сбоев.
 
-Audio upload may fail without blocking sale persistence.
+Загрузка аудио может упасть, не блокируя сохранение продажи.
 
-## Status model
+## Модель статусов
 
 `sales` and `voice_records`:
 
-- `processed` - confirmed and counted.
-- `needs_review` - saved but not counted.
-- `cancelled` - user cancelled, not counted.
-- `failed` - processing failed, not counted.
+- `processed` - подтверждено и учитывается.
+- `needs_review` - сохранено, но не учитывается.
+- `cancelled` - пользователь отменил, не учитывается.
+- `failed` - обработка не удалась, не учитывается.
 
 `sale_items`:
 
-- `processed` - can count only if parent sale is also `processed`.
-- `needs_review` - not counted.
-- `needs_price` - legacy review state, not counted.
-- `failed` - not counted.
-- `excluded` - soft-deleted, not counted.
+- `processed` - может учитываться только если родительская продажа тоже `processed`.
+- `needs_review` - не учитывается.
+- `needs_price` - устаревшее состояние проверки, не учитывается.
+- `failed` - не учитывается.
+- `excluded` - мягко удалено, не учитывается.
 
-## Telegram confirmation flow
+## Сценарий подтверждения в Telegram
 
-Review voice-message must contain only:
+Голосовое сообщение на проверке должно содержать только:
 
 - `✅ Подтвердить`;
 - `❌ Отмена`.
 
-Do not add `Открыть отчёт` to the review-message.
+Не добавлять `Открыть отчёт` в сообщение проверки.
 
-Allowed report access:
+Разрешённый доступ к отчёту:
 
-- `/start` inline/reply keyboard;
-- menu button;
-- normal WebApp navigation.
+- inline/reply-клавиатура `/start`;
+- кнопка меню;
+- обычная навигация WebApp.
 
-Callback data:
+Данные callback:
 
 ```text
 confirm:<sale_id>
 cancel:<sale_id>
 ```
 
-Legacy `voice_sale_review:<action>:<sale_id>` may be accepted for old messages.
+Устаревший `voice_sale_review:<action>:<sale_id>` можно принимать для старых сообщений.
 
-## WebApp rules
+## Правила WebApp
 
-Navigation:
+Навигация:
 
 - `Отчёт`;
 - `Проверка`;
 - `Записи`;
 - `Продавцы`.
 
-WebApp `/review` shows active `needs_review` items and may confirm/cancel the parent review sale through server actions. Telegram inline callbacks remain the primary review path and must stay functional.
+WebApp `/review` показывает активные позиции `needs_review` и может подтверждать/отменять родительскую продажу на проверке через серверные действия. Inline-callbacks Telegram остаются основным путём проверки и должны работать.
 
-Confirm validates active `sale_items` individually. Valid mixed-cart items are moved to `processed`, parent sale/voice totals are recalculated, and incomplete active items remain `needs_review`. If there is no complete item, confirm must not mutate data and returns `Не удалось подтвердить: нет ни одной полной позиции.`
+Подтверждение проверяет активные `sale_items` по отдельности. Валидные позиции смешанной корзины переводятся в `processed`, итоги родительской продажи/голосовой записи пересчитываются, а неполные активные позиции остаются `needs_review`. Если нет ни одной полной позиции, подтверждение не должно менять данные и возвращает `Не удалось подтвердить: нет ни одной полной позиции.`
 
-Sale item card:
+Карточка позиции продажи:
 
-- normal view shows product, quantity, unit price, total;
-- `✏️` opens compact edit mode;
-- `🗑` opens delete confirmation;
-- no permanent large buttons;
-- no `Подтвердить позицию`;
-- no text link `Исключить из отчёта`.
+- обычный вид показывает товар, количество, цену за единицу и сумму;
+- `✏️` открывает компактный режим редактирования;
+- `🗑` открывает подтверждение удаления;
+- без постоянных больших кнопок;
+- без `Подтвердить позицию`;
+- без текстовой ссылки `Исключить из отчёта`.
 
-## Revenue rules
+## Правила выручки
 
-Count only:
+Учитывать только:
 
-- parent sale `processed`;
-- item `processed`;
+- родительскую продажу `processed`;
+- позицию `processed`;
 - `deleted_at is null`;
-- valid total;
-- valid quantity or weight;
-- saved price or unit price derivable from total.
+- валидную сумму;
+- валидное количество или вес;
+- сохранённую цену или цену за единицу, выводимую из суммы.
 
-Never count:
+Никогда не учитывать:
 
-- parent sale `needs_review`;
-- parent sale `cancelled`;
-- parent sale `failed`;
-- item `needs_review`;
-- item `needs_price`;
-- item `excluded`;
-- deleted rows.
+- родительскую продажу `needs_review`;
+- родительскую продажу `cancelled`;
+- родительскую продажу `failed`;
+- позицию `needs_review`;
+- позицию `needs_price`;
+- позицию `excluded`;
+- удалённые строки.
 
-## Documentation
+## Документация
 
-After code changes update relevant docs. After DB changes update migrations and `docs/specs/technical/database.md`. After UI changes update product specs. After Telegram flow changes update Telegram specs.
-После каждого изменения кода агент обязан обновлять документацию, changelog, активные планы и технические спецификации так, чтобы они соответствовали фактическому состоянию проекта. Запрещено оставлять документацию, противоречащую текущему коду.
+После изменения кода обновлять релевантную документацию. После изменения БД обновлять миграции и `docs/specs/technical/database.md`. После изменения UI обновлять продуктовые спеки. После изменения сценария Telegram обновлять спеки Telegram.
+После каждого изменения кода агент обязан обновлять документацию, журнал изменений, активные планы и технические спецификации так, чтобы они соответствовали фактическому состоянию проекта. Запрещено оставлять документацию, противоречащую текущему коду.
 
-## Verification
+## Проверка
 
-Run:
+Запустить:
 
 ```bash
 npm run lint
@@ -137,4 +137,4 @@ npm run build
 npm run web:build
 ```
 
-Use `npm.cmd` on PowerShell if `npm.ps1` is blocked.
+Использовать `npm.cmd` в PowerShell, если `npm.ps1` заблокирован.

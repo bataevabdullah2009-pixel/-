@@ -1,121 +1,121 @@
-# Global Spec
+# Глобальный спек
 
-## Product
+## Продукт
 
-`Голосовой журнал продаж` - Telegram bot + Telegram WebApp для магазина.
+`Голосовой журнал продаж` - Telegram-бот + Telegram WebApp для магазина.
 
-## Primary flow
+## Основной поток
 
-1. Seller sends Telegram voice message.
-2. Bot downloads audio.
-3. Bot prepares audio for STT.
-4. STT returns Russian text.
-5. Parser extracts sale items.
-6. Deterministic fallback splits glued items and preserves incomplete leftovers.
-7. Bot saves voice record, sale and sale items in Supabase.
-8. Bot replies with success or review decision.
-9. WebApp shows report, review, records and sellers.
+1. Продавец отправляет голосовое сообщение Telegram.
+2. Бот скачивает аудио.
+3. Бот подготавливает аудио для STT.
+4. STT возвращает русский текст.
+5. Парсер извлекает позиции продажи.
+6. Детерминированный fallback разделяет склеенные позиции и сохраняет неполные остатки.
+7. Бот сохраняет голосовую запись, продажу и позиции продажи в Supabase.
+8. Бот отвечает успехом или решением проверки.
+9. WebApp показывает отчёт, проверку, записи и продавцов.
 
-## Roles
+## Роли
 
-1. Seller sends sales and can view shop WebApp.
-2. Owner can view shop WebApp and mutate sale items.
-3. Bot owns voice pipeline and Telegram callbacks.
-4. Supabase stores business data.
+1. Продавец отправляет продажи и может просматривать WebApp магазина.
+2. Владелец может просматривать WebApp магазина и менять позиции продажи.
+3. Бот владеет голосовым конвейером и callbacks Telegram.
+4. Supabase хранит бизнес-данные.
 
-## Statuses
+## Статусы
 
 `sales` and `voice_records`:
 
-1. `processed` - counted.
-2. `needs_review` - saved, not counted.
-3. `cancelled` - cancelled, not counted.
-4. `failed` - failed, not counted.
+1. `processed` - учитывается.
+2. `needs_review` - сохранено, но не учитывается.
+3. `cancelled` - отменено, не учитывается.
+4. `failed` - сбой, не учитывается.
 
 `sale_items`:
 
-1. `processed` - can count when parent sale is not `cancelled` or `failed`.
-2. `needs_review` - not counted.
-3. `needs_price` - legacy review, not counted.
-4. `failed` - not counted.
-5. `excluded` - soft-deleted, not counted.
+1. `processed` - может учитываться, когда родительская продажа не `cancelled` или `failed`.
+2. `needs_review` - не учитывается.
+3. `needs_price` - устаревшая проверка, не учитывается.
+4. `failed` - не учитывается.
+5. `excluded` - мягко удалено, не учитывается.
 
-## Processed voice sale
+## Обработанная голосовая продажа
 
-1. Product name is meaningful.
-2. Quantity or weight is valid.
-3. Unit price is valid or can be derived from total.
-4. Total is valid.
-5. Confidence is high enough.
-6. Sale status becomes `processed`.
-7. Voice status becomes `processed`.
-8. Valid items become `processed`.
-9. Bot sends `✅ Запись сохранена: ...`.
-10. No review keyboard is attached.
+1. Название товара осмысленное.
+2. Количество или вес валидны.
+3. Цена за единицу валидна или может быть выведена из суммы.
+4. Сумма валидна.
+5. Уверенность достаточно высокая.
+6. Статус продажи становится `processed`.
+7. Статус голосовой записи становится `processed`.
+8. Валидные позиции становятся `processed`.
+9. Бот отправляет `✅ Запись сохранена: ...`.
+10. Клавиатура проверки не прикрепляется.
 
-## Needs review voice sale
+## Голосовая продажа на проверке
 
-1. Missing product, missing quantity/weight, or missing both price and total creates review.
-2. Low confidence creates review.
-3. Parser fallback creates review.
-4. Sale status becomes `needs_review`.
-5. Voice status becomes `needs_review`.
-6. Items do not enter revenue.
-7. Bot sends warning text.
-8. Bot attaches only `✅ Подтвердить` and `❌ Отмена`.
-9. No `Открыть отчёт` button is attached to the review-message.
-10. Fallback keeps complete products and incomplete products as separate `sale_items`.
+1. Отсутствие товара, количества/веса или одновременно цены и суммы создаёт проверку.
+2. Низкая уверенность создаёт проверку.
+3. Резервный парсер создаёт проверку.
+4. Статус продажи становится `needs_review`.
+5. Статус голосовой записи становится `needs_review`.
+6. Позиции не входят в выручку.
+7. Бот отправляет предупреждение.
+8. Бот прикрепляет только `✅ Подтвердить` и `❌ Отмена`.
+9. Кнопка `Открыть отчёт` не прикрепляется к сообщению проверки.
+10. Fallback сохраняет полные и неполные товары отдельными `sale_items`.
 
-## Telegram decision
+## Решение Telegram
 
 1. `confirm:<sale_id>` confirms.
 2. `cancel:<sale_id>` cancels.
-3. Legacy `voice_sale_review:<action>:<sale_id>` can be accepted.
-4. Confirm validates active `sale_items` individually.
-5. Confirm sets sale/voice and valid items to `processed`.
-6. Confirm leaves incomplete mixed-cart items in `needs_review`.
-7. Confirm fails only when there is no complete item and returns `Не удалось подтвердить: нет ни одной полной позиции.`
-8. Confirm recalculates total from confirmed items.
-9. Successful confirm returns `✅ Подтверждено: N позиций, сумма X ₽`.
-10. Cancel sets sale/voice to `cancelled`.
-11. Cancel soft-deletes active items.
-12. Callbacks are idempotent.
+3. Устаревший `voice_sale_review:<action>:<sale_id>` может приниматься.
+4. Подтверждение проверяет активные `sale_items` по отдельности.
+5. Подтверждение ставит продажу/голосовую запись и валидные позиции в `processed`.
+6. Подтверждение оставляет неполные позиции смешанной корзины в `needs_review`.
+7. Подтверждение падает только когда нет полной позиции и возвращает `Не удалось подтвердить: нет ни одной полной позиции.`
+8. Подтверждение пересчитывает сумму по подтверждённым позициям.
+9. Успешное подтверждение возвращает `✅ Подтверждено: N позиций, сумма X ₽`.
+10. Отмена ставит продажу/голосовую запись в `cancelled`.
+11. Отмена мягко удаляет активные позиции.
+12. Callbacks идемпотентны.
 
 ## WebApp
 
 1. Navigation: `Отчёт`, `Проверка`, `Записи`, `Продавцы`.
-2. `/daily-report` shows summary, top products, period sales and review visibility.
-3. `/review` shows active `needs_review` items and review actions.
-4. `/records` shows voice-sale journal.
-5. `/sellers` shows seller stats.
-6. WebApp review actions use server-derived shop context.
-7. Review records show status consistently.
+2. `/daily-report` показывает сводку, топ товаров, продажи за период и блок проверки.
+3. `/review` показывает активные позиции `needs_review` и действия проверки.
+4. `/records` показывает журнал голосовых продаж.
+5. `/sellers` показывает статистику продавцов.
+6. Действия проверки WebApp используют серверный контекст магазина.
+7. Записи проверки показывают статус консистентно.
 
-## Sale item editing
+## Редактирование позиции продажи
 
-1. `✏️` opens compact edit mode.
-2. Edit fields: product, quantity, unit, price.
-3. Save updates Supabase.
-4. Save recalculates item total.
-5. Save recalculates sale total.
-6. Save with valid product, quantity and price stores the item as `processed`.
-7. Parent `needs_review` sale can still contain processed revenue items while other items remain in review.
-8. `🗑` opens delete confirmation.
-9. Delete soft-deletes item.
-10. Deleted item disappears from active report.
+1. `✏️` открывает компактный режим редактирования.
+2. Поля редактирования: товар, количество, единица, цена.
+3. Сохранение обновляет Supabase.
+4. Сохранение пересчитывает сумму позиции.
+5. Сохранение пересчитывает сумму продажи.
+6. Сохранение с валидным товаром, количеством и ценой сохраняет позицию как `processed`.
+7. Родительская продажа `needs_review` всё ещё может содержать обработанные позиции выручки, пока другие позиции остаются на проверке.
+8. `🗑` открывает подтверждение удаления.
+9. Удаление мягко удаляет позицию.
+10. Удалённая позиция исчезает из активного отчёта.
 
-## Revenue
+## Выручка
 
-Count only:
+Учитывать только:
 
-1. Parent sale is not `cancelled` or `failed`.
-2. Item `processed`.
+1. Родительская продажа не `cancelled` или `failed`.
+2. Позиция `processed`.
 3. `deleted_at is null`.
-4. Total exists.
-5. Quantity or weight is valid.
-6. Unit price exists or can be derived from total.
+4. Сумма существует.
+5. Количество или вес валидны.
+6. Цена за единицу существует или может быть выведена из суммы.
 
-Do not count:
+Не учитывать:
 
 1. `needs_review` sale.
 2. `cancelled` sale.
@@ -124,22 +124,22 @@ Do not count:
 5. `needs_price` item.
 6. `failed` item.
 7. `excluded` item.
-8. Deleted rows.
+8. Удалённые строки.
 
-## Diagnostics
+## Диагностика
 
-1. `/debug-telegram` is development/debug only.
-2. Production debug requires `DEBUG_TELEGRAM_WEBAPP=true`.
-3. Main user flow does not expose diagnostics.
+1. `/debug-telegram` только для разработки/debug.
+2. Production debug требует `DEBUG_TELEGRAM_WEBAPP=true`.
+3. Основной пользовательский поток не раскрывает диагностику.
 
-## Acceptance
+## Приёмка
 
-1. Confident `Сникерс, 5 штук по 100 рублей` is processed.
-2. Review item does not enter revenue; processed item in review sale can enter revenue.
-3. Review message has exactly two buttons.
-4. Confirm adds revenue for complete items and leaves incomplete mixed-cart items in review.
-5. Cancel excludes revenue.
-6. Edit item persists after reload.
-7. Delete item persists after reload.
-8. WebApp has four nav tabs.
-9. Docs match code.
+1. Уверенное `Сникерс, 5 штук по 100 рублей` становится `processed`.
+2. Позиция проверки не входит в выручку; обработанная позиция в продаже на проверке может войти в выручку.
+3. Сообщение проверки имеет ровно две кнопки.
+4. Подтверждение добавляет выручку для полных позиций и оставляет неполные позиции смешанной корзины на проверке.
+5. Отмена исключает выручку.
+6. Редактирование позиции сохраняется после перезагрузки.
+7. Удаление позиции сохраняется после перезагрузки.
+8. WebApp имеет четыре вкладки навигации.
+9. Документы соответствуют коду.

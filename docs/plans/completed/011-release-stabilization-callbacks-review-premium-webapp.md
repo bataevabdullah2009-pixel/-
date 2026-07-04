@@ -1,33 +1,33 @@
-# 011 — Release stabilization: callbacks, review page and premium WebApp
+# 011 — стабилизация релиза: callbacks, страница проверки и премиальный WebApp
 
 Статус: завершено 30 июня 2026.
 
 ## Цель
 
-Стабилизировать продукт перед сдачей: Telegram callback flow, WebApp update/delete, review decisions, магазинную изоляцию, dark premium UI и документацию.
+Стабилизировать продукт перед сдачей: сценарий callback Telegram, update/delete WebApp, решения проверки, магазинную изоляцию, тёмный премиальный UI и документацию.
 
 ## Сделано
 
-Примечание 2026-07-02: исторические решения 011 по third web_app button и `/review` superseded более поздними планами. Текущее состояние продукта описано в `013-callback-delivery-review-dashboard-parser-split.md`: Telegram review-message содержит две кнопки, а WebApp `/review` является рабочей вкладкой проверки.
+Примечание 2026-07-02: исторические решения 011 по третьей кнопке `web_app` и `/review` заменены более поздними планами. Текущее состояние продукта описано в `013-callback-delivery-review-dashboard-parser-split.md`: сообщение проверки Telegram содержит две кнопки, а WebApp `/review` является рабочей вкладкой проверки.
 
-- Callback data сокращены до `confirm:<record_id>` и `cancel:<record_id>`.
-- Handler принимает новые callback data и legacy `voice_sale_review:<action>:<id>` для старых сообщений.
+- Данные callback сокращены до `confirm:<record_id>` и `cancel:<record_id>`.
+- Handler принимает новые данные callback и устаревший `voice_sale_review:<action>:<id>` для старых сообщений.
 - Callback всегда отвечает `answerCbQuery` и логирует `callback_received` / `callback_action` с `record_id`, `telegram_user_id`, `old_status`, `new_status`, `error`.
-- На момент 011 review-message временно содержал third web_app button; текущее состояние удалило эту кнопку.
+- На момент 011 сообщение проверки временно содержало третью кнопку `web_app`; текущее состояние удалило эту кнопку.
 - На момент 011 была добавлена вкладка `/review`; текущее состояние снова использует `/review` как отдельную рабочую вкладку проверки.
 - WebApp mutations возвращают `statusCode`/`code` для 401/403/404/422/500 сценариев.
 - Добавлена idempotent migration `20260630153000_ensure_sale_item_soft_delete_columns.sql`.
-- WebApp переведён на dark premium dashboard: KPI, sparkline, топ товаров, последние продажи и 4-tab nav.
+- WebApp переведён на тёмную премиальную панель: KPI, sparkline, топ товаров, последние продажи и навигацию из 4 вкладок.
 - Продавцы показывают последнюю активность.
-- Regression tests обновлены под callback contract, cancelled report filtering и cross-shop denial.
+- Регрессионные тесты обновлены под контракт callback, фильтрацию отчёта по `cancelled` и отказ cross-shop.
 
 ## Проверка
 
-- `npm.cmd run test` — 8 файлов, 92 теста passed.
-- `npm.cmd run build` — bot/web/shared passed.
+- `npm.cmd run test` — 8 файлов, 92 теста пройдены.
+- `npm.cmd run build` — bot/web/shared пройдены.
 
 ## Осталось
 
-- Реальный Telegram smoke на тестовом боте после deploy.
-- Проверка Vercel logs после deploy: callback errors, Supabase permission errors, `deleted_at`.
-- Visual regression на нескольких мобильных viewport.
+- Реальная smoke-проверка Telegram на тестовом боте после развертывания.
+- Проверка логов Vercel после развертывания: ошибки callback, ошибки прав Supabase, `deleted_at`.
+- Визуальная регрессия на нескольких мобильных viewport.

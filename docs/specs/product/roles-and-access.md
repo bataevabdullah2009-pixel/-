@@ -1,6 +1,6 @@
-# Roles and Access
+# Роли и доступ
 
-Статус: реализовано через Telegram user id, Supabase records и server-side resolution.
+Статус: реализовано через Telegram user id, записи Supabase и server-side resolution.
 
 ## Цель
 
@@ -14,9 +14,9 @@
 
 ## Роли
 
-### Seller
+### Продавец
 
-Seller - активная запись в таблице `sellers`.
+Продавец - активная запись в таблице `sellers`.
 
 Поля:
 
@@ -27,24 +27,24 @@ Seller - активная запись в таблице `sellers`.
 5. `is_active`.
 6. `created_at`.
 
-Seller может:
+Продавец может:
 
 1. Отправлять voice-продажи в Telegram bot.
 2. Открывать WebApp, если Telegram session валидна.
-3. Смотреть dashboard текущего shop.
-4. Выполнять review actions через WebApp, если проект использует seller как разрешённого пользователя dashboard.
-5. Фильтроваться в records/sellers stats.
+3. Смотреть dashboard текущего магазина.
+4. Выполнять review actions через WebApp, если проект использует продавца как разрешённого пользователя dashboard.
+5. Фильтроваться в статистике records/sellers.
 
-Seller не может:
+Продавец не может:
 
 1. Выбрать чужой `shop_id` query параметром.
-2. Подтвердить callback чужой sale.
-3. Изменить item чужого shop.
+2. Подтвердить callback чужой продажи.
+3. Изменить item чужого магазина.
 4. Использовать WebApp при `is_active = false`.
 
-### Owner
+### Владелец
 
-Owner - active запись в таблице `owners`.
+Владелец - активная запись в таблице `owners`.
 
 Поля:
 
@@ -56,25 +56,25 @@ Owner - active запись в таблице `owners`.
 6. `created_at`.
 7. `updated_at`.
 
-Owner используется WebApp resolver. Если seller с таким Telegram id отсутствует, код может создать seller binding в owner shop. Это сохраняет единый downstream contract, потому что report и mutations дальше работают через shop context и seller-compatible access.
+Владелец используется WebApp resolver. Если продавец с таким Telegram id отсутствует, код может создать seller binding в магазине владельца. Это сохраняет единый downstream contract, потому что отчёт и mutations дальше работают через контекст магазина и seller-compatible access.
 
-Owner может:
+Владелец может:
 
-1. Открыть dashboard своего shop.
-2. Получить seller binding в том же shop.
+1. Открыть dashboard своего магазина.
+2. Получить seller binding в том же магазине.
 3. Смотреть report, review, records и sellers.
-4. Выполнять server-side mutations в рамках shop.
+4. Выполнять server-side mutations в рамках магазина.
 
-Owner не может:
+Владелец не может:
 
 1. Автоматически переключаться между магазинами.
-2. Использовать inactive owner record.
-3. Создать seller в другом shop.
-4. Обойти server-side shop check.
+2. Использовать неактивную запись владельца.
+3. Создать продавца в другом магазине.
+4. Обойти server-side проверку магазина.
 
-### Fallback user
+### Резервный пользователь
 
-Fallback user - server-side context из env:
+Резервный пользователь - server-side контекст из env:
 
 ```text
 ALLOW_WEBAPP_FALLBACK=true
@@ -92,23 +92,23 @@ Fallback resolver:
 4. Загружает seller из Supabase.
 5. Проверяет `seller.is_active`.
 6. Проверяет, что `seller.shop_id === DEFAULT_SHOP_ID`.
-7. Возвращает owner context с `mode = "fallback"`.
+7. Возвращает контекст владельца с `mode = "fallback"`.
 
-Если `DEFAULT_SHOP_ID` или `DEFAULT_SELLER_ID` не заданы, fallback считается misconfigured и не должен молча открывать пустой dashboard.
+Если `DEFAULT_SHOP_ID` или `DEFAULT_SELLER_ID` не заданы, fallback считается неправильно настроенным и не должен молча открывать пустой dashboard.
 
-### Demo mode
+### Демо-режим
 
 Demo mode включается через `DEMO_MODE=true`.
 
 Используется для demo/bootstrap сценариев:
 
 1. Без admin client может вернуть in-memory demo context.
-2. С admin client пытается найти configured demo owner или shop.
+2. С admin client пытается найти настроенного demo owner или shop.
 3. Не должен подменять реальный Telegram auth, если fallback или Telegram session доступны.
 
-Demo mode не является production access model.
+Demo mode не является production моделью доступа.
 
-## Telegram bot access
+## Доступ Telegram bot
 
 Bot flow использует `requireSeller(env, telegramId, sellerName)`.
 
@@ -116,21 +116,21 @@ Bot flow использует `requireSeller(env, telegramId, sellerName)`.
 
 1. Получить Telegram user id из `ctx.from.id`.
 2. Найти seller по `telegram_id`.
-3. Если seller найден и active, использовать его `shop_id`.
-4. Если seller найден, но inactive, отказать.
-5. Если seller не найден и `DEMO_MODE=false`, отказать.
-6. Если seller не найден и `DEMO_MODE=true`, создать seller в default shop.
-7. Сохранять voice sale только с resolved seller/shop.
+3. Если продавец найден и активен, использовать его `shop_id`.
+4. Если продавец найден, но неактивен, отказать.
+5. Если продавец не найден и `DEMO_MODE=false`, отказать.
+6. Если продавец не найден и `DEMO_MODE=true`, создать продавца в default shop.
+7. Сохранять voice-продажу только с resolved seller/shop.
 
 Callback confirm/cancel:
 
 1. Не использует WebApp session.
 2. Не использует client `shop_id`.
-3. Резолвит seller по Telegram callback user id.
+3. Резолвит продавца по Telegram callback user id.
 4. Ищет sale по `id`, `shop_id`, `seller_id`.
-5. Не меняет чужую sale.
+5. Не меняет чужую продажу.
 
-## WebApp access
+## Доступ WebApp
 
 WebApp использует `resolveRequestContext()` / `requireOwner()`.
 
@@ -148,37 +148,37 @@ Telegram mode:
 3. Server проверяет HMAC через `TELEGRAM_BOT_TOKEN`.
 4. Server проверяет freshness `auth_date`.
 5. Server извлекает Telegram user id.
-6. Server ищет active seller.
-7. Если seller отсутствует, server ищет active owner.
-8. Owner может создать seller binding в том же shop.
+6. Server ищет активного продавца.
+7. Если продавец отсутствует, server ищет активного владельца.
+8. Владелец может создать seller binding в том же магазине.
 9. Server ставит httpOnly cookie.
 10. Server возвращает `{ ok: true, mode: "telegram" }`.
 
-Cookie не делает client authority. Server actions всё равно вызывают `requireOwner()`.
+Cookie не делает client источником полномочий. Server actions всё равно вызывают `requireOwner()`.
 
-## Shop isolation
+## Изоляция магазина
 
-Правило: current shop всегда выводится на сервере.
+Правило: текущий магазин всегда выводится на сервере.
 
-Запрещённые sources:
+Запрещённые источники:
 
 1. Query `shop_id`.
 2. Form `shop_id`.
 3. JSON body `shop_id`.
-4. Header с client-provided shop id.
+4. Header с переданным клиентом shop id.
 5. LocalStorage/sessionStorage.
 6. Client Supabase user metadata.
 
-Разрешённые sources:
+Разрешённые источники:
 
-1. Active seller row.
-2. Active owner row.
-3. Verified fallback seller/shop env.
+1. Активная строка продавца.
+2. Активная строка владельца.
+3. Проверенный fallback seller/shop env.
 4. Demo context.
 
-## Data permissions
+## Права на данные
 
-Business tables читаются и изменяются server-side:
+Business-таблицы читаются и изменяются server-side:
 
 1. `shops`.
 2. `owners`.
@@ -189,33 +189,33 @@ Business tables читаются и изменяются server-side:
 7. `sale_items`.
 8. `audit_logs`.
 
-Browser client не выполняет business writes напрямую. Public anon access к business tables не используется как security boundary.
+Browser client не выполняет business writes напрямую. Public anon access к business-таблицам не используется как граница безопасности.
 
-## RLS and service role
+## RLS и service role
 
-RLS включён на public tables. Runtime mutations используют service role на сервере, но это не отменяет application-level shop checks.
+RLS включён на public tables. Мутации во время выполнения используют service role на сервере, но это не отменяет application-level проверок магазина.
 
 Требования:
 
 1. Service role key только server-side.
 2. `NEXT_PUBLIC_` env не содержит секретов.
 3. Service role client не импортируется в client components.
-4. Server mutations проверяют row ownership.
+4. Server mutations проверяют владение строкой.
 5. Audit logs не содержат tokens/initData.
 
-## Error mapping
+## Сопоставление ошибок
 
 WebApp:
 
-1. Missing initData -> `TELEGRAM_INIT_DATA_MISSING`.
-2. Invalid initData -> `TELEGRAM_INIT_DATA_INVALID`.
-3. Missing bot token -> `AUTH_MISCONFIGURED`.
+1. Отсутствует initData -> `TELEGRAM_INIT_DATA_MISSING`.
+2. Некорректная initData -> `TELEGRAM_INIT_DATA_INVALID`.
+3. Отсутствует bot token -> `AUTH_MISCONFIGURED`.
 4. Seller missing -> `SELLER_NOT_LINKED`.
 5. Seller inactive -> `SELLER_INACTIVE`.
 6. Shop missing -> `SHOP_NOT_FOUND`.
 7. Fallback mismatch -> `AUTH_MISCONFIGURED`.
 
-UI получает readable messages:
+UI получает понятные сообщения:
 
 1. Откройте WebApp внутри Telegram.
 2. Сессия недействительна или устарела.
@@ -224,9 +224,9 @@ UI получает readable messages:
 5. Магазин не найден.
 6. Не удалось выполнить действие.
 
-## Diagnostics
+## Диагностика
 
-Logs могут содержать:
+Логи могут содержать:
 
 1. `mode`.
 2. `telegramUserId`.
@@ -237,7 +237,7 @@ Logs могут содержать:
 7. `hasDefaultShop`.
 8. `hasDefaultSeller`.
 
-Logs не должны содержать:
+Логи не должны содержать:
 
 1. Raw initData.
 2. `TELEGRAM_BOT_TOKEN`.
@@ -245,25 +245,25 @@ Logs не должны содержать:
 4. `SUPABASE_SERVICE_ROLE_KEY`.
 5. STT/LLM keys.
 
-## Acceptance criteria
+## Критерии приемки
 
-1. Active seller открывает только свой shop.
-2. Inactive seller не получает доступ.
-3. Active owner без seller получает seller binding только в owner shop.
+1. Активный продавец открывает только свой магазин.
+2. Неактивный продавец не получает доступ.
+3. Активный владелец без продавца получает seller binding только в магазине владельца.
 4. Fallback работает только с server env.
 5. Fallback mismatch блокирует доступ.
-6. Callback чужого seller не меняет sale.
-7. WebApp item mutation чужого shop не проходит.
+6. Callback чужого продавца не меняет продажу.
+7. WebApp item mutation чужого магазина не проходит.
 8. Report игнорирует client `shop_id`.
-9. Records search/filter не расширяет shop boundary.
-10. Sellers stats считаются только в текущем shop.
+9. Records search/filter не расширяет границу магазина.
+10. Sellers stats считаются только в текущем магазине.
 11. Auth/DB errors не превращаются в empty state.
 12. Service role key не попадает в browser bundle.
 
-## Out of scope
+## Вне области
 
 1. Password login.
 2. OAuth login вне Telegram.
 3. Multi-shop switcher.
 4. Public admin API.
-5. Client-side Supabase writes в business tables.
+5. Client-side Supabase writes в business-таблицы.

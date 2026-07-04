@@ -1,8 +1,8 @@
-# Status Lifecycle
+# Жизненный цикл статусов
 
 Статус: реализовано.
 
-## Sale and voice record
+## Продажа и голосовая запись
 
 ```text
 pending
@@ -20,9 +20,9 @@ pending
 
 `cancelled` — пользователь отменил сомнительную voice-запись.
 
-`failed` — pipeline завершился технической ошибкой.
+`failed` — конвейер завершился технической ошибкой.
 
-## Sale item
+## Позиция продажи
 
 ```text
 processed
@@ -38,17 +38,17 @@ excluded + deleted_at
 
 `failed` не входит.
 
-`excluded` не входит и должен сопровождаться soft-delete metadata.
+`excluded` не входит и должен сопровождаться metadata мягкого удаления.
 
-## Voice recognition decision
+## Решение голосового распознавания
 
 ```text
-complete item + confidence >= 0.80 -> processed
-missing/low-confidence/strange item -> needs_review
-technical pipeline error -> failed
+полная позиция + confidence >= 0.80 -> processed
+отсутствующая/низкоуверенная/странная позиция -> needs_review
+техническая ошибка конвейера -> failed
 ```
 
-Parser-level review flag не является самостоятельной причиной review, если каждая позиция имеет:
+Флаг проверки на уровне парсера не является самостоятельной причиной проверки, если каждая позиция имеет:
 
 1. Осмысленный товар.
 2. `quantity > 0`.
@@ -56,61 +56,61 @@ Parser-level review flag не является самостоятельной п
 4. `total > 0`.
 5. `confidence >= 0.80`.
 
-## Review decision
+## Решение проверки
 
 ```text
 needs_review + confirm -> processed
 needs_review + cancel -> cancelled
 ```
 
-Confirm:
+Подтверждение:
 
-1. Переводит sale/voice в `processed`.
-2. Переводит валидные active items в `processed`.
-3. Добавляет валидные items в выручку.
+1. Переводит продажу/голосовую запись в `processed`.
+2. Переводит валидные активные позиции в `processed`.
+3. Добавляет валидные позиции в выручку.
 
-Cancel:
+Отмена:
 
-1. Переводит sale/voice в `cancelled`.
-2. Soft-delete active items.
+1. Переводит продажу/голосовую запись в `cancelled`.
+2. Мягко удаляет активные позиции.
 3. Оставляет выручку равной нулю.
 
-Повторные callback/server actions идемпотентны.
+Повторные callback/серверные действия идемпотентны.
 
-## WebApp edit
+## Редактирование WebApp
 
 ```text
-processed sale + valid item edit -> processed item
-needs_review sale + valid item edit -> processed item, parent sale stays needs_review if other review items remain
+processed sale + валидное редактирование item -> processed item
+needs_review sale + валидное редактирование item -> processed item, parent sale остаётся needs_review, если есть другие review items
 ```
 
-WebApp edit не подтверждает сомнительную voice-запись.
+Редактирование WebApp не подтверждает сомнительную голосовую запись.
 
-Он только сохраняет товар, количество, цену, статус item и пересчитанный total.
+Оно только сохраняет товар, количество, цену, статус позиции и пересчитанную сумму.
 
-Сохранённый `processed` item может войти в отчёт сразу; confirm нужен, чтобы обработать оставшиеся review items или завершить parent sale.
+Сохранённая позиция `processed` может войти в отчёт сразу; подтверждение нужно, чтобы обработать оставшиеся позиции проверки или завершить родительскую продажу.
 
-## Soft delete
+## Мягкое удаление
 
 ```text
 active item -> excluded + deleted_at
-excluded item -> restore previous status
+excluded item -> восстановить previous status
 ```
 
-Soft delete:
+Мягкое удаление:
 
-1. Не удаляет row физически.
-2. Сохраняет previous status.
-3. Убирает item из active report.
-4. Пересчитывает sale.
+1. Не удаляет строку физически.
+2. Сохраняет предыдущий статус.
+3. Убирает позицию из активного отчёта.
+4. Пересчитывает продажу.
 
-Restore:
+Восстановление:
 
-1. Очищает deleted metadata.
-2. Возвращает previous status.
-3. Влияет на revenue только если previous status был `processed`.
+1. Очищает metadata удаления.
+2. Возвращает предыдущий статус.
+3. Влияет на выручку только если предыдущий статус был `processed`.
 
-## User labels
+## Пользовательские подписи
 
 Пользователь видит:
 
@@ -118,22 +118,22 @@ Restore:
 2. `needs_review`, `needs_price`, `pending`, `failed` -> «Нужно проверить».
 3. `cancelled`, `excluded` -> «Исключено».
 
-Internal enum не показываются в UI.
+Внутренние enum не показываются в UI.
 
-## Revenue rule
+## Правило выручки
 
 В выручку входит только:
 
 ```text
-sale.status is not cancelled/failed
+sale.status не cancelled/failed
 and
 sale_item.status = processed
 and sale_item.deleted_at is null
 and total is not null
-and quantity_or_weight is valid
-and (price is not null or price can be derived from total)
+and quantity_or_weight валиден
+and (price is not null or price может быть выведен из total)
 ```
 
-Item statuses `needs_review`, `needs_price`, `failed`, `excluded`, parent statuses `cancelled`/`failed` и soft-deleted rows не входят.
+Статусы позиции `needs_review`, `needs_price`, `failed`, `excluded`, родительские статусы `cancelled`/`failed` и мягко удалённые строки не входят.
 
-Mixed sale допустима после confirm: валидные items получают `processed` и входят в revenue, а неполные active items остаются `needs_review`. Parent sale становится `processed` только когда неполных active items больше нет; иначе остаётся `needs_review`.
+Смешанная продажа допустима после подтверждения: валидные позиции получают `processed` и входят в выручку, а неполные активные позиции остаются `needs_review`. Родительская продажа становится `processed` только когда неполных активных позиций больше нет; иначе остаётся `needs_review`.

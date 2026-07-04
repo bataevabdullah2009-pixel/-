@@ -1,13 +1,13 @@
 # Функции
 
-Функции панели доступны через Telegram Mini App и явно включённый browser fallback mode. Данные ограничены server-derived магазином; auth/DB ошибки не отображаются как пустые данные.
+Функции панели доступны через Telegram Mini App и явно включённый браузерный резервный режим. Данные ограничены магазином, определённым на сервере; ошибки авторизации/БД не отображаются как пустые данные.
 
-- [Voice processing](./voice-processing.md)
-- [Sales report](./sales-report.md)
-- [Manual review](./manual-review.md)
-- [Records journal](./records-journal.md)
-- [Sellers](./sellers.md)
-- [Mobile Web App](./mobile-web-app.md)
+- [Обработка голоса](./voice-processing.md)
+- [Отчёт продаж](./sales-report.md)
+- [Ручная проверка](./manual-review.md)
+- [Журнал записей](./records-journal.md)
+- [Продавцы](./sellers.md)
+- [Мобильный WebApp](./mobile-web-app.md)
 - [Реализованные функции](./implemented.md)
 - [Планируемые функции](./planned.md)
-- [Acceptance matrix](./acceptance-matrix.md)
+- [Матрица приёмки](./acceptance-matrix.md)

@@ -1,21 +1,21 @@
-# Database Schema
+# Схема базы данных
 
 Каноническая подробная спецификация: [`database.md`](./database.md).
 
-Этот документ фиксирует итоговое состояние схемы после всех migrations, а не только `001_init.sql`.
+Этот документ фиксирует итоговое состояние схемы после всех миграций, а не только `001_init.sql`.
 
-## Migrations order
+## Порядок миграций
 
 1. `001_init.sql` - base schema, RLS, storage bucket.
-2. `20260617184050_add_voice_parser_diagnostics.sql` - parser diagnostics fields.
-3. `20260618082931_add_sale_item_soft_delete.sql` - initial soft delete fields.
-4. `20260619132225_align_sale_item_update_and_exclusion.sql` - update/exclusion alignment.
+2. `20260617184050_add_voice_parser_diagnostics.sql` - поля parser diagnostics.
+3. `20260618082931_add_sale_item_soft_delete.sql` - начальные поля soft delete.
+4. `20260619132225_align_sale_item_update_and_exclusion.sql` - выравнивание update/exclusion.
 5. `20260620135556_stabilize_sales_flow.sql` - owners, RPC, RLS/grant hardening.
 6. `20260623221651_repair_complete_single_item_sales.sql` - historical data repair.
-7. `20260630120000_add_cancelled_voice_sale_status.sql` - `cancelled` statuses.
-8. `20260630153000_ensure_sale_item_soft_delete_columns.sql` - final soft delete repair/indexes.
+7. `20260630120000_add_cancelled_voice_sale_status.sql` - статусы `cancelled`.
+8. `20260630153000_ensure_sale_item_soft_delete_columns.sql` - финальный soft delete repair/indexes.
 
-## Core tables
+## Основные таблицы
 
 1. `shops`.
 2. `owners`.
@@ -28,21 +28,21 @@
 
 ## `shops`
 
-Purpose: top-level tenant boundary.
+Назначение: top-level tenant boundary.
 
-Important fields:
+Важные поля:
 
 1. `id uuid`.
 2. `name text`.
 3. `created_at timestamptz`.
 
-`shops.name` has case-insensitive unique index.
+`shops.name` имеет case-insensitive unique index.
 
 ## `owners`
 
-Purpose: WebApp owner binding.
+Назначение: WebApp owner binding.
 
-Important fields:
+Важные поля:
 
 1. `id uuid`.
 2. `shop_id uuid`.
@@ -52,7 +52,7 @@ Important fields:
 6. `created_at timestamptz`.
 7. `updated_at timestamptz`.
 
-Access:
+Доступ:
 
 1. RLS enabled.
 2. Service role manages rows.
@@ -60,9 +60,9 @@ Access:
 
 ## `sellers`
 
-Purpose: Telegram seller binding.
+Назначение: Telegram seller binding.
 
-Important fields:
+Важные поля:
 
 1. `id uuid`.
 2. `shop_id uuid`.
@@ -71,13 +71,13 @@ Important fields:
 5. `is_active boolean`.
 6. `created_at timestamptz`.
 
-Bot and WebApp resolve seller by `telegram_id`.
+Bot и WebApp резолвят seller по `telegram_id`.
 
 ## `products`
 
-Purpose: optional catalog for product matching.
+Назначение: optional catalog для product matching.
 
-Important fields:
+Важные поля:
 
 1. `id uuid`.
 2. `shop_id uuid`.
@@ -87,13 +87,13 @@ Important fields:
 6. `is_active boolean`.
 7. `created_at timestamptz`.
 
-Current code uses product match mainly for identity/name/unit. Pricing comes from parser/manual input, not hidden client state.
+Current code использует product match в основном для identity/name/unit. Pricing приходит из parser/manual input, а не из hidden client state.
 
 ## `voice_records`
 
-Purpose: source voice processing row.
+Назначение: исходная row для voice processing.
 
-Important fields:
+Важные поля:
 
 1. `id uuid`.
 2. `shop_id uuid`.
@@ -108,7 +108,7 @@ Important fields:
 11. `error_message text`.
 12. `created_at timestamptz`.
 
-Statuses:
+Статусы:
 
 1. `pending`.
 2. `processed`.
@@ -118,9 +118,9 @@ Statuses:
 
 ## `sales`
 
-Purpose: parent sale record.
+Назначение: parent sale record.
 
-Important fields:
+Важные поля:
 
 1. `id uuid`.
 2. `shop_id uuid`.
@@ -132,7 +132,7 @@ Important fields:
 8. `status text`.
 9. `created_at timestamptz`.
 
-Statuses:
+Статусы:
 
 1. `pending`.
 2. `processed`.
@@ -140,13 +140,13 @@ Statuses:
 4. `cancelled`.
 5. `failed`.
 
-`sales.total_amount` is recalculated from active processed items. A parent `needs_review` sale may have non-zero total when some sibling items are already `processed`.
+`sales.total_amount` пересчитывается из active processed items. Parent `needs_review` sale может иметь non-zero total, когда некоторые sibling items уже `processed`.
 
 ## `sale_items`
 
-Purpose: item-level revenue source of truth.
+Назначение: item-level revenue source of truth.
 
-Important fields:
+Важные поля:
 
 1. `id uuid`.
 2. `sale_id uuid`.
@@ -164,7 +164,7 @@ Important fields:
 14. `deleted_reason text`.
 15. `deleted_previous_status text`.
 
-Statuses:
+Статусы:
 
 1. `processed`.
 2. `needs_review`.
@@ -172,25 +172,25 @@ Statuses:
 4. `failed`.
 5. `excluded`.
 
-Pricing fields:
+Поля pricing:
 
-1. Actual unit price field is `price`.
-2. Actual total field is `total`.
-3. `unit_price` is not used.
-4. `total_price` is not used.
+1. Фактическое поле unit price - `price`.
+2. Фактическое поле total - `total`.
+3. `unit_price` не используется.
+4. `total_price` не используется.
 
-Soft delete metadata:
+Метаданные soft delete:
 
-1. Active row has all deleted metadata null.
-2. Deleted row has `deleted_at`, `deleted_reason`, `deleted_previous_status`.
+1. Active row имеет все deleted metadata null.
+2. Deleted row имеет `deleted_at`, `deleted_reason`, `deleted_previous_status`.
 3. `deleted_reason` values: `manual`, `excluded_by_owner`, `day_reset`.
 4. `deleted_previous_status` excludes `excluded`.
 
 ## `audit_logs`
 
-Purpose: best-effort operational audit.
+Назначение: best-effort operational audit.
 
-Important fields:
+Важные поля:
 
 1. `id uuid`.
 2. `shop_id uuid`.
@@ -199,11 +199,11 @@ Important fields:
 5. `details jsonb`.
 6. `created_at timestamptz`.
 
-Audit failures are logged and do not block user-facing mutations.
+Audit failures логируются и не блокируют user-facing mutations.
 
 ## RPC `save_voice_sale`
 
-Signature inputs:
+Входные параметры сигнатуры:
 
 1. `p_shop_id`.
 2. `p_seller_id`.
@@ -218,26 +218,26 @@ Signature inputs:
 11. `p_total_amount`.
 12. `p_items`.
 
-Behavior:
+Поведение:
 
-1. Checks active seller belongs to requested shop.
-2. Inserts `voice_records`.
-3. Inserts `sales`.
-4. Inserts `sale_items` from JSON payload.
-5. Returns `voice_record_id` and `sale_id`.
+1. Проверяет, что active seller принадлежит requested shop.
+2. Вставляет `voice_records`.
+3. Вставляет `sales`.
+4. Вставляет `sale_items` из JSON payload.
+5. Возвращает `voice_record_id` и `sale_id`.
 
-Security:
+Безопасность:
 
 1. `security invoker`.
 2. Search path is `public`.
 3. Execute revoked from `public`, `anon`, `authenticated`.
-4. Execute granted to `service_role`.
+4. Execute выдан `service_role`.
 
-Application read-back verifies identifiers and exact inserted item count.
+Application read-back проверяет identifiers и точное количество inserted item.
 
-## Revenue inclusion
+## Включение в revenue
 
-Count item only if:
+Учитывать item только если:
 
 1. Parent sale belongs to current shop.
 2. Parent sale is not `cancelled`.
@@ -248,7 +248,7 @@ Count item only if:
 7. Item `total` is valid.
 8. Quantity/weight is valid.
 
-Exclude:
+Исключать:
 
 1. Parent `cancelled`.
 2. Parent `failed`.
@@ -258,25 +258,25 @@ Exclude:
 6. Item `excluded`.
 7. Any soft-deleted row.
 
-## Final schema checks
+## Финальные проверки схемы
 
-1. `cancelled` is allowed on `sales.status`.
-2. `cancelled` is allowed on `voice_records.status`.
-3. `excluded` is allowed on `sale_items.status`.
-4. `sale_items.updated_at` is not null.
-5. `sale_items.deleted_at` exists.
-6. `sale_items.deleted_reason` exists.
-7. `sale_items.deleted_previous_status` exists.
-8. Active-item indexes exist for report/delete paths.
-9. `owners` table exists.
-10. Demo read policies from base migration are removed by stabilization migration.
+1. `cancelled` разрешён в `sales.status`.
+2. `cancelled` разрешён в `voice_records.status`.
+3. `excluded` разрешён в `sale_items.status`.
+4. `sale_items.updated_at` не null.
+5. `sale_items.deleted_at` существует.
+6. `sale_items.deleted_reason` существует.
+7. `sale_items.deleted_previous_status` существует.
+8. Active-item indexes существуют для report/delete paths.
+9. Таблица `owners` существует.
+10. Demo read policies из base migration удалены stabilization migration.
 
-## Acceptance criteria
+## Критерии приемки
 
-1. New code references only fields created by migrations.
-2. New statuses are present in DB constraints.
-3. Soft delete constraints enforce consistent metadata.
-4. Runtime business mutations use service role server-side.
-5. WebApp still checks shop access in code.
-6. Parser fallback creates multiple `sale_items` when transcript evidence contains multiple products.
-7. Confirm/cancel and edit/delete can recalculate sale totals without missing columns.
+1. New code ссылается только на поля, созданные migrations.
+2. New statuses присутствуют в DB constraints.
+3. Soft delete constraints обеспечивают consistent metadata.
+4. Business mutations во время выполнения используют service role server-side.
+5. WebApp всё равно проверяет shop access в code.
+6. Parser fallback создаёт несколько `sale_items`, когда transcript evidence содержит несколько products.
+7. Confirm/cancel и edit/delete могут пересчитывать sale totals без missing columns.

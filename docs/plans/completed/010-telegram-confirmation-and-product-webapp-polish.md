@@ -1,43 +1,43 @@
-# 010 — Telegram confirmation and product WebApp polish
+# 010 — подтверждение Telegram и продуктовая полировка WebApp
 
 Статус: завершено 30 июня 2026.
 
-Актуальное состояние superseded планом `012-product-handoff-polish.md`: review-message содержит только `✅ Подтвердить` и `❌ Отмена`, callback data сокращены до `confirm:<record_id>` / `cancel:<record_id>`, а WebApp не имеет пользовательского review-confirm экрана.
+Актуальное состояние заменено планом `012-product-handoff-polish.md`: сообщение проверки содержит только `✅ Подтвердить` и `❌ Отмена`, данные callback сокращены до `confirm:<record_id>` / `cancel:<record_id>`, а WebApp не имеет пользовательского экрана review-confirm.
 
 ## Цель
 
-Довести Telegram bot + WebApp «Голосовой журнал продаж» до продуктового состояния: сомнительные voice-записи решаются в Telegram, WebApp остаётся чистой мобильной панелью, редактирование и удаление товаров работают через Supabase и не ломают выручку.
+Довести Telegram-бот + WebApp «Голосовой журнал продаж» до продуктового состояния: сомнительные голосовые записи решаются в Telegram, WebApp остаётся чистой мобильной панелью, редактирование и удаление товаров работают через Supabase и не ломают выручку.
 
 ## Сделано
 
-- Добавлен sale-level Telegram callback flow `✅ Подтвердить` / `❌ Отмена`.
-- Review voice-message не смешивает confirm/cancel flow с открытием отчёта.
-- Confirm переводит sale/voice в `processed` и добавляет валидные items в выручку.
-- Cancel переводит sale/voice в `cancelled` и soft-delete active items.
-- Callback flow сделан идемпотентным: первое решение выигрывает.
-- Добавлен статус `cancelled` в shared types/schema и Supabase constraints.
-- WebApp удалил legacy item-confirm path.
-- WebApp edit review item сохраняет поля, но не подтверждает voice-запись.
+- Добавлен sale-level сценарий callback Telegram `✅ Подтвердить` / `❌ Отмена`.
+- Голосовое сообщение проверки не смешивает сценарий подтверждения/отмены с открытием отчёта.
+- Подтверждение переводит продажу/голосовую запись в `processed` и добавляет валидные позиции в выручку.
+- Отмена переводит продажу/голосовую запись в `cancelled` и мягко удаляет активные позиции.
+- Сценарий callback сделан идемпотентным: первое решение выигрывает.
+- Добавлен статус `cancelled` в общие types/schema и constraints Supabase.
+- WebApp удалил устаревший путь item-confirm.
+- Редактирование позиции проверки в WebApp сохраняет поля, но не подтверждает голосовую запись.
 - Экран отчёта перестроен: четыре метрики, топ товаров, продажи за период, review-блок.
-- Экран записей показывает раскрытие «Товары»; текущий бейдж review обновлён в 011 до «Нужно проверить».
+- Экран записей показывает раскрытие «Товары»; текущий бейдж проверки обновлён в 011 до «Нужно проверить».
 - Экран продавцов показывает активность, записи и выручку за выбранный период.
-- Добавлены/обновлены regression tests для confirm, cancel, keyboard contract и статусов.
+- Добавлены/обновлены регрессионные тесты для подтверждения, отмены, контракта клавиатуры и статусов.
 
 ## Проверка
 
-- `npm.cmd run lint` — passed.
-- `npm.cmd run test` — 8 файлов, 90 тестов passed.
-- `npm.cmd run build` — bot/web/shared passed.
-- `npm.cmd run web:build` — Next.js build passed.
+- `npm.cmd run lint` — пройдено.
+- `npm.cmd run test` — 8 файлов, 90 тестов пройдены.
+- `npm.cmd run build` — bot/web/shared пройдены.
+- `npm.cmd run web:build` — сборка Next.js пройдена.
 
 ## Границы
 
-STT, LLM parser, audio conversion и webhook endpoint не переписывались.
+STT, LLM-парсер, конвертация аудио и endpoint webhook не переписывались.
 
 CRM, склад, касса, оплаты и клиентская база не добавлялись.
 
 ## Осталось
 
-- E2E Telegram smoke на тестовом боте после deploy.
-- Visual regression WebApp на нескольких мобильных viewport.
-- Метрики latency/error rate для callback и WebApp mutations.
+- E2E smoke-проверка Telegram на тестовом боте после развертывания.
+- Визуальная регрессия WebApp на нескольких мобильных viewport.
+- Метрики задержки/частоты ошибок для callback и мутаций WebApp.

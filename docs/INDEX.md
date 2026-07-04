@@ -1,23 +1,23 @@
 # Документация «Голосового журнала продаж»
 
-Статус на 2026-07-03: проект описан как рабочий коммерческий Telegram bot + Telegram WebApp для фиксации продаж голосом.
+Статус на 2026-07-03: проект описан как рабочий коммерческий Telegram-бот + Telegram WebApp для фиксации продаж голосом.
 
-Эта страница - входная карта по документации и быстрый контроль актуальности. Если поведение кода и короткий документ расходятся, каноническими считаются `README.md`, `AGENTS.md`, подробные specs в `docs/specs` и фактический код.
+Эта страница - входная карта по документации и быстрый контроль актуальности. Если поведение кода и короткий документ расходятся, каноническими считаются `README.md`, `AGENTS.md`, подробные спеки в `docs/specs` и фактический код.
 
 ## Что делает продукт
 
-1. Продавец отправляет voice message в Telegram.
-2. Bot скачивает аудио из Telegram.
-3. Audio preparation приводит voice к формату, пригодному для STT.
-4. STT возвращает русский transcript.
+1. Продавец отправляет голосовое сообщение в Telegram.
+2. Бот скачивает аудио из Telegram.
+3. Подготовка аудио приводит голос к формату, пригодному для STT.
+4. STT возвращает русскую расшифровку.
 5. LLM очищает текст и пытается выделить товары.
-6. Deterministic evidence layer сверяет результат с transcript.
-7. Parser fallback разделяет склеенные multi-item фразы на отдельные `sale_items`.
+6. Детерминированный слой доказательств сверяет результат с расшифровкой.
+7. Резервный парсер разделяет склеенные фразы с несколькими позициями на отдельные `sale_items`.
 8. Supabase RPC `save_voice_sale` атомарно создаёт `voice_records`, `sales` и `sale_items`.
-9. Приложение читает sale и количество items обратно, чтобы не отправить ложный success.
-10. Telegram отвечает обычным success для уверенной записи или review-кнопками для сомнительной.
+9. Приложение читает продажу и количество позиций обратно, чтобы не отправить ложный успех.
+10. Telegram отвечает обычным сообщением об успехе для уверенной записи или кнопками проверки для сомнительной.
 11. WebApp показывает отчёт, проверку, журнал записей и продавцов.
-12. Выручка считается по item-level правилам, а не только по parent sale status.
+12. Выручка считается по правилам уровня позиции, а не только по статусу родительской продажи.
 
 ## Карта документации
 
@@ -25,167 +25,167 @@
 
 1. [README](../README.md) - пользовательский сценарий, запуск, env, smoke и backlog.
 2. [AGENTS](../AGENTS.md) - правила работы с проектом и обязательные specs перед изменениями.
-3. [Changelog](../CHANGELOG.md) - история изменений и фактические проверки.
+3. [Журнал изменений](../CHANGELOG.md) - история изменений и фактические проверки.
 4. [Обзор](./overview/README.md) - краткая продуктовая логика.
 5. [Продукт](./overview/product.md) - пользовательские статусы и сценарии.
 6. [Архитектура](./architecture/architecture.md) - подробная схема модулей.
 7. [Глобальная спецификация](./specs/global.md) - сквозные инварианты.
 
-### Product specs
+### Продуктовые спеки
 
-1. [Owner dashboard](./specs/product/owner-dashboard.md) - что владелец видит и чем управляет.
-2. [Roles and access](./specs/product/roles-and-access.md) - seller, owner, fallback user и ограничения доступа.
-3. [Seller voice flow](./specs/product/seller-voice-flow.md) - путь продавца от voice до результата.
-4. [Telegram confirmation flow](./specs/product/telegram-confirmation-flow.md) - confirm/cancel под сообщением бота.
-5. [Sale item editing](./specs/product/sale-item-editing.md) - inline edit/delete/restore товара.
-6. [WebApp report](./specs/product/webapp-report.md) - отчёт, записи, продавцы и UI-состояния.
-7. [Production readiness](./specs/product/production-readiness.md) - release gate и production smoke.
+1. [Панель владельца](./specs/product/owner-dashboard.md) - что владелец видит и чем управляет.
+2. [Роли и доступ](./specs/product/roles-and-access.md) - продавец, владелец, fallback user и ограничения доступа.
+3. [Голосовой сценарий продавца](./specs/product/seller-voice-flow.md) - путь продавца от голоса до результата.
+4. [Сценарий подтверждения Telegram](./specs/product/telegram-confirmation-flow.md) - подтверждение/отмена под сообщением бота.
+5. [Редактирование позиции продажи](./specs/product/sale-item-editing.md) - inline-редактирование/удаление/восстановление товара.
+6. [Отчёт WebApp](./specs/product/webapp-report.md) - отчёт, записи, продавцы и UI-состояния.
+7. [Готовность к production](./specs/product/production-readiness.md) - release gate и production smoke.
 
-### Technical specs
+### Технические спеки
 
-1. [Architecture](./specs/technical/architecture.md) - техническая карта runtime flow.
-2. [API spec](./specs/technical/api-spec.md) - route handlers, Server Components и Server Actions.
-3. [Auth and shop isolation](./specs/technical/auth-and-shop-isolation.md) - tenant boundary и session rules.
-4. [Database](./specs/technical/database.md) - таблицы, статусы, revenue, soft delete и mutations.
-5. [Database schema](./specs/technical/database-schema.md) - краткая итоговая схема.
-6. [Deployment Vercel](./specs/technical/deployment-vercel.md) - env, migrations, webhook и smoke.
-7. [Error handling](./specs/technical/error-handling.md) - пользовательские и технические ошибки.
-8. [Report calculation](./specs/technical/report-calculation.md) - расчёт выручки и периодов.
-9. [Telegram webhook](./specs/technical/telegram-webhook.md) - webhook secret, updates и callbacks.
-10. [Telegram WebApp session](./specs/technical/telegram-webapp-session.md) - raw initData, cookie, fallback.
-11. [Testing strategy](./specs/technical/testing-strategy.md) - регрессии и quality gate.
-12. [WebApp API](./specs/technical/webapp-api.md) - подробный контракт чтений и мутаций WebApp.
+1. [Архитектура](./specs/technical/architecture.md) - техническая карта runtime flow.
+2. [Спек API](./specs/technical/api-spec.md) - route handlers, Server Components и Server Actions.
+3. [Авторизация и изоляция магазина](./specs/technical/auth-and-shop-isolation.md) - граница арендатора и правила сессии.
+4. [База данных](./specs/technical/database.md) - таблицы, статусы, выручка, мягкое удаление и мутации.
+5. [Схема базы данных](./specs/technical/database-schema.md) - краткая итоговая схема.
+6. [Развертывание Vercel](./specs/technical/deployment-vercel.md) - окружение, миграции, webhook и smoke.
+7. [Обработка ошибок](./specs/technical/error-handling.md) - пользовательские и технические ошибки.
+8. [Расчёт отчёта](./specs/technical/report-calculation.md) - расчёт выручки и периодов.
+9. [Telegram webhook](./specs/technical/telegram-webhook.md) - секрет webhook, updates и callbacks.
+10. [Сессия Telegram WebApp](./specs/technical/telegram-webapp-session.md) - raw initData, cookie, fallback.
+11. [Стратегия тестирования](./specs/technical/testing-strategy.md) - регрессии и quality gate.
+12. [API WebApp](./specs/technical/webapp-api.md) - подробный контракт чтений и мутаций WebApp.
 
-### Data specs
+### Спеки данных
 
-1. [Data model](./specs/data/data-model.md) - доменная модель продаж и товаров.
-2. [Soft delete](./specs/data/soft-delete.md) - исключение и восстановление товаров.
-3. [Status lifecycle](./specs/data/status-lifecycle.md) - переходы `processed`, `needs_review`, `cancelled`, `failed`, `excluded`.
+1. [Модель данных](./specs/data/data-model.md) - доменная модель продаж и товаров.
+2. [Мягкое удаление](./specs/data/soft-delete.md) - исключение и восстановление товаров.
+3. [Жизненный цикл статусов](./specs/data/status-lifecycle.md) - переходы `processed`, `needs_review`, `cancelled`, `failed`, `excluded`.
 
-### Feature docs
+### Документы функций
 
-1. [Features](./features/README.md) - список пользовательских возможностей.
-2. [Implemented](./features/implemented.md) - реализованная функциональность.
-3. [Voice processing](./features/voice-processing.md) - обработка голосовых продаж.
-4. [Sales report](./features/sales-report.md) - экран отчёта.
-5. [Manual review](./features/manual-review.md) - проверка сомнительных позиций.
-6. [Records journal](./features/records-journal.md) - журнал продаж.
-7. [Sellers](./features/sellers.md) - статистика продавцов.
-8. [Mobile Web App](./features/mobile-web-app.md) - Telegram Mini App UX.
-9. [Planned](./features/planned.md) - backlog.
-10. [Acceptance matrix](./features/acceptance-matrix.md) - критерии приёмки.
+1. [Функции](./features/README.md) - список пользовательских возможностей.
+2. [Реализовано](./features/implemented.md) - реализованная функциональность.
+3. [Обработка голоса](./features/voice-processing.md) - обработка голосовых продаж.
+4. [Отчёт продаж](./features/sales-report.md) - экран отчёта.
+5. [Ручная проверка](./features/manual-review.md) - проверка сомнительных позиций.
+6. [Журнал записей](./features/records-journal.md) - журнал продаж.
+7. [Продавцы](./features/sellers.md) - статистика продавцов.
+8. [Мобильный WebApp](./features/mobile-web-app.md) - UX Telegram Mini App.
+9. [Запланировано](./features/planned.md) - задел.
+10. [Матрица приёмки](./features/acceptance-matrix.md) - критерии приёмки.
 
-### Rules, plans, roadmap
+### Правила, планы, roadmap
 
-1. [Rules](./rules/README.md) - краткие правила разработки.
-2. [AI rules](./rules/ai.md) - правила LLM/parser.
-3. [Data rules](./rules/data.md) - правила данных и revenue.
-4. [Deployment rules](./rules/deployment.md) - правила выкладки.
-5. [Engineering rules](./rules/engineering.md) - инженерные ограничения.
-6. [Security rules](./rules/security.md) - безопасность auth, secrets и RLS.
-7. [Plans](./plans/README.md) - активные и завершённые планы.
-8. [Roadmap](./roadmap/roadmap.md) - дальнейшие продуктовые задачи.
+1. [Правила](./rules/README.md) - краткие правила разработки.
+2. [Правила AI](./rules/ai.md) - правила LLM/парсера.
+3. [Правила данных](./rules/data.md) - правила данных и выручки.
+4. [Правила развертывания](./rules/deployment.md) - правила выкладки.
+5. [Инженерные правила](./rules/engineering.md) - инженерные ограничения.
+6. [Правила безопасности](./rules/security.md) - безопасность auth, secrets и RLS.
+7. [Планы](./plans/README.md) - активные и завершённые планы.
+8. [Дорожная карта](./roadmap/roadmap.md) - дальнейшие продуктовые задачи.
 
 ## Актуальные инварианты
 
 1. `shop_id` не принимается от клиента как источник прав.
-2. WebApp выводит shop из Telegram initData, seller/owner binding или явно разрешённого fallback.
+2. WebApp выводит магазин из Telegram initData, привязки seller/owner или явно разрешённого fallback.
 3. Fallback доступен только при `ALLOW_WEBAPP_FALLBACK=true`.
 4. Fallback требует `DEFAULT_SHOP_ID` и `DEFAULT_SELLER_ID`.
-5. Server проверяет совпадение `DEFAULT_SELLER_ID.shop_id` с `DEFAULT_SHOP_ID`.
-6. Browser client не получает `SUPABASE_SERVICE_ROLE_KEY`.
-7. Business reads и mutations в WebApp выполняются server-side.
+5. Сервер проверяет совпадение `DEFAULT_SELLER_ID.shop_id` с `DEFAULT_SHOP_ID`.
+6. Браузерный клиент не получает `SUPABASE_SERVICE_ROLE_KEY`.
+7. Бизнес-чтения и мутации в WebApp выполняются на сервере.
 8. Route handlers и Server Actions повторно проверяют доступ.
-9. UI не является security boundary.
+9. UI не является границей безопасности.
 10. Auth/DB ошибка не маскируется пустым отчётом.
-11. Diagnostics не логируют raw initData, bot token, service role key, STT/LLM keys.
+11. Диагностика не логирует raw initData, токен бота, service role key, ключи STT/LLM.
 12. `/debug-telegram` в production доступен только при `DEBUG_TELEGRAM_WEBAPP=true`.
 
-## Voice pipeline
+## Голосовой конвейер
 
-1. `/start` ставит Telegram WebApp menu/reply/inline entry points для отчёта.
-2. Voice handler сначала резолвит seller по Telegram user id.
-3. Неактивный seller не может сохранять продажи.
-4. В demo mode отсутствующий seller может быть создан в default shop.
-5. Audio upload в Supabase Storage работает best-effort и не блокирует продажу.
-6. STT failure сохраняется как диагностируемый `failed`, если sale ещё не persisted.
-7. LLM cleanup failure не должен терять запись.
-8. Invalid LLM JSON переводит запись в review через deterministic fallback.
+1. `/start` ставит точки входа Telegram WebApp menu/reply/inline для отчёта.
+2. Voice handler сначала определяет продавца по Telegram user id.
+3. Неактивный продавец не может сохранять продажи.
+4. В демо-режиме отсутствующий продавец может быть создан в магазине по умолчанию.
+5. Загрузка аудио в Supabase Storage работает по возможности и не блокирует продажу.
+6. Сбой STT сохраняется как диагностируемый `failed`, если продажа ещё не сохранена.
+7. Сбой очистки LLM не должен терять запись.
+8. Невалидный JSON от LLM переводит запись в проверку через детерминированный fallback.
 9. Полная уверенная позиция получает `processed`.
 10. Неполная, низкоуверенная или странная позиция получает `needs_review`.
-11. Legacy `needs_price` поддерживается в чтении, но новые неполные items используют `needs_review`.
-12. `save_voice_sale` должен создать хотя бы одну item row.
-13. False success после неудачной записи в Supabase запрещён.
+11. Устаревший `needs_price` поддерживается в чтении, но новые неполные позиции используют `needs_review`.
+12. `save_voice_sale` должен создать хотя бы одну строку позиции.
+13. Ложный успех после неудачной записи в Supabase запрещён.
 
-## Telegram review
+## Проверка Telegram
 
-1. Review-message содержит только `✅ Подтвердить` и `❌ Отмена`.
-2. В review-message нет кнопки `Открыть отчёт`.
+1. Сообщение проверки содержит только `✅ Подтвердить` и `❌ Отмена`.
+2. В сообщении проверки нет кнопки `Открыть отчёт`.
 3. `Открыть отчёт` разрешён в `/start`, reply keyboard и menu button.
-4. Новые callback data: `confirm:<sale_id>` и `cancel:<sale_id>`.
-5. Legacy `voice_sale_review:<action>:<sale_id>` принимается только для старых сообщений.
+4. Новые данные callback: `confirm:<sale_id>` и `cancel:<sale_id>`.
+5. Устаревший `voice_sale_review:<action>:<sale_id>` принимается только для старых сообщений.
 6. Webhook должен быть установлен с `allowed_updates: ["message", "callback_query"]`.
-7. Webhook route проверяет `x-telegram-bot-api-secret-token` constant-time сравнением.
-8. Confirm идемпотентен.
-9. Cancel идемпотентен.
-10. Confirm запрещён, если нет ни одной полной позиции.
-11. Confirm mixed-cart подтверждает валидные active items.
-12. Неполные active items остаются `needs_review`.
-13. Cancel переводит sale/voice в `cancelled`.
-14. Cancel soft-delete все active items этой sale.
+7. Маршрут webhook проверяет `x-telegram-bot-api-secret-token` сравнением constant-time.
+8. Подтверждение идемпотентно.
+9. Отмена идемпотентна.
+10. Подтверждение запрещено, если нет ни одной полной позиции.
+11. Подтверждение смешанной корзины подтверждает валидные активные позиции.
+12. Неполные активные позиции остаются `needs_review`.
+13. Отмена переводит продажу/голосовую запись в `cancelled`.
+14. Отмена мягко удаляет все активные позиции этой продажи.
 
-## Revenue rules
+## Правила выручки
 
-1. Revenue считается по active `sale_items`.
-2. Item входит в выручку только при `status = processed`.
-3. Parent sale не должен быть `cancelled`.
-4. Parent sale не должен быть `failed`.
+1. Выручка считается по активным `sale_items`.
+2. Позиция входит в выручку только при `status = processed`.
+3. Родительская продажа не должна быть `cancelled`.
+4. Родительская продажа не должна быть `failed`.
 5. `deleted_at` должен быть `null`.
 6. `total` должен быть валидным положительным числом.
 7. Количество или вес должны быть валидными.
-8. Unit price может быть сохранён в `price`.
-9. Unit price может быть выведен из `total / quantity`.
-10. Parent `needs_review` не блокирует уже processed sibling item.
-11. Неполные sibling items остаются в `Проверке`.
+8. Цена за единицу может быть сохранена в `price`.
+9. Цена за единицу может быть выведена из `total / quantity`.
+10. Родительский `needs_review` не блокирует уже обработанную соседнюю позицию.
+11. Неполные соседние позиции остаются в `Проверке`.
 12. `needs_review`, `needs_price`, `failed`, `excluded` не входят в выручку.
-13. Soft-deleted rows не входят в active report.
-14. Сброс дня soft-delete active items, но не удаляет sales.
-15. Restore возвращает предыдущий item status и пересчитывает parent sale.
+13. Мягко удалённые строки не входят в активный отчёт.
+14. Сброс дня мягко удаляет активные позиции, но не удаляет продажи.
+15. Восстановление возвращает предыдущий статус позиции и пересчитывает родительскую продажу.
 
-## WebApp screens
+## Экраны WebApp
 
 1. `/daily-report` показывает сводку магазина.
-2. `/review` показывает active review items.
-3. `/records` показывает журнал voice-sale записей.
+2. `/review` показывает активные позиции проверки.
+3. `/records` показывает журнал голосовых продаж.
 4. `/sellers` показывает продавцов и статистику за период.
 5. `/` ведёт к отчёту.
 6. Нижняя навигация содержит `Отчёт`, `Проверка`, `Записи`, `Продавцы`.
-7. DateFilter поддерживает сегодня, вчера, неделю, месяц и custom дату.
-8. Report показывает выручку, количество товаров, записи и review count.
-9. Report показывает топ товаров, динамику по дням и последние продажи.
-10. Review показывает отдельные карточки позиций, а не одну большую запись.
-11. Records раскрывает товары и может показать signed audio URL.
-12. Sellers считает recordsCount и revenue по выбранному периоду.
+7. DateFilter поддерживает сегодня, вчера, неделю, месяц и пользовательскую дату.
+8. Отчёт показывает выручку, количество товаров, записи и количество проверок.
+9. Отчёт показывает топ товаров, динамику по дням и последние продажи.
+10. Проверка показывает отдельные карточки позиций, а не одну большую запись.
+11. Записи раскрывают товары и могут показать подписанный URL аудио.
+12. Продавцы считают recordsCount и выручку по выбранному периоду.
 
-## Sale item management
+## Управление позициями продажи
 
 1. Карточка товара компактная.
-2. Edit открывается только по icon button с карандашом.
-3. Delete открывается только по icon button с корзиной.
-4. Edit форма содержит товар, количество, единицу и цену.
+2. Редактирование открывается только по icon button с карандашом.
+3. Удаление открывается только по icon button с корзиной.
+4. Форма редактирования содержит товар, количество, единицу и цену.
 5. Единицы в UI: `шт`, `кг`, `г`.
-6. Для `г` total считается как доля килограмма от цены за кг.
-7. Валидный edit ставит item `processed`.
-8. Валидный edit ставит `confidence = 1`.
-9. Валидный edit пересчитывает `sale_items.total`.
-10. Валидный edit пересчитывает `sales.total_amount`.
-11. Валидный edit может добавить item в revenue даже если parent sale остаётся `needs_review`.
-12. Delete выполняет только soft delete.
-13. Delete сохраняет `deleted_previous_status`.
-14. Restore очищает `deleted_at`, `deleted_reason`, `deleted_previous_status`.
-15. Audit log failure не должен ломать пользовательскую мутацию.
+6. Для `г` сумма считается как доля килограмма от цены за кг.
+7. Валидное редактирование ставит позицию `processed`.
+8. Валидное редактирование ставит `confidence = 1`.
+9. Валидное редактирование пересчитывает `sale_items.total`.
+10. Валидное редактирование пересчитывает `sales.total_amount`.
+11. Валидное редактирование может добавить позицию в выручку даже если родительская продажа остаётся `needs_review`.
+12. Удаление выполняет только мягкое удаление.
+13. Удаление сохраняет `deleted_previous_status`.
+14. Восстановление очищает `deleted_at`, `deleted_reason`, `deleted_previous_status`.
+15. Сбой audit log не должен ломать пользовательскую мутацию.
 
-## Quality gate
+## Контроль качества
 
 Перед заявлением о готовности должны быть запущены:
 
@@ -193,35 +193,35 @@
 2. `npm.cmd run test`.
 3. `npm.cmd run build`.
 4. `npm.cmd run web:build`.
-5. При production release - реальный Telegram smoke через кнопку бота.
+5. При production release - реальная smoke-проверка Telegram через кнопку бота.
 6. При webhook изменениях - `npm.cmd run telegram:webhook-info`.
 7. При Supabase изменениях - миграции должны быть применены до кода.
-8. При WebApp auth изменениях - проверить fallback и Telegram initData paths.
-9. При revenue изменениях - проверить processed/review/cancelled/deleted cases.
-10. При parser изменениях - проверить multi-item split и incomplete fallback.
+8. При изменениях auth WebApp - проверить fallback и пути Telegram initData.
+9. При изменениях выручки - проверить случаи processed/review/cancelled/deleted.
+10. При изменениях парсера - проверить разделение нескольких позиций и неполный fallback.
 
 ## Что считать устаревшей документацией
 
 1. Документ обещает UI, которого нет в коде.
-2. Документ описывает старые callback data как основной формат.
-3. Документ говорит, что parent `needs_review` полностью блокирует processed items.
-4. Документ говорит, что review item после валидного edit ждёт confirm для попадания в revenue.
-5. Документ говорит, что client может передать доверенный `shop_id`.
-6. Документ описывает физическое удаление sale items вместо soft delete.
-7. Документ допускает service role key в client bundle.
-8. Документ маскирует auth/DB errors как empty state.
-9. Документ не упоминает `cancelled` для отменённых voice sales.
+2. Документ описывает старые данные callback как основной формат.
+3. Документ говорит, что родительский `needs_review` полностью блокирует обработанные позиции.
+4. Документ говорит, что позиция проверки после валидного редактирования ждёт подтверждения для попадания в выручку.
+5. Документ говорит, что клиент может передать доверенный `shop_id`.
+6. Документ описывает физическое удаление позиций продажи вместо мягкого удаления.
+7. Документ допускает service role key в клиентском bundle.
+8. Документ маскирует ошибки auth/БД как пустое состояние.
+9. Документ не упоминает `cancelled` для отменённых голосовых продаж.
 10. Документ не упоминает `allowed_updates` с `callback_query` для production webhook.
 
 ## Обновление документации
 
-1. После изменения voice pipeline обновлять `README.md`, `AGENTS.md`, `seller-voice-flow`, `telegram-webhook`, `testing-strategy`.
-2. После изменения Telegram confirm/cancel обновлять `telegram-confirmation-flow`, `telegram-webhook`, `status-lifecycle`.
-3. После изменения WebApp UI обновлять `webapp-report`, `sale-item-editing`, feature docs и acceptance matrix.
-4. После изменения WebApp auth обновлять `telegram-webapp-session`, `auth-and-shop-isolation`, `roles-and-access`.
-5. После изменения БД обновлять `database`, `database-schema`, `data-model`, migrations и changelog.
-6. После изменения revenue logic обновлять `report-calculation`, `database`, `webapp-report`, `features/sales-report`.
-7. После изменения deploy/webhook обновлять `deployment-vercel`, `deployment rules`, README deploy и scripts notes.
+1. После изменения голосового конвейера обновлять `README.md`, `AGENTS.md`, `seller-voice-flow`, `telegram-webhook`, `testing-strategy`.
+2. После изменения подтверждения/отмены Telegram обновлять `telegram-confirmation-flow`, `telegram-webhook`, `status-lifecycle`.
+3. После изменения UI WebApp обновлять `webapp-report`, `sale-item-editing`, документы функций и матрицу приёмки.
+4. После изменения auth WebApp обновлять `telegram-webapp-session`, `auth-and-shop-isolation`, `roles-and-access`.
+5. После изменения БД обновлять `database`, `database-schema`, `data-model`, миграции и журнал изменений.
+6. После изменения логики выручки обновлять `report-calculation`, `database`, `webapp-report`, `features/sales-report`.
+7. После изменения deploy/webhook обновлять `deployment-vercel`, `deployment rules`, README deploy и заметки scripts.
 8. Исторические completed plans можно не переписывать, если они явно остаются историей.
-9. Новые superseded детали фиксировать в changelog или актуальных specs.
+9. Новые заменённые детали фиксировать в журнале изменений или актуальных спеках.
 10. Документы должны описывать реальную систему, а не желаемую.

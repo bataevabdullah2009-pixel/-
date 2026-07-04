@@ -1,8 +1,8 @@
-# Error Handling
+# Обработка ошибок
 
-Error handling в проекте должен сохранять диагностируемость для разработчика и понятное состояние для пользователя. Нельзя заменять auth/DB failure на успешный пустой экран.
+Обработка ошибок в проекте должна сохранять диагностируемость для разработчика и понятное состояние для пользователя. Нельзя заменять auth/DB failure на успешный пустой экран.
 
-## WebApp bootstrap
+## Bootstrap WebApp
 
 Mini App показывает состояние session bootstrap.
 
@@ -12,19 +12,19 @@ Direct browser open получает данные только если:
 2. `DEFAULT_SHOP_ID` задан.
 3. `DEFAULT_SELLER_ID` задан.
 4. Fallback seller существует.
-5. Fallback seller active.
-6. Fallback seller shop matches default shop.
+5. Fallback seller активен.
+6. Fallback seller shop совпадает с default shop.
 
 Иначе пользователь видит понятную auth ошибку.
 
-## Auth errors
+## Ошибки auth
 
-Telegram auth reasons:
+Причины Telegram auth:
 
-1. Missing initData.
-2. Invalid hash.
-3. Expired auth date.
-4. Missing bot token.
+1. Отсутствует initData.
+2. Некорректный hash.
+3. Истёкший auth date.
+4. Отсутствует bot token.
 5. User not linked.
 6. Seller inactive.
 7. Shop not found.
@@ -32,11 +32,11 @@ Telegram auth reasons:
 
 При непустом валидном raw initData UI не показывает production-блокировку `откройте через кнопку бота`.
 
-## WebApp loading errors
+## Ошибки загрузки WebApp
 
 Ошибки Telegram auth и Supabase не маскируются под успешный пустой результат.
 
-Rules:
+Правила:
 
 1. Report не показывает нулевые метрики при load error.
 2. Records не показывает `Записей нет` при load error.
@@ -44,11 +44,11 @@ Rules:
 4. Review empty state показывается только при успешной загрузке без items.
 5. Error message показывается через action notice или page error state.
 
-## WebApp mutation errors
+## Ошибки mutation WebApp
 
 Item update/delete:
 
-1. Validation error остаётся внутри раскрытой карточки.
+1. Ошибка валидации остаётся внутри раскрытой карточки.
 2. Pending блокирует повторный submit.
 3. Supabase reason логируется server-side.
 4. User получает стабильное русское сообщение.
@@ -58,16 +58,16 @@ Item update/delete:
 
 Review actions:
 
-1. Missing sale id -> readable error.
+1. Отсутствует sale id -> readable error.
 2. Sale not found -> readable error.
 3. No confirmable items -> `Не удалось подтвердить: нет ни одной полной позиции.`
 4. Failed sale confirm/cancel -> forbidden readable error.
 5. Revalidation failure after successful mutation -> soft refresh message.
 6. Cross-shop sale -> not found/access error.
 
-## Voice pipeline errors
+## Ошибки voice pipeline
 
-Stages:
+Стадии:
 
 1. `seller_resolve`.
 2. `telegram_download`.
@@ -81,25 +81,25 @@ Storage upload:
 
 1. Best-effort.
 2. Failure logs warning.
-3. Sale pipeline continues.
+3. Sale pipeline продолжается.
 
 LLM/parser:
 
-1. Cleanup failure falls back to simple cleanup.
-2. Parser invalid JSON triggers deterministic fallback.
-3. Empty STT creates review fallback.
-4. Recoverable parser failure creates review items.
-5. Full failure logs stage.
+1. Cleanup failure переключается на simple cleanup.
+2. Parser invalid JSON запускает deterministic fallback.
+3. Empty STT создаёт review fallback.
+4. Recoverable parser failure создаёт review items.
+5. Full failure логирует stage.
 
 Persistence:
 
-1. RPC error blocks success.
-2. Missing returned ids blocks success.
-3. Sale read-back failure blocks success.
-4. Item count mismatch blocks success.
-5. User sees save failure message.
+1. RPC error блокирует success.
+2. Отсутствующие returned ids блокируют success.
+3. Sale read-back failure блокирует success.
+4. Item count mismatch блокирует success.
+5. User видит save failure message.
 
-## Bot replies
+## Ответы bot
 
 Ready:
 
@@ -120,7 +120,7 @@ Save failure:
 ⚠️ Не удалось сохранить запись. Попробуйте ещё раз.
 ```
 
-Processing failure:
+Ошибка обработки:
 
 ```text
 ⚠️ Не удалось обработать голосовое. Попробуйте ещё раз.
@@ -132,11 +132,11 @@ Seller missing:
 Ваш Telegram не привязан к магазину.
 ```
 
-Success/review replies допустимы только после persistence/read-back verification.
+Ответы success/review допустимы только после persistence/read-back verification.
 
-## Logging
+## Логирование
 
-Allowed:
+Разрешено:
 
 1. Stage.
 2. Telegram message id.
@@ -148,7 +148,7 @@ Allowed:
 8. Supabase error message server-side.
 9. Error code.
 
-Forbidden:
+Запрещено:
 
 1. Raw initData.
 2. Bot token.
@@ -157,11 +157,11 @@ Forbidden:
 5. STT key.
 6. LLM key.
 
-## UI labels
+## UI-метки
 
 Internal enum не показывается пользователю.
 
-Mapping:
+Сопоставление:
 
 1. `processed` -> `Готово`.
 2. `needs_review` -> `Нужно проверить`.
@@ -171,13 +171,13 @@ Mapping:
 6. `cancelled` -> `Исключено`.
 7. `excluded` -> `Исключено`.
 
-## Acceptance criteria
+## Критерии приемки
 
-1. Auth error is visible.
-2. DB error is visible.
-3. Empty state only appears after successful empty load.
-4. Mutation validation errors stay near the form.
-5. Parser failures preserve recoverable review data.
-6. Supabase persistence false success is impossible.
-7. User messages avoid internal DB details.
-8. Logs are useful without leaking secrets.
+1. Auth error видна.
+2. DB error видна.
+3. Empty state появляется только после successful empty load.
+4. Mutation validation errors остаются рядом с form.
+5. Parser failures сохраняют recoverable review data.
+6. Supabase persistence false success невозможен.
+7. User messages не раскрывают internal DB details.
+8. Logs полезны и не раскрывают secrets.

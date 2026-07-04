@@ -1,30 +1,30 @@
-# Sellers
+# Продавцы
 
-Страница `Продавцы` показывает статистику продавцов текущего server-derived магазина за выбранный период.
+Страница `Продавцы` показывает статистику продавцов текущего магазина, определённого на сервере, за выбранный период.
 
-## Data source
+## Источник данных
 
 `getSellerStats(filters)`:
 
 1. Вызывает `requireOwner()`.
-2. Получает current shop на сервере.
-3. Читает sellers текущего shop.
-4. Читает sales текущего shop за период.
-5. Считает records count по seller.
-6. Читает sale_items по sale ids.
-7. Scope rows through `scopeReportRows()`.
-8. Считает revenue по active processed items.
-9. Возвращает sellers и error отдельно.
+2. Получает текущий магазин на сервере.
+3. Читает продавцов текущего магазина.
+4. Читает продажи текущего магазина за период.
+5. Считает количество записей по продавцу.
+6. Читает `sale_items` по id продаж.
+7. Ограничивает строки через `scopeReportRows()`.
+8. Считает выручку по активным обработанным позициям.
+9. Возвращает продавцов и ошибку отдельно.
 
-Страница не принимает client `shop_id`.
+Страница не принимает клиентский `shop_id`.
 
 ## Карточка продавца
 
 Для каждого продавца выводится:
 
 1. Имя.
-2. Active/inactive state.
-3. Last activity за выбранный период.
+2. Состояние активности/неактивности.
+3. Последнюю активность за выбранный период.
 4. Количество записей.
 5. Выручка.
 
@@ -42,59 +42,59 @@ DateFilter совпадает с отчётом:
 
 Период влияет:
 
-1. На records count.
-2. На last activity.
-3. На revenue.
+1. На количество записей.
+2. На последнюю активность.
+3. На выручку.
 
-## Revenue
+## Выручка
 
-Выручка продавца считается по тем же правилам, что report:
+Выручка продавца считается по тем же правилам, что отчёт:
 
-1. Parent sale должен быть в текущем shop.
-2. Parent sale не `cancelled`.
-3. Parent sale не `failed`.
-4. Item `status = processed`.
-5. Item `deleted_at is null`.
-6. Item `total` валиден.
+1. Родительская продажа должна быть в текущем магазине.
+2. Родительская продажа не `cancelled`.
+3. Родительская продажа не `failed`.
+4. Позиция `status = processed`.
+5. Позиция `deleted_at is null`.
+6. Позиция `total` валидна.
 
 Не входят:
 
-1. Review items.
-2. Legacy `needs_price`.
-3. Failed items.
-4. Excluded items.
-5. Soft-deleted rows.
-6. Parent cancelled sales.
-7. Parent failed sales.
+1. Позиции проверки.
+2. Устаревший `needs_price`.
+3. Позиции со сбоем.
+4. Исключённые позиции.
+5. Мягко удалённые строки.
+6. Отменённые родительские продажи.
+7. Родительские продажи со сбоем.
 
-Parent `needs_review` sale может дать revenue через active processed item.
+Родительская продажа `needs_review` может дать выручку через активную обработанную позицию.
 
-## Access
+## Доступ
 
-WebApp resolver:
+Resolver WebApp:
 
-1. Сначала ищет active seller по Telegram user id.
-2. Если seller найден, seller shop становится current shop.
-3. Если seller отсутствует, resolver может использовать active owner binding.
-4. Owner binding создаёт seller только в owner shop.
-5. Fallback использует `DEFAULT_SELLER_ID` только server-side.
-6. Fallback seller должен совпасть с `DEFAULT_SHOP_ID`.
+1. Сначала ищет активного продавца по Telegram user id.
+2. Если продавец найден, магазин продавца становится текущим магазином.
+3. Если продавец отсутствует, resolver может использовать активную привязку владельца.
+4. Привязка владельца создаёт продавца только в магазине владельца.
+5. Резервный режим использует `DEFAULT_SELLER_ID` только на сервере.
+6. Продавец резервного режима должен совпасть с `DEFAULT_SHOP_ID`.
 
-Inactive seller/owner не получает доступ.
+Неактивный продавец/владелец не получает доступ.
 
-## Empty and error states
+## Пустые состояния и ошибки
 
-1. Нет sellers и нет ошибки -> empty state.
-2. Auth error -> visible action notice.
-3. Supabase error -> visible action notice.
-4. Error state не должен выглядеть как `Продавцов нет`.
+1. Нет продавцов и нет ошибки -> пустое состояние.
+2. Ошибка auth -> видимое уведомление действия.
+3. Ошибка Supabase -> видимое уведомление действия.
+4. Состояние ошибки не должно выглядеть как `Продавцов нет`.
 
-## Acceptance criteria
+## Критерии приёмки
 
-1. Sellers page uses server-derived shop.
-2. Seller stats cannot leak another shop.
-3. Revenue matches report calculation.
-4. Cancelled/failed/deleted rows are excluded.
-5. Parent `needs_review` with processed item can contribute revenue.
-6. Inactive seller is shown as inactive if present in current shop list.
-7. Missing seller list with error shows error, not empty success.
+1. Страница продавцов использует магазин, определённый на сервере.
+2. Статистика продавца не может раскрыть другой магазин.
+3. Выручка совпадает с расчётом отчёта.
+4. Отменённые/сбойные/удалённые строки исключены.
+5. Родительская `needs_review` с обработанной позицией может давать выручку.
+6. Неактивный продавец показывается как неактивный, если присутствует в списке текущего магазина.
+7. Отсутствующий список продавцов с ошибкой показывает ошибку, а не пустой успех.

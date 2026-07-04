@@ -1,6 +1,6 @@
-# Soft Delete
+# Мягкое удаление
 
-Пользовательские действия не удаляют `sale_items` физически. Исключение товара, отмена review sale и сброс дня используют soft delete, чтобы сохранить аудит и возможность восстановления.
+Пользовательские действия не удаляют `sale_items` физически. Исключение товара, отмена продажи на проверке и сброс дня используют мягкое удаление, чтобы сохранить аудит и возможность восстановления.
 
 ## Поля
 
@@ -12,7 +12,7 @@
 4. `deleted_previous_status`.
 5. `updated_at`.
 
-Active row:
+Активная строка:
 
 ```sql
 deleted_at is null
@@ -21,7 +21,7 @@ deleted_previous_status is null
 status <> 'excluded'
 ```
 
-Deleted row:
+Удалённая строка:
 
 ```sql
 deleted_at is not null
@@ -30,17 +30,17 @@ deleted_previous_status is not null
 status = 'excluded'
 ```
 
-## Reasons
+## Причины
 
-Allowed `deleted_reason`:
+Разрешённые `deleted_reason`:
 
-1. `excluded_by_owner` - пользователь нажал корзину или cancel soft-deleted item.
+1. `excluded_by_owner` - пользователь нажал корзину или отмена мягко удалила позицию.
 2. `day_reset` - пользователь сбросил выручку за день.
-3. `manual` - legacy value retained for старые rows.
+3. `manual` - устаревшее значение, сохранённое для старых строк.
 
 ## Исключение товара
 
-Patch:
+Патч:
 
 ```sql
 deleted_at = now()
@@ -52,41 +52,41 @@ updated_at = now()
 
 Поведение:
 
-1. Row остаётся в БД.
-2. Row исчезает из active report.
-3. Row не входит в revenue.
-4. Parent sale пересчитывается.
-5. Audit log пишется best-effort.
+1. Строка остаётся в БД.
+2. Строка исчезает из активного отчёта.
+3. Строка не входит в выручку.
+4. Родительская продажа пересчитывается.
+5. Audit log пишется по возможности.
 6. UI обновляет report/review/records/sellers.
 
-## Cancel sale
+## Отмена продажи
 
-Cancel review sale:
+Отмена продажи на проверке:
 
-1. Загружает active items.
-2. Soft-delete каждый active item.
-3. Ставит sale `cancelled`.
-4. Ставит voice record `cancelled`.
-5. Ставит sale total `0`.
+1. Загружает активные позиции.
+2. Мягко удаляет каждую активную позицию.
+3. Ставит продажу `cancelled`.
+4. Ставит голосовую запись `cancelled`.
+5. Ставит сумму продажи `0`.
 
-После cancel никакие items этой sale не входят в revenue.
+После отмены никакие позиции этой продажи не входят в выручку.
 
-## Reset day
+## Сброс дня
 
-Reset дня:
+Сброс дня:
 
 1. Разрешён только для одного дня.
-2. Читает sales current shop в диапазоне.
-3. Находит active items.
-4. Soft-delete active items.
+2. Читает продажи текущего магазина в диапазоне.
+3. Находит активные позиции.
+4. Мягко удаляет активные позиции.
 5. Ставит `deleted_reason = day_reset`.
-6. Сохраняет previous item status.
-7. Пересчитывает каждую sale.
-8. Не удаляет parent sales.
+6. Сохраняет предыдущий статус позиции.
+7. Пересчитывает каждую продажу.
+8. Не удаляет родительские продажи.
 
 ## Восстановление
 
-Restore patch:
+Патч восстановления:
 
 ```sql
 deleted_at = null
@@ -98,27 +98,27 @@ updated_at = now()
 
 Поведение:
 
-1. Проверяет item exists.
-2. Проверяет item -> sale -> shop.
-3. Разрешает восстановление только deleted row.
-4. Возвращает previous status.
-5. Если previous status отсутствует, использует `needs_review`.
-6. Пересчитывает parent sale.
-7. Audit log пишется best-effort.
+1. Проверяет, что позиция существует.
+2. Проверяет позицию -> продажу -> магазин.
+3. Разрешает восстановление только удалённой строки.
+4. Возвращает предыдущий статус.
+5. Если предыдущий статус отсутствует, использует `needs_review`.
+6. Пересчитывает родительскую продажу.
+7. Audit log пишется по возможности.
 
-## Revenue effect
+## Влияние на выручку
 
-Deleted row не входит:
+Удалённая строка не входит:
 
-1. В total revenue.
+1. В общую выручку.
 2. В quantity.
-3. В top products.
-4. В review active list.
-5. В seller revenue.
+3. В топ товаров.
+4. В активный список проверки.
+5. В выручку продавца.
 
-Legacy row со `status = excluded`, но без `deleted_at`, тоже не считается active.
+Устаревшая строка со `status = excluded`, но без `deleted_at`, тоже не считается активной.
 
-## Migrations
+## Миграции
 
 Soft delete создан и стабилизирован migrations:
 
@@ -126,24 +126,24 @@ Soft delete создан и стабилизирован migrations:
 2. `20260620135556_stabilize_sales_flow.sql`.
 3. `20260630153000_ensure_sale_item_soft_delete_columns.sql`.
 
-Последняя migration идемпотентно гарантирует:
+Последняя миграция идемпотентно гарантирует:
 
 1. `deleted_at`.
 2. `deleted_reason`.
 3. `deleted_previous_status`.
 4. `updated_at`.
-5. Status constraint with `excluded`.
-6. Deleted reason constraint.
-7. Deleted previous status constraint.
-8. Deleted metadata consistency constraint.
-9. Active item indexes.
+5. Constraint статуса с `excluded`.
+6. Constraint причины удаления.
+7. Constraint предыдущего статуса удаления.
+8. Constraint консистентности metadata удаления.
+9. Индексы активных позиций.
 
-## Acceptance criteria
+## Критерии приёмки
 
-1. Delete never physically removes item.
-2. Deleted item does not return after reload.
-3. Deleted item does not enter revenue.
-4. Restore clears deleted metadata.
-5. Restore recalculates parent sale.
-6. Reset day soft-deletes only selected day active items.
-7. Cancel soft-deletes active sale items and sets parent `cancelled`.
+1. Удаление никогда не удаляет позицию физически.
+2. Удалённая позиция не возвращается после перезагрузки.
+3. Удалённая позиция не входит в выручку.
+4. Восстановление очищает metadata удаления.
+5. Восстановление пересчитывает родительскую продажу.
+6. Сброс дня мягко удаляет только активные позиции выбранного дня.
+7. Отмена мягко удаляет активные позиции продажи и ставит родителя в `cancelled`.

@@ -1,8 +1,8 @@
-# Deployment on Vercel
+# Деплой на Vercel
 
 Статус: проект рассчитан на Vercel/Next.js App Router deployment с Telegram webhook route и Supabase backend.
 
-## Build command
+## Команда сборки
 
 ```bash
 npm run build
@@ -21,7 +21,7 @@ npm.cmd run build
 npm.cmd run web:build
 ```
 
-## Runtime
+## Среда выполнения
 
 1. WebApp работает на Next.js App Router.
 2. Telegram webhook route использует Node.js runtime.
@@ -30,7 +30,7 @@ npm.cmd run web:build
 5. Server Actions выполняются на сервере.
 6. Supabase service role доступен только server-side.
 
-## Required env
+## Обязательные env
 
 Telegram:
 
@@ -78,81 +78,81 @@ DEFAULT_SELLER_ID=
 DEBUG_TELEGRAM_WEBAPP=false
 ```
 
-Production fallback should be enabled only deliberately. If enabled, both `DEFAULT_SHOP_ID` and `DEFAULT_SELLER_ID` must be set and must match in DB.
+Production fallback следует включать только намеренно. Если он включён, `DEFAULT_SHOP_ID` и `DEFAULT_SELLER_ID` должны быть заданы и совпадать в DB.
 
-## URL requirements
+## Требования к URL
 
 `NEXT_PUBLIC_APP_URL`:
 
-1. Must be public HTTPS.
-2. Must be canonical WebApp URL.
-3. Used for Telegram WebApp buttons.
-4. Used by webhook scripts to build default webhook URL.
-5. Must not point to localhost in production.
+1. Должен быть public HTTPS.
+2. Должен быть canonical WebApp URL.
+3. Используется для Telegram WebApp buttons.
+4. Используется webhook scripts для построения default webhook URL.
+5. Не должен указывать на localhost в production.
 
 `PUBLIC_WEBHOOK_URL`:
 
-1. Optional.
-2. Can be separate HTTPS base URL.
-3. Can be full `/api/telegram/webhook` URL.
-4. If unset, webhook URL is built from `NEXT_PUBLIC_APP_URL`.
+1. Опционален.
+2. Может быть отдельным HTTPS base URL.
+3. Может быть полным URL `/api/telegram/webhook`.
+4. Если не задан, webhook URL строится из `NEXT_PUBLIC_APP_URL`.
 
-## Supabase before deploy
+## Supabase перед деплоем
 
-Before deploying code that expects current schema:
+Перед деплоем кода, который ожидает текущую схему:
 
-1. Apply all migrations.
-2. Confirm table `owners` exists.
-3. Confirm `sale_items.deleted_at` exists.
-4. Confirm `sale_items.deleted_reason` exists.
-5. Confirm `sale_items.deleted_previous_status` exists.
-6. Confirm `sale_items.updated_at` exists.
-7. Confirm `sales.status` allows `cancelled`.
-8. Confirm `voice_records.status` allows `cancelled`.
-9. Confirm RPC `save_voice_sale` exists.
-10. Confirm execute on RPC is granted to service role.
-11. Confirm Storage bucket `voice-records` exists.
-12. Confirm service role can manage voice audio objects.
+1. Применить все migrations.
+2. Подтвердить, что таблица `owners` существует.
+3. Подтвердить, что `sale_items.deleted_at` существует.
+4. Подтвердить, что `sale_items.deleted_reason` существует.
+5. Подтвердить, что `sale_items.deleted_previous_status` существует.
+6. Подтвердить, что `sale_items.updated_at` существует.
+7. Подтвердить, что `sales.status` разрешает `cancelled`.
+8. Подтвердить, что `voice_records.status` разрешает `cancelled`.
+9. Подтвердить, что RPC `save_voice_sale` существует.
+10. Подтвердить, что execute на RPC выдан service role.
+11. Подтвердить, что Storage bucket `voice-records` существует.
+12. Подтвердить, что service role может управлять voice audio objects.
 
-## RLS and grants
+## RLS и grants
 
-1. RLS must remain enabled on business tables.
-2. Runtime business reads and writes use server-side service role.
-3. Public anon table access is not required for WebApp business data.
-4. `owners` should not be exposed to anon/authenticated clients.
-5. New Supabase tables that must be Data API-visible need explicit grants, but business tables should still be protected by RLS and server-side access checks.
+1. RLS должен оставаться включённым на business tables.
+2. Business reads and writes во время выполнения используют server-side service role.
+3. Public anon table access не требуется для WebApp business data.
+4. `owners` не должен быть exposed to anon/authenticated clients.
+5. New Supabase tables, которые должны быть видимы Data API, требуют explicit grants, но business tables всё равно должны быть защищены RLS и server-side access checks.
 
-## Telegram webhook setup
+## Настройка Telegram webhook
 
-Run after production URL and env are ready:
+Запустить после готовности production URL и env:
 
 ```bash
 npm run telegram:set-webhook
 ```
 
-The script must set:
+Скрипт должен установить:
 
 ```json
 ["message", "callback_query"]
 ```
 
-Then verify:
+Затем проверить:
 
 ```bash
 npm run telegram:webhook-info
 ```
 
-Check:
+Проверить:
 
-1. URL matches expected production webhook.
-2. Secret token is configured.
-3. `allowed_updates` includes `message`.
-4. `allowed_updates` includes `callback_query`.
-5. No unexpected pending update errors.
+1. URL совпадает с ожидаемым production webhook.
+2. Secret token настроен.
+3. `allowed_updates` включает `message`.
+4. `allowed_updates` включает `callback_query`.
+5. Нет unexpected pending update errors.
 
-## Pre-release local checks
+## Локальные проверки перед релизом
 
-Run:
+Запустить:
 
 ```bash
 npm.cmd run lint
@@ -161,141 +161,141 @@ npm.cmd run build
 npm.cmd run web:build
 ```
 
-Expected:
+Ожидается:
 
-1. ESLint passes.
-2. Vitest passes.
-3. Workspace build passes.
-4. Next build passes.
-5. No secret values appear in logs.
+1. ESLint проходит.
+2. Vitest проходит.
+3. Workspace build проходит.
+4. Next build проходит.
+5. Secret values не появляются в logs.
 
-## Production smoke
+## Проверка production
 
-After deploy:
+После deploy:
 
-1. Open WebApp through Telegram bot button.
-2. Confirm Telegram SDK exists.
-3. Confirm raw initData is non-empty.
-4. Confirm `/api/auth/telegram` returns success.
-5. Confirm auth log shows expected Telegram user id.
-6. Confirm auth log shows expected seller/shop.
-7. Confirm `/daily-report` loads without auth error.
-8. Confirm report counts are non-zero when DB has rows.
-9. Confirm `/review` opens.
-10. Confirm `/records` opens.
-11. Confirm `/sellers` opens.
-12. Confirm direct browser fallback works only if intentionally enabled.
+1. Открыть WebApp через кнопку Telegram bot.
+2. Подтвердить наличие Telegram SDK.
+3. Подтвердить, что raw initData не пустой.
+4. Подтвердить, что `/api/auth/telegram` возвращает success.
+5. Подтвердить, что auth log показывает ожидаемый Telegram user id.
+6. Подтвердить, что auth log показывает ожидаемые seller/shop.
+7. Подтвердить, что `/daily-report` грузится без auth error.
+8. Подтвердить, что report counts ненулевые, когда в DB есть rows.
+9. Подтвердить, что `/review` открывается.
+10. Подтвердить, что `/records` открывается.
+11. Подтвердить, что `/sellers` открывается.
+12. Подтвердить, что direct browser fallback работает только если намеренно включён.
 
-## Voice smoke
+## Проверка voice
 
-Send a confident sale:
+Отправить уверенную продажу:
 
 ```text
 Буханка хлеба пять штук по сто рублей. Сникерс три штуки по двести рублей.
 ```
 
-Expected:
+Ожидается:
 
-1. Bot receives voice.
-2. Bot replies processing message.
-3. Bot replies success.
-4. Supabase has one `voice_records` row.
-5. Supabase has one `sales` row.
-6. Supabase has two `sale_items`.
-7. Items are `processed`.
-8. Total is `1100`.
-9. Report revenue increases.
+1. Bot получает voice.
+2. Bot отвечает processing message.
+3. Bot отвечает success.
+4. В Supabase есть одна row `voice_records`.
+5. В Supabase есть одна row `sales`.
+6. В Supabase есть две `sale_items`.
+7. Items имеют `processed`.
+8. Total равен `1100`.
+9. Report revenue увеличивается.
 
-Send a review sale:
+Отправить review-продажу:
 
 ```text
 Корзина продуктов.
 ```
 
-Expected:
+Ожидается:
 
-1. Bot saves review row.
-2. Bot shows two review buttons.
-3. No `Открыть отчёт` button in review message.
-4. `/review` shows active item.
-5. Confirm without full item returns no-confirmable message.
-6. Edit with product/quantity/unit/price can make item processed.
-7. Cancel soft-deletes active items and excludes sale from revenue.
+1. Bot сохраняет review row.
+2. Bot показывает две review buttons.
+3. В review message нет кнопки `Открыть отчёт`.
+4. `/review` показывает active item.
+5. Confirm без full item возвращает no-confirmable message.
+6. Edit с product/quantity/unit/price может сделать item processed.
+7. Cancel выполняет soft-delete active items и исключает sale из revenue.
 
-## Callback smoke
+## Проверка callback
 
-1. Press `✅ Подтвердить`.
-2. Confirm callback is delivered.
-3. Logs show `has_callback_query = true`.
-4. Sale/items transition according to mixed-cart rules.
-5. Repeated confirm returns already confirmed/unchanged behavior.
-6. Press `❌ Отмена` on another review sale.
-7. Sale/voice become `cancelled`.
-8. Active items become `excluded` with `deleted_at`.
+1. Нажать `✅ Подтвердить`.
+2. Подтвердить, что callback доставлен.
+3. Logs показывают `has_callback_query = true`.
+4. Sale/items переходят по mixed-cart rules.
+5. Повторный confirm возвращает already confirmed/unchanged behavior.
+6. Нажать `❌ Отмена` на другой review sale.
+7. Sale/voice становятся `cancelled`.
+8. Active items становятся `excluded` с `deleted_at`.
 
-## WebApp mutation smoke
+## Smoke-проверка mutation WebApp
 
-1. Edit processed item price.
-2. Check total changes.
-3. Reload page.
-4. Check value persists.
-5. Delete item.
-6. Reload page.
-7. Check item remains excluded.
-8. Restore item from deleted panel.
-9. Check report recalculates.
+1. Отредактировать price у processed item.
+2. Проверить изменение total.
+3. Перезагрузить page.
+4. Проверить, что value сохраняется.
+5. Удалить item.
+6. Перезагрузить page.
+7. Проверить, что item остаётся excluded.
+8. Restore item из deleted panel.
+9. Проверить, что report recalculates.
 10. Reset one day.
-11. Check only selected day's active items are excluded.
+11. Проверить, что excluded стали только active items выбранного дня.
 
-## Diagnostics
+## Диагностика
 
 `DEBUG_TELEGRAM_WEBAPP`:
 
-1. Should be absent or `false` in normal production.
-2. Can be temporarily set to `true`.
-3. Enables diagnostics button/page.
-4. Must be turned off after debugging.
+1. Должен отсутствовать или быть `false` в normal production.
+2. Может временно устанавливаться в `true`.
+3. Включает diagnostics button/page.
+4. Должен быть выключен после debugging.
 
-Diagnostics may show SDK/initData metadata, but must not show raw initData or secrets.
+Diagnostics может показывать SDK/initData metadata, но не должен показывать raw initData или secrets.
 
-## Failure handling
+## Обработка сбоев
 
-If WebApp shows auth error:
+Если WebApp показывает auth error:
 
-1. Check `NEXT_PUBLIC_APP_URL`.
-2. Check bot opens the same production URL.
-3. Check `TELEGRAM_BOT_TOKEN`.
-4. Check initData freshness.
-5. Check seller/owner binding.
-6. Check fallback env if using direct browser.
+1. Проверить `NEXT_PUBLIC_APP_URL`.
+2. Проверить, что bot открывает тот же production URL.
+3. Проверить `TELEGRAM_BOT_TOKEN`.
+4. Проверить initData freshness.
+5. Проверить seller/owner binding.
+6. Проверить fallback env, если используется direct browser.
 
-If callback buttons do nothing:
+Если callback buttons ничего не делают:
 
-1. Run `npm run telegram:webhook-info`.
-2. Check `allowed_updates`.
-3. Check webhook secret.
-4. Check route logs.
-5. Check callback data format.
+1. Запустить `npm run telegram:webhook-info`.
+2. Проверить `allowed_updates`.
+3. Проверить webhook secret.
+4. Проверить route logs.
+5. Проверить callback data format.
 
-If report is empty unexpectedly:
+Если report неожиданно пустой:
 
-1. Check auth log seller/shop.
-2. Check report log seller/shop.
-3. Check sales for that shop and period.
-4. Check parent statuses.
-5. Check item statuses.
-6. Check `deleted_at`.
-7. Check totals.
+1. Проверить auth log seller/shop.
+2. Проверить report log seller/shop.
+3. Проверить sales для этого shop и period.
+4. Проверить parent statuses.
+5. Проверить item statuses.
+6. Проверить `deleted_at`.
+7. Проверить totals.
 
-## Acceptance criteria
+## Критерии приемки
 
-1. Migrations applied before code deploy.
-2. Build passes.
-3. Telegram webhook is set to production route.
-4. `callback_query` delivery is enabled.
-5. WebApp opens through Telegram with valid initData.
-6. Fallback is explicit and verified if used.
-7. Voice sale persists through RPC.
-8. Review confirm/cancel works in Telegram.
-9. Review confirm/cancel works in WebApp.
-10. Service role key is not in client assets.
+1. Migrations применены перед code deploy.
+2. Build проходит.
+3. Telegram webhook установлен на production route.
+4. Доставка `callback_query` включена.
+5. WebApp открывается через Telegram с valid initData.
+6. Fallback явный и проверенный, если используется.
+7. Voice sale сохраняется через RPC.
+8. Review confirm/cancel работает в Telegram.
+9. Review confirm/cancel работает в WebApp.
+10. Service role key не попадает в client assets.

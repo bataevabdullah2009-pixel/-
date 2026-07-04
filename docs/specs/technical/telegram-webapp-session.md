@@ -1,4 +1,4 @@
-# Technical Spec: Telegram WebApp Session
+# Техническая спецификация: сессия Telegram WebApp
 
 ## 1. Цель
 
@@ -18,147 +18,147 @@
 5. `apps/web/src/app/api/auth/telegram/route.ts`.
 6. `apps/web/src/components/TelegramAuthBootstrap.tsx`.
 
-## 3. Client bootstrap
+## 3. Bootstrap client
 
-1. Telegram JS SDK loads in root layout.
-2. `TelegramAuthBootstrap` waits for WebApp.
-3. Client reads `window.Telegram.WebApp.initData`.
-4. Client sends initData to auth route.
-5. Server verifies initData.
-6. Client reloads once after session is established.
-7. `ready()` and `expand()` are called when WebApp exists.
+1. Telegram JS SDK загружается в root layout.
+2. `TelegramAuthBootstrap` ждёт WebApp.
+3. Client читает `window.Telegram.WebApp.initData`.
+4. Client отправляет initData в auth route.
+5. Server проверяет initData.
+6. Client один раз перезагружается после установки session.
+7. `ready()` и `expand()` вызываются, когда WebApp существует.
 
-## 4. InitData verification
+## 4. Проверка InitData
 
-1. Verification uses bot token.
-2. Verification builds Telegram data check string.
-3. Verification checks hash.
-4. Verification checks auth date freshness.
-5. Invalid hash is `TELEGRAM_INIT_DATA_INVALID`.
-6. Missing initData is `TELEGRAM_INIT_DATA_MISSING`.
-7. Missing bot token is explicit misconfiguration.
+1. Verification использует bot token.
+2. Verification строит Telegram data check string.
+3. Verification проверяет hash.
+4. Verification проверяет auth date freshness.
+5. Некорректный hash является `TELEGRAM_INIT_DATA_INVALID`.
+6. Отсутствующая initData является `TELEGRAM_INIT_DATA_MISSING`.
+7. Отсутствующий bot token является explicit misconfiguration.
 
-## 5. Principal resolution
+## 5. Резолвинг principal
 
-1. Server extracts Telegram user id.
-2. Server first tries linked seller.
-3. If seller exists and active, seller shop is used.
-4. Seller shop wins even if same Telegram user is also owner elsewhere.
-5. Server may create/link seller from owner shop where code supports it.
-6. Inactive seller is denied.
-7. Missing shop is denied.
-8. Resolved principal includes shop id.
+1. Server извлекает Telegram user id.
+2. Server сначала пробует linked seller.
+3. Если seller существует и active, используется seller shop.
+4. Seller shop побеждает, даже если тот же Telegram user является owner в другом месте.
+5. Server может создать/привязать seller из owner shop, где код это поддерживает.
+6. Inactive seller получает отказ.
+7. Отсутствующий shop получает отказ.
+8. Resolved principal включает shop id.
 
-## 6. Session storage
+## 6. Хранение session
 
-1. Session cookie is server-controlled.
-2. Cookie represents verified Telegram principal.
-3. Server components call `requireOwner`.
-4. Server actions call `requireOwner`.
-5. Session failure maps to user-friendly messages.
-6. Client cannot forge session by query params.
+1. Session cookie контролируется server.
+2. Cookie представляет verified Telegram principal.
+3. Server components вызывают `requireOwner`.
+4. Server actions вызывают `requireOwner`.
+5. Session failure сопоставляется с user-friendly messages.
+6. Client не может подделать session через query params.
 
-## 7. Report access
+## 7. Доступ к отчёту
 
-1. `getReport` requires owner/seller session.
-2. `getReviewItems` requires owner/seller session.
-3. `getRecords` requires owner/seller session.
-4. `getSellerStats` requires owner/seller session.
-5. `getSellers` requires owner/seller session.
-6. Fallback demo mode is explicit.
-7. Without allowed fallback, missing session shows access notice.
+1. `getReport` требует owner/seller session.
+2. `getReviewItems` требует owner/seller session.
+3. `getRecords` требует owner/seller session.
+4. `getSellerStats` требует owner/seller session.
+5. `getSellers` требует owner/seller session.
+6. Fallback demo mode явный.
+7. Без allowed fallback missing session показывает access notice.
 
-## 8. Mutation access
+## 8. Доступ к mutation
 
-1. `updateSaleItem` requires session.
-2. `excludeSaleItem` requires session.
-3. `restoreSaleItem` requires session.
-4. `resetDay` requires session.
-5. `confirmReviewSaleAction` requires session.
-6. `cancelReviewSaleAction` requires session.
-7. `confirmAllReviewSalesAction` requires session.
-8. Mutations resolve shop server-side.
-9. Mutations verify parent sale belongs to resolved shop.
-10. Mutations do not trust hidden form shop fields.
+1. `updateSaleItem` требует session.
+2. `excludeSaleItem` требует session.
+3. `restoreSaleItem` требует session.
+4. `resetDay` требует session.
+5. `confirmReviewSaleAction` требует session.
+6. `cancelReviewSaleAction` требует session.
+7. `confirmAllReviewSalesAction` требует session.
+8. Mutations резолвят shop server-side.
+9. Mutations проверяют, что parent sale принадлежит resolved shop.
+10. Mutations не доверяют hidden form shop fields.
 
-## 9. Telegram confirm/cancel relation
+## 9. Связь с Telegram confirm/cancel
 
-1. Telegram callback does not use WebApp session.
-2. Telegram callback uses Telegram `ctx.from.id`.
-3. Callback resolves seller in bot service.
-4. Callback filters sale by seller and shop.
-5. WebApp shows updated result after refresh.
-6. WebApp `/review` can decide review sales through server actions using the same shop isolation.
+1. Telegram callback не использует WebApp session.
+2. Telegram callback использует Telegram `ctx.from.id`.
+3. Callback резолвит seller в bot service.
+4. Callback фильтрует sale по seller и shop.
+5. WebApp показывает обновлённый результат после refresh.
+6. WebApp `/review` может решать review sales через server actions с той же shop isolation.
 
-## 10. Diagnostics
+## 10. Диагностика
 
-1. Diagnostics component shows SDK presence and initData metadata only.
-2. Diagnostics never prints raw initData.
-3. Diagnostics never prints tokens.
-4. `/debug-telegram` is available in development.
-5. In production `/debug-telegram` requires `DEBUG_TELEGRAM_WEBAPP=true`.
-6. Diagnostics is not linked from normal navigation.
-7. Report keyboard can show diagnostics only behind debug flag.
+1. Diagnostics component показывает только наличие SDK и initData metadata.
+2. Diagnostics никогда не печатает raw initData.
+3. Diagnostics никогда не печатает tokens.
+4. `/debug-telegram` доступен в development.
+5. В production `/debug-telegram` требует `DEBUG_TELEGRAM_WEBAPP=true`.
+6. Diagnostics не связан с обычной navigation.
+7. Report keyboard может показывать diagnostics только за debug flag.
 
-## 11. Error mapping
+## 11. Сопоставление ошибок
 
-1. Missing initData -> ask user to open WebApp inside Telegram.
-2. Invalid initData -> ask user to reopen report.
-3. Expired auth date -> invalid session message.
+1. Отсутствует initData -> попросить пользователя открыть WebApp внутри Telegram.
+2. Некорректная initData -> попросить пользователя заново открыть отчёт.
+3. Истёкший auth date -> invalid session message.
 4. Seller not linked -> access denied.
 5. Seller inactive -> access disabled.
 6. Shop not found -> shop error.
 7. Auth misconfiguration -> logged server error.
 
-## 12. Security rules
+## 12. Правила безопасности
 
-1. Bot token is server-only.
-2. Service role key is server-only.
-3. `NEXT_PUBLIC_` variables must not contain secrets.
-4. Client may send initData, not derived authority.
-5. Server recomputes authority.
-6. `shop_id` query param is ignored by report filters.
-7. Report reads items only through scoped sales.
-8. Actions check row ownership via sale context.
+1. Bot token только server-only.
+2. Service role key только server-only.
+3. Переменные `NEXT_PUBLIC_` не должны содержать secrets.
+4. Client может отправлять initData, но не derived authority.
+5. Server заново вычисляет authority.
+6. Query param `shop_id` игнорируется filters отчёта.
+7. Report читает items только через scoped sales.
+8. Actions проверяют row ownership через sale context.
 
-## 13. Routes
+## 13. Маршруты
 
-1. `/daily-report` requires session.
-2. `/review` requires session.
-3. `/records` requires session.
-4. `/sellers` requires session.
-5. `/` renders report.
-6. `/debug-telegram` is dev/debug gated.
-7. `/api/auth/telegram` establishes session.
-8. `/api/telegram/webhook` is bot webhook and not WebApp auth.
+1. `/daily-report` требует session.
+2. `/review` требует session.
+3. `/records` требует session.
+4. `/sellers` требует session.
+5. `/` рендерит report.
+6. `/debug-telegram` закрыт dev/debug gate.
+7. `/api/auth/telegram` устанавливает session.
+8. `/api/telegram/webhook` является bot webhook, а не WebApp auth.
 
-## 14. Edge cases
+## 14. Крайние случаи
 
-1. Telegram SDK loads slowly.
-2. initData appears after short wait.
-3. User opens WebApp outside Telegram.
-4. User session expires.
-5. Seller is disabled after session created.
-6. Owner and seller use same Telegram id.
-7. Shop was deleted or missing.
-8. Client passes attacker `shop_id`.
-9. Browser blocks or clears cookies.
+1. Telegram SDK загружается медленно.
+2. initData появляется после короткого ожидания.
+3. User открывает WebApp вне Telegram.
+4. User session истекает.
+5. Seller отключён после создания session.
+6. Owner и seller используют один Telegram id.
+7. Shop был удалён или отсутствует.
+8. Client передаёт attacker `shop_id`.
+9. Browser блокирует или очищает cookies.
 
-## 15. Acceptance criteria
+## 15. Критерии приемки
 
-1. Valid initData creates usable session.
-2. Invalid initData is rejected.
-3. Missing initData does not silently show another shop.
-4. Report ignores client shop id.
-5. Seller sees only own shop.
-6. Update/delete cannot mutate another shop.
-7. Debug page is hidden in production without flag.
-8. Telegram callback works without WebApp session.
-9. WebApp `/review` confirm/cancel works only with verified WebApp session.
+1. Valid initData создаёт usable session.
+2. Некорректная initData отклоняется.
+3. Отсутствующая initData не показывает молча другой shop.
+4. Report игнорирует client shop id.
+5. Seller видит только свой shop.
+6. Update/delete не могут mutate another shop.
+7. Debug page скрыта в production без flag.
+8. Telegram callback работает без WebApp session.
+9. WebApp `/review` confirm/cancel работает только с verified WebApp session.
 
-## 16. Out of scope
+## 16. Вне области
 
 1. Password login.
-2. OAuth login outside Telegram.
+2. OAuth login вне Telegram.
 3. Multi-shop switcher.
 4. Client-side direct Supabase writes.

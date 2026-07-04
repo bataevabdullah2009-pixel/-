@@ -1,5 +1,5 @@
-# 003 — Production Web App URL guard
+# 003 — production-защита URL WebApp
 
-Закрыто: единая проверка публичного Web App URL для bot runtime, webhook setup и diagnostics.
+Закрыто: единая проверка публичного URL WebApp для runtime бота, настройки webhook и диагностики.
 
-Текущий код по-прежнему требует корректный публичный `NEXT_PUBLIC_APP_URL` для Telegram buttons. Browser fallback не меняет Telegram webhook contract.
+Текущий код по-прежнему требует корректный публичный `NEXT_PUBLIC_APP_URL` для кнопок Telegram. Браузерный fallback не меняет контракт Telegram webhook.

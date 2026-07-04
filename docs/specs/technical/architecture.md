@@ -2,16 +2,16 @@
 
 Статус: реализовано в монорепозитории npm workspaces.
 
-## Workspaces
+## Рабочие области
 
-1. `apps/bot` - Telegraf bot, voice pipeline, Telegram callback handlers.
+1. `apps/bot` - Telegraf bot, voice pipeline, обработчики Telegram callback.
 2. `apps/web` - Next.js App Router WebApp, route handlers, Server Actions.
-3. `packages/shared` - типы, Zod schemas, parser evidence rules, date/report utilities.
+3. `packages/shared` - типы, Zod-схемы, parser evidence rules, утилиты даты и отчёта.
 4. `supabase/migrations` - Postgres schema, RLS/grants, RPC, soft delete.
-5. `docs` - product, technical, data, feature and rule documentation.
-6. `scripts` - webhook setup and webhook info commands.
+5. `docs` - продуктовая, техническая, data, feature и rule documentation.
+6. `scripts` - команды настройки webhook и webhook info.
 
-## Runtime overview
+## Обзор выполнения
 
 ```text
 Telegram voice
@@ -29,92 +29,92 @@ Telegram voice
   -> WebApp report/review/records/sellers
 ```
 
-## Telegram webhook boundary
+## Граница Telegram webhook
 
 `apps/web/src/app/api/telegram/webhook/route.ts`:
 
-1. Runs in Node.js runtime.
-2. Reads `x-telegram-bot-api-secret-token`.
-3. Compares secret constant-time.
-4. Parses update JSON.
-5. Logs safe update metadata.
-6. Calls `processTelegramUpdate(update)`.
-7. Returns `{ ok: true }` or `{ ok: false }`.
+1. Работает в Node.js runtime.
+2. Читает `x-telegram-bot-api-secret-token`.
+3. Сравнивает secret constant-time.
+4. Парсит update JSON.
+5. Логирует безопасную update metadata.
+6. Вызывает `processTelegramUpdate(update)`.
+7. Возвращает `{ ok: true }` или `{ ok: false }`.
 
-The route must receive both `message` and `callback_query` updates.
+Route должен получать updates `message` и `callback_query`.
 
-## Bot module
+## Модуль bot
 
-`apps/bot/src/core/process-update.ts` creates one shared Telegraf instance:
+`apps/bot/src/core/process-update.ts` создаёт один общий экземпляр Telegraf:
 
-1. Loads env through `getEnv()`.
-2. Creates bot with `TELEGRAM_BOT_TOKEN`.
-3. Registers `/start`.
-4. Registers review callback handler.
-5. Registers voice handler.
-6. Registers text handler.
-7. Registers catch handler.
+1. Загружает env через `getEnv()`.
+2. Создаёт bot с `TELEGRAM_BOT_TOKEN`.
+3. Регистрирует `/start`.
+4. Регистрирует review callback handler.
+5. Регистрирует voice handler.
+6. Регистрирует text handler.
+7. Регистрирует catch handler.
 
-The bot can run behind Vercel webhook through the web app route.
+Bot может работать за Vercel webhook через route веб-приложения.
 
 ## Voice pipeline
 
 `apps/bot/src/handlers/voice.handler.ts`:
 
-1. Validates Telegram user id.
-2. Resolves seller.
+1. Валидирует Telegram user id.
+2. Резолвит seller.
 3. Sends "Голосовое получено, обрабатываю."
-4. Downloads Telegram file.
-5. Converts audio to mp3 when ffmpeg is available.
-6. Falls back to original OGG when conversion is unavailable or fails.
-7. Uploads original audio best-effort.
-8. Calls STT.
-9. Logs raw transcript through audit log best-effort.
-10. Calls cleanup LLM.
-11. Calls parser LLM.
-12. Applies deterministic transcript evidence.
-13. Saves sale through service layer.
-14. Replies success or review message.
+4. Скачивает Telegram file.
+5. Конвертирует audio в mp3, когда доступен ffmpeg.
+6. Переключается на оригинальный OGG, когда конвертация недоступна или завершается ошибкой.
+7. Загружает original audio best-effort.
+8. Вызывает STT.
+9. Логирует raw transcript через audit log best-effort.
+10. Вызывает cleanup LLM.
+11. Вызывает parser LLM.
+12. Применяет deterministic transcript evidence.
+13. Сохраняет sale через service layer.
+14. Отвечает success или review message.
 
-Pipeline failures are staged with `VoiceFailureStage` so errors can be diagnosed.
+Pipeline failures размечаются через `VoiceFailureStage`, чтобы ошибки можно было диагностировать.
 
-## Parser boundary
+## Граница parser
 
-`packages/shared/utils/sale-parser.ts` is the deterministic guard between LLM output and persistence.
+`packages/shared/utils/sale-parser.ts` является deterministic guard между LLM output и persistence.
 
-It handles:
+Он обрабатывает:
 
 1. Number words.
-2. Decimal comma.
+2. Десятичную запятую.
 3. Units `шт`, `кг`, `г`.
-4. Bottle forms normalized to `шт`.
+4. Bottle forms, нормализованные в `шт`.
 5. Bare quantity before price: `5 по 100`.
 6. Price markers `руб`, `рублей`, `₽`.
-7. Multi-item split by sentence/segment evidence.
-8. Glued single-item LLM output.
-9. Incomplete leftovers.
-10. Confidence downgrade for incomplete items.
+7. Multi-item split по sentence/segment evidence.
+8. Склеенный single-item LLM output.
+9. Неполные leftovers.
+10. Снижение confidence для incomplete items.
 
-Parser output then goes through `normalizeSaleItemFields()`.
+Parser output затем проходит через `normalizeSaleItemFields()`.
 
-## Persistence boundary
+## Граница persistence
 
 `apps/bot/src/services/records.service.ts`:
 
-1. Creates Supabase service role client server-side.
-2. Resolves seller and shop.
-3. Normalizes products and units.
-4. Resolves optional product catalog match.
-5. Builds RPC payload.
-6. Calls `save_voice_sale`.
-7. Verifies returned identifiers.
-8. Reads sale back.
-9. Reads item count back.
-10. Throws if persisted count mismatches expected count.
+1. Создаёт Supabase service role client server-side.
+2. Резолвит продавца и магазин.
+3. Нормализует products и units.
+4. Резолвит optional product catalog match.
+5. Строит RPC payload.
+6. Вызывает `save_voice_sale`.
+7. Проверяет returned identifiers.
+8. Читает sale обратно.
+9. Читает item count обратно.
+10. Выбрасывает ошибку, если persisted count не совпадает с expected count.
 
-False success is not allowed. If persistence fails, user sees save failure message.
+False success запрещён. Если persistence завершается ошибкой, пользователь видит сообщение о неудачном сохранении.
 
-## Supabase schema
+## Схема Supabase
 
 Core tables:
 
@@ -127,23 +127,23 @@ Core tables:
 7. `sale_items`.
 8. `audit_logs`.
 
-Storage:
+Хранилище:
 
 1. Bucket `voice-records`.
 2. Audio upload best-effort.
-3. Signed URLs are created server-side for records journal.
+3. Signed URLs создаются server-side для журнала записей.
 
 RPC:
 
 1. `save_voice_sale`.
 2. `security invoker`.
-3. Checks active seller belongs to shop.
-4. Inserts voice, sale and items.
-5. Execute granted only to service role.
+3. Проверяет, что active seller принадлежит shop.
+4. Вставляет voice, sale и items.
+5. Execute выдан только service role.
 
-## Status model
+## Модель статусов
 
-Parent statuses:
+Статусы parent:
 
 1. `pending`.
 2. `processed`.
@@ -151,7 +151,7 @@ Parent statuses:
 4. `cancelled`.
 5. `failed`.
 
-Item statuses:
+Статусы item:
 
 1. `processed`.
 2. `needs_review`.
@@ -159,11 +159,11 @@ Item statuses:
 4. `failed`.
 5. `excluded`.
 
-Revenue is controlled primarily by item status plus parent sale exclusion for `cancelled` and `failed`.
+Revenue управляется в первую очередь item status плюс исключением parent sale для `cancelled` и `failed`.
 
-## WebApp architecture
+## Архитектура WebApp
 
-`apps/web` uses Server Components for data loading:
+`apps/web` использует Server Components для загрузки данных:
 
 1. `/daily-report`.
 2. `/review`.
@@ -171,7 +171,7 @@ Revenue is controlled primarily by item status plus parent sale exclusion for `c
 4. `/sellers`.
 5. `/debug-telegram`.
 
-Client components are used for:
+Client components используются для:
 
 1. Telegram auth bootstrap.
 2. Sale item card edit/delete UI state.
@@ -179,52 +179,52 @@ Client components are used for:
 4. Confirm submit button.
 5. Diagnostics component.
 
-Client components do not hold trusted shop authority.
+Client components не хранят доверенные полномочия магазина.
 
-## WebApp auth
+## Auth WebApp
 
 `resolveRequestContext()` sources:
 
 1. Header raw initData.
-2. HttpOnly cookie with raw initData.
+2. HttpOnly cookie с raw initData.
 3. Explicit fallback env.
 4. Demo mode.
 
 Telegram mode:
 
 1. Verify HMAC with bot token.
-2. Verify auth date freshness.
-3. Resolve seller first.
-4. Resolve owner if seller missing.
-5. Owner can create seller binding in same shop.
-6. Return `OwnerContext`.
+2. Проверяет auth date freshness.
+3. Сначала резолвит продавца.
+4. Резолвит владельца, если продавец отсутствует.
+5. Владелец может создать seller binding в том же магазине.
+6. Возвращает `OwnerContext`.
 
 Fallback mode:
 
 1. Requires `ALLOW_WEBAPP_FALLBACK=true`.
 2. Requires `DEFAULT_SHOP_ID`.
 3. Requires `DEFAULT_SELLER_ID`.
-4. Loads seller server-side.
-5. Checks active seller.
-6. Checks seller shop matches fallback shop.
+4. Загружает seller server-side.
+5. Проверяет active seller.
+6. Проверяет, что seller shop совпадает с fallback shop.
 
-## Report calculation
+## Расчёт отчёта
 
 `getReport(filters)`:
 
-1. Computes date range in `Europe/Moscow`.
-2. Resolves owner context.
-3. Reads sales by shop and period.
-4. Reads items by sale ids.
-5. Scopes rows through `scopeReportRows()`.
-6. Excludes parent `cancelled` and `failed`.
-7. Keeps parent `needs_review` items so processed siblings can count.
-8. Partitions active/deleted items.
-9. Builds summary through `buildSalesReport()`.
+1. Считает date range в `Europe/Moscow`.
+2. Резолвит owner context.
+3. Читает sales по магазину и периоду.
+4. Читает items по sale ids.
+5. Ограничивает rows через `scopeReportRows()`.
+6. Исключает parent `cancelled` и `failed`.
+7. Оставляет parent `needs_review` items, чтобы processed siblings могли учитываться.
+8. Разделяет active/deleted items.
+9. Строит summary через `buildSalesReport()`.
 
-## Mutations
+## Мутации
 
-WebApp mutations are Server Actions and service functions:
+Мутации WebApp являются Server Actions и service functions:
 
 1. `updateSaleItem`.
 2. `excludeSaleItem`.
@@ -235,69 +235,69 @@ WebApp mutations are Server Actions and service functions:
 
 Every mutation:
 
-1. Resolves current shop.
-2. Reads parent row.
-3. Checks shop access.
-4. Mutates with admin client.
-5. Checks affected row when needed.
+1. Резолвит current shop.
+2. Читает parent row.
+3. Проверяет shop access.
+4. Выполняет mutation через admin client.
+5. Проверяет affected row, когда нужно.
 6. Recalculates sale.
-7. Revalidates affected routes.
+7. Revalidate affected routes.
 
-## Review confirm/cancel
+## Confirm/cancel проверки
 
-Telegram and WebApp share the same domain rules:
+Telegram и WebApp используют одни и те же domain rules:
 
 1. Already processed -> unchanged success.
 2. Already cancelled -> unchanged success.
 3. Failed -> forbidden.
-4. No confirmable active item -> readable error.
-5. Mixed cart -> confirm valid items, keep incomplete items review.
+4. Нет confirmable active item -> readable error.
+5. Mixed cart -> подтвердить valid items, оставить incomplete items в review.
 6. Complete cart -> sale/voice processed.
 7. Cancel -> sale/voice cancelled, active items soft-deleted.
 
-## Security model
+## Модель безопасности
 
-1. Service role stays server-side.
-2. RLS remains enabled.
-3. Business authorization is enforced in application service layer.
-4. `shop_id` never comes from client authority.
-5. Telegram webhook secret protects webhook route.
-6. Telegram initData HMAC protects WebApp session.
-7. Diagnostics do not expose raw initData or tokens.
-8. Debug route is production-gated.
+1. Service role остаётся server-side.
+2. RLS остаётся включённым.
+3. Business authorization enforced в application service layer.
+4. `shop_id` никогда не приходит из client authority.
+5. Telegram webhook secret защищает webhook route.
+6. Telegram initData HMAC защищает WebApp session.
+7. Diagnostics не раскрывает raw initData или tokens.
+8. Debug route закрыт gate в production.
 
-## Error handling
+## Обработка ошибок
 
-1. Voice pipeline errors include stage.
-2. Parser fallback turns recoverable parser issues into review rows.
-3. Supabase persistence errors avoid false success.
-4. WebApp auth errors produce user-facing messages.
-5. DB load errors are not converted to empty states.
-6. Audit log errors are best-effort and non-blocking.
-7. Revalidation failure after successful mutation produces soft refresh message.
+1. Ошибки voice pipeline включают stage.
+2. Parser fallback превращает recoverable parser issues в review rows.
+3. Ошибки Supabase persistence предотвращают false success.
+4. Ошибки auth WebApp дают user-facing messages.
+5. Ошибки загрузки DB не превращаются в empty states.
+6. Ошибки audit log являются best-effort и non-blocking.
+7. Revalidation failure после успешной mutation даёт soft refresh message.
 
-## Testing boundary
+## Граница тестирования
 
-Tests cover:
+Тесты покрывают:
 
-1. Parser split and evidence rules.
-2. Date/report calculations.
-3. Telegram callback parsing and keyboard.
-4. Confirm/cancel status transitions.
-5. Records/report scope.
-6. Logger behavior.
+1. Parser split и evidence rules.
+2. Расчёты даты/отчёта.
+3. Парсинг Telegram callback и клавиатуру.
+4. Переходы статусов confirm/cancel.
+5. Область records/report.
+6. Поведение logger.
 7. Audio conversion fallback.
 8. Telegram WebApp session.
 9. WebApp mutation patches.
 
-## Acceptance criteria
+## Критерии приемки
 
-1. Voice sale can be saved only after seller/shop resolution.
-2. RPC read-back verifies sale and item count.
-3. Review message has only two buttons.
-4. Callback delivery includes `callback_query`.
-5. WebApp data comes from server-derived shop.
-6. Item-level revenue matches code and specs.
-7. Soft delete is the only delete path for sale items.
-8. Auth and DB errors stay visible.
-9. Quality gate commands pass before release.
+1. Voice sale может быть сохранена только после seller/shop resolution.
+2. RPC read-back проверяет sale и item count.
+3. Review message содержит только две кнопки.
+4. Callback delivery включает `callback_query`.
+5. WebApp data приходит из server-derived shop.
+6. Item-level revenue совпадает с кодом и спецификациями.
+7. Soft delete является единственным delete path для sale items.
+8. Auth и DB errors остаются видимыми.
+9. Quality gate commands проходят перед release.

@@ -1,5 +1,5 @@
-# 002 — Telegram WebApp auth
+# 002 — авторизация Telegram WebApp
 
-Закрыто: Telegram `web_app` кнопки, SDK bootstrap, initData validation, HttpOnly cookie для Telegram mode и безопасная диагностика.
+Закрыто: кнопки Telegram `web_app`, bootstrap SDK, валидация initData, HttpOnly cookie для режима Telegram и безопасная диагностика.
 
-Актуальный статус изменён планом 005: отсутствие initData больше не блокирует весь UI, если доступен browser fallback mode.
+Актуальный статус изменён планом 005: отсутствие initData больше не блокирует весь UI, если доступен браузерный резервный режим.

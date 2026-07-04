@@ -1,6 +1,6 @@
-# Web App fallback и автоготовые продажи — завершено 2026-06-23
+# Fallback WebApp и автоготовые продажи — завершено 2026-06-23
 
-Актуальный P0 persistence contract и исправление report flow описаны в [плане 006](./006-p0-confirmed-persistence-and-report.md).
+Актуальный P0-контракт сохранения и исправление сценария отчёта описаны в [плане 006](./006-p0-confirmed-persistence-and-report.md).
 
 ## Цель
 
@@ -9,18 +9,18 @@
 ## Сделано
 
 - Добавлены `getAppAuthContext()` и единый `apiFetch()`.
-- Добавлен `resolveRequestContext()` с Telegram и fallback modes.
-- `/api/auth/telegram` использует общий server helper.
-- Browser fallback использует только `ALLOW_WEBAPP_FALLBACK`, `DEFAULT_SHOP_ID`, `DEFAULT_SELLER_ID` на сервере.
+- Добавлен `resolveRequestContext()` с режимами Telegram и fallback.
+- `/api/auth/telegram` использует общий серверный helper.
+- Браузерный fallback использует только `ALLOW_WEBAPP_FALLBACK`, `DEFAULT_SHOP_ID`, `DEFAULT_SELLER_ID` на сервере.
 - Убрана красная auth-gate блокировка интерфейса.
-- Voice persistence сохраняет уверенные позиции как `processed`.
+- Сохранение голосовых продаж сохраняет уверенные позиции как `processed`.
 - Неполные позиции сохраняются как `needs_review`.
 - Ручное сохранение валидной позиции сразу делает её «Готово».
-- Soft delete/restore оставлены единым механизмом исключения.
-- Обновлены docs, specs, rules, roadmap, changelog и Codex skill.
+- Мягкое удаление/восстановление оставлены единым механизмом исключения.
+- Обновлены документы, спеки, правила, дорожная карта, журнал изменений и skill Codex.
 
 ## Проверка
 
-- `npm.cmd run test` — 62 passed.
+- `npm.cmd run test` — 62 пройдено.
 - `npm run lint` и `npm run build` выполняются перед финальным коммитом.
-- Внешние Vercel/Telegram smoke checks требуют доступной production ссылки и реального Telegram клиента.
+- Внешние smoke-проверки Vercel/Telegram требуют доступной production-ссылки и реального клиента Telegram.

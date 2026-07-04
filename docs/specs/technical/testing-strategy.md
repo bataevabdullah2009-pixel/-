@@ -1,16 +1,16 @@
-# Testing Strategy
+# Стратегия тестирования
 
-Regression tests покрывают:
+Регрессионные тесты покрывают:
 
-- parser evidence rules;
+- правила parser evidence;
 - exact multi-item fallback: `Сникерс, 3 штуки по 200 рублей. Буханка хлеба, 5 штук по 50 рублей.` -> 2 items, total 850;
 - mixed valid + incomplete fallback: valid item confirms, incomplete item stays review;
-- bare quantity `5 по 100` and bottle units;
+- bare quantity `5 по 100` и bottle units;
 - threshold `confidence >= 0.80`;
 - отсутствие обязательного review для полных voice-продаж;
 - фразы «Ники четыре штуки по сто рублей» и «Сникерс 5 штук по 100 рублей»;
 - read-back sale + sale_items до success и отказ при нулевом item count;
-- report calculation и soft delete;
+- расчёт отчёта и soft delete;
 - review отдельно от active revenue;
 - Telegram review keyboard из `✅ Подтвердить` и `❌ Отмена`;
 - короткие callback data `confirm:<id>` / `cancel:<id>`;

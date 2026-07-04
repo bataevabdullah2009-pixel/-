@@ -1,4 +1,4 @@
-# Technical Spec: Telegram Webhook
+# Техническая спецификация: Telegram Webhook
 
 ## 1. Цель
 
@@ -8,33 +8,33 @@
 4. Review callbacks должны подтверждать или отменять сомнительные записи.
 5. Webhook не должен зависеть от WebApp session.
 
-## 2. Entry points
+## 2. Точки входа
 
 1. Next.js route: `apps/web/src/app/api/telegram/webhook/route.ts`.
 2. Bot update processor: `apps/bot/src/core/process-update.ts`.
-3. Bot instance factory: `createTelegramBot`.
-4. Webhook setup script: `scripts/set-telegram-webhook.ts`.
-5. Webhook info script: `scripts/get-telegram-webhook-info.ts`.
+3. Фабрика экземпляра bot: `createTelegramBot`.
+4. Скрипт настройки webhook: `scripts/set-telegram-webhook.ts`.
+5. Скрипт информации о webhook: `scripts/get-telegram-webhook-info.ts`.
 
-## 3. Handlers
+## 3. Обработчики
 
 1. `/start`: `start.handler.ts`.
 2. Text: `text.handler.ts`.
 3. Voice: `voice.handler.ts`.
 4. Review callbacks: `review.handler.ts`.
-5. Handlers are registered by `process-update.ts`.
+5. Handlers регистрируются через `process-update.ts`.
 
 ## 4. `/start`
 
-1. Resolves seller by Telegram user id.
-2. Creates seller in demo mode when allowed.
-3. Sends report access.
-4. Can include `Открыть отчёт` WebApp button.
-5. Can configure menu button.
-6. Can show diagnostics button only when `DEBUG_TELEGRAM_WEBAPP=true`.
-7. Does not process sales.
+1. Резолвит seller по Telegram user id.
+2. Создаёт seller в demo mode, когда это разрешено.
+3. Отправляет report access.
+4. Может включать WebApp button `Открыть отчёт`.
+5. Может настраивать menu button.
+6. Может показывать diagnostics button только при `DEBUG_TELEGRAM_WEBAPP=true`.
+7. Не обрабатывает sales.
 
-## 5. Voice flow stages
+## 5. Стадии voice flow
 
 1. `seller_resolve`.
 2. `telegram_reply`.
@@ -45,89 +45,89 @@
 7. `supabase_insert`.
 8. `telegram_reply`.
 
-Each stage logs context for diagnostics.
+Каждая stage логирует context для diagnostics.
 
-## 6. Seller resolve
+## 6. Резолвинг seller
 
-1. Telegram user id is required.
-2. Seller display name comes from first name or username.
-3. `requireSeller` checks active seller.
-4. In demo mode unknown seller can be created.
-5. In non-demo unknown seller is denied.
-6. Missing seller stops pipeline before STT.
+1. Telegram user id обязателен.
+2. Seller display name берётся из first name или username.
+3. `requireSeller` проверяет active seller.
+4. В demo mode unknown seller может быть создан.
+5. В non-demo unknown seller получает отказ.
+6. Отсутствующий seller останавливает pipeline до STT.
 
-## 7. Telegram download
+## 7. Загрузка из Telegram
 
-1. Uses Telegram file link.
-2. Downloads original voice file.
-3. Stores content as OGG input.
-4. File name is sanitized.
-5. Download failure logs `voice_failed`.
+1. Использует Telegram file link.
+2. Скачивает original voice file.
+3. Хранит content как OGG input.
+4. File name санитизируется.
+5. Download failure логирует `voice_failed`.
 
-## 8. Audio prepare
+## 8. Подготовка audio
 
-1. `prepareTelegramVoiceForStt` prepares audio for STT.
-2. Conversion diagnostics are logged.
-3. Fallback to original OGG may occur.
-4. This stage must not be rewritten for UI tasks.
+1. `prepareTelegramVoiceForStt` готовит audio для STT.
+2. Conversion diagnostics логируются.
+3. Может произойти fallback to original OGG.
+4. Эта stage не должна переписываться для UI tasks.
 
-## 9. Audio storage
+## 9. Хранение audio
 
-1. Upload to Supabase Storage is best effort.
-2. Upload failure logs warning.
-3. Upload failure does not block sale persistence.
-4. `audio_path` and `audio_url` can be null.
-5. Records page shows audio link only if URL can be created.
+1. Upload в Supabase Storage выполняется best effort.
+2. Upload failure логирует warning.
+3. Upload failure не блокирует sale persistence.
+4. `audio_path` и `audio_url` могут быть null.
+5. Records page показывает audio link только если URL можно создать.
 
 ## 10. STT
 
-1. `transcribeAudio` sends prepared audio to STT API.
-2. Language is Russian.
-3. STT returns raw transcript.
-4. Raw transcript is logged.
-5. Raw transcript is saved in voice/sale data.
-6. STT failure can create failed voice record if sale was not persisted.
+1. `transcribeAudio` отправляет prepared audio в STT API.
+2. Язык - русский.
+3. STT возвращает raw transcript.
+4. Raw transcript логируется.
+5. Raw transcript сохраняется в voice/sale data.
+6. STT failure может создать failed voice record, если sale не была persisted.
 
 ## 11. Parser/cleanup
 
-1. `cleanupTranscript` creates cleaned text.
-2. `parseSaleTranscript` returns parsed sale.
-3. Parser returns items and `needs_review` flag.
-4. Deterministic fallback verifies transcript evidence and can split one glued parser item into multiple `sale_items`.
-5. Fallback supports dot, comma before quantity, conjunctions, newline, `5 по 100`, bottles, kilograms and grams.
-6. Invalid LLM JSON falls back to review with deterministic items when possible instead of hard failing.
-7. Parser JSON and error message are stored for diagnostics.
+1. `cleanupTranscript` создаёт cleaned text.
+2. `parseSaleTranscript` возвращает parsed sale.
+3. Parser возвращает items и flag `needs_review`.
+4. Deterministic fallback проверяет transcript evidence и может разделить один glued parser item на несколько `sale_items`.
+5. Fallback поддерживает точку, запятую перед quantity, союзы, newline, `5 по 100`, бутылки, килограммы и граммы.
+6. Некорректный LLM JSON переключается на review с deterministic items, когда возможно, вместо hard fail.
+7. Parser JSON и error message хранятся для diagnostics.
 
-## 12. Persistence
+## 12. Сохранение
 
-1. `saveProcessedSale` is alias for `saveVoiceSale`.
-2. Source items are normalized.
-3. Logs include parsed items before normalization and normalized items.
-4. If parser returns no items, `ensureReviewableSaleItems` creates a fallback review item.
-5. Item statuses are resolved with shared utilities.
-6. Sale status is `processed` only if all resolved items are processed and no parser error.
-7. Otherwise sale status is `needs_review`.
-8. Payload is saved through RPC `save_voice_sale`.
-9. Persistence verifies saved sale and item count and logs inserted `sale_items` ids.
-10. False success throws.
+1. `saveProcessedSale` является alias для `saveVoiceSale`.
+2. Source items нормализуются.
+3. Logs включают parsed items before normalization и normalized items.
+4. Если parser не возвращает items, `ensureReviewableSaleItems` создаёт fallback review item.
+5. Item statuses резолвятся shared utilities.
+6. Sale status становится `processed` только если все resolved items processed и нет parser error.
+7. Иначе sale status становится `needs_review`.
+8. Payload сохраняется через RPC `save_voice_sale`.
+9. Persistence проверяет saved sale и item count и логирует inserted `sale_items` ids.
+10. False success выбрасывает ошибку.
 
-## 13. Success message
+## 13. Сообщение об успехе
 
-For `processed` sale:
+Для `processed` sale:
 
 ```text
 ✅ Запись сохранена: ...
 ```
 
-Rules:
+Правила:
 
-1. No inline review keyboard.
-2. No raw technical status.
-3. Sale enters report immediately.
+1. Нет inline review keyboard.
+2. Нет raw technical status.
+3. Sale сразу попадает в report.
 
-## 14. Review message
+## 14. Сообщение review
 
-For `needs_review` sale:
+Для `needs_review` sale:
 
 ```text
 ⚠️ Запись сохранена, но нужно подтвердить товары и цены.
@@ -140,107 +140,107 @@ Keyboard:
 ✅ Подтвердить    ❌ Отмена
 ```
 
-Rules:
+Правила:
 
-1. Exactly two inline callback buttons.
-2. No `Открыть отчёт` button.
-3. No diagnostics button.
-4. No WebApp button.
-5. No raw status.
+1. Ровно две inline callback buttons.
+2. Нет кнопки `Открыть отчёт`.
+3. Нет diagnostics button.
+4. Нет WebApp button.
+5. Нет raw status.
 
-## 15. Callback route
+## 15. Route callback
 
-1. `review.handler.ts` registers `bot.action`.
-2. Regex accepts new callbacks.
-3. Regex accepts legacy callbacks.
-4. Callback extracts action and sale id.
-5. Callback resolves Telegram seller.
-6. Callback calls records service.
-7. Callback answers Telegram loading state.
-8. Callback edits message text if possible.
-9. Callback falls back to reply if edit fails.
-10. Webhook route logs safe `telegram_update_received` metadata before dispatch.
-11. `scripts/set-telegram-webhook.ts` must include `callback_query` in `allowed_updates`.
+1. `review.handler.ts` регистрирует `bot.action`.
+2. Regex принимает new callbacks.
+3. Regex принимает legacy callbacks.
+4. Callback извлекает action и sale id.
+5. Callback резолвит Telegram seller.
+6. Callback вызывает records service.
+7. Callback отвечает Telegram loading state.
+8. Callback редактирует message text, если возможно.
+9. Callback переключается на reply, если edit fails.
+10. Webhook route логирует safe `telegram_update_received` metadata before dispatch.
+11. `scripts/set-telegram-webhook.ts` должен включать `callback_query` в `allowed_updates`.
 
 ## 16. Callback data
 
-Allowed new values:
+Разрешённые новые значения:
 
 ```text
 confirm:<uuid>
 cancel:<uuid>
 ```
 
-Allowed legacy values:
+Разрешённые legacy values:
 
 ```text
 voice_sale_review:confirm:<uuid>
 voice_sale_review:cancel:<uuid>
 ```
 
-## 17. Confirm service
+## 17. Сервис confirm
 
 1. Function: `confirmVoiceSaleWithClient`.
-2. Selects sale by id, shop and seller.
-3. Already processed returns unchanged success.
-4. Already cancelled returns unchanged success.
-5. Failed sale returns error.
-6. Loads active items.
-7. Validates active items individually.
-8. If at least one item is valid, updates only confirmable items to `processed`.
-9. Leaves incomplete active items as `needs_review`.
-10. Recalculates total from confirmable items.
-11. Updates sale and voice record to `processed`.
-12. If no item is valid, returns `Не удалось подтвердить: нет ни одной полной позиции.`
-13. Logs sale id, found item count, valid item count and invalid reasons.
-14. Success message is `✅ Подтверждено: N позиций, сумма X ₽`.
+2. Выбирает sale по id, shop и seller.
+3. Already processed возвращает unchanged success.
+4. Already cancelled возвращает unchanged success.
+5. Failed sale возвращает error.
+6. Загружает active items.
+7. Валидирует active items по отдельности.
+8. Если хотя бы один item valid, обновляет только confirmable items в `processed`.
+9. Оставляет incomplete active items как `needs_review`.
+10. Пересчитывает total from confirmable items.
+11. Обновляет sale и voice record в `processed`.
+12. Если ни один item не valid, возвращает `Не удалось подтвердить: нет ни одной полной позиции.`
+13. Логирует sale id, found item count, valid item count и invalid reasons.
+14. Сообщение об успехе: `✅ Подтверждено: N позиций, сумма X ₽`.
 
-## 18. Cancel service
+## 18. Сервис cancel
 
 1. Function: `cancelVoiceSaleWithClient`.
-2. Selects sale by id, shop and seller.
-3. Already cancelled returns unchanged success.
-4. Already processed returns unchanged success.
-5. Failed sale returns error.
-6. Loads active items.
-7. Soft-deletes each active item.
-8. Updates sale and voice record to cancelled.
-9. Sets total zero.
+2. Выбирает sale по id, shop и seller.
+3. Already cancelled возвращает unchanged success.
+4. Already processed возвращает unchanged success.
+5. Failed sale возвращает error.
+6. Загружает active items.
+7. Выполняет soft-delete каждого active item.
+8. Обновляет sale и voice record в cancelled.
+9. Устанавливает total zero.
 
-## 19. Idempotency
+## 19. Идемпотентность
 
-1. Repeated confirm on processed sale is safe.
-2. Repeated cancel on cancelled sale is safe.
-3. Confirm after cancel does not restore sale.
-4. Cancel after confirm does not remove revenue.
-5. Message edit failure does not rollback DB mutation.
+1. Повторный confirm для processed sale безопасен.
+2. Повторный cancel для cancelled sale безопасен.
+3. Confirm after cancel не восстанавливает sale.
+4. Cancel after confirm не удаляет revenue.
+5. Message edit failure не откатывает DB mutation.
 
 ## 20. Failed pipeline
 
-1. If seller exists and sale was not persisted, save failed voice record.
-2. Failed record status is `failed`.
-3. Error message includes stage.
-4. User sees generic processing failure.
-5. Supabase insert failure uses save failure message.
+1. Если seller существует и sale не была persisted, сохранить failed voice record.
+2. Статус failed record - `failed`.
+3. Error message включает stage.
+4. User видит generic processing failure.
+5. Supabase insert failure использует save failure message.
 
-## 21. Security
+## 21. Безопасность
 
-1. Webhook should be protected by Telegram secret or deployment config.
-2. Service role key is server-only.
-3. Callback does not accept shop id.
-4. Callback seller identity comes from Telegram user id.
-5. Sale mutation filters by seller and shop.
-6. Logs avoid leaking secrets.
+1. Webhook должен быть защищён Telegram secret или deployment config.
+2. Service role key только server-only.
+3. Callback не принимает shop id.
+4. Callback seller identity приходит из Telegram user id.
+5. Sale mutation фильтрует по seller и shop.
+6. Logs не допускают утечку secrets.
 
-## 22. WebApp relation
+## 22. Связь с WebApp
 
-1. WebApp route is separate.
-2. WebApp session is not required for Telegram callback.
-3. WebApp shows updated state after refresh.
-4. WebApp `/review` exposes review confirm/cancel through server actions and WebApp session.
-5. `/start` can still open WebApp report.
+1. WebApp route отдельный.
+2. WebApp session не требуется для Telegram callback.
+3. WebApp показывает updated state после refresh.
+4. WebApp `/review` открывает review confirm/cancel через server actions и WebApp session.
+5. `/start` всё ещё может открыть WebApp report.
 
-## 23. Database writes
+## 23. Записи в базу данных
 
 1. Insert voice record.
 2. Insert sale.
@@ -250,9 +250,9 @@ voice_sale_review:cancel:<uuid>
 6. Update item statuses on decision.
 7. Insert audit logs best effort.
 
-## 24. Errors
+## 24. Ошибки
 
-1. Missing Telegram user id.
+1. Отсутствует Telegram user id.
 2. Seller not linked.
 3. Telegram file download failure.
 4. Audio conversion failure.
@@ -263,22 +263,22 @@ voice_sale_review:cancel:<uuid>
 9. Callback sale not found.
 10. Callback item validation failure.
 
-## 25. Acceptance criteria
+## 25. Критерии приемки
 
-1. Confident voice sale receives success message.
-2. Confident sale has status `processed`.
-3. Review voice sale receives warning message.
-4. Review keyboard has only two buttons.
-5. Review keyboard has no `Открыть отчёт`.
-6. Confirm callback processes sale.
-7. Cancel callback cancels sale.
-8. Repeat callback does not corrupt data.
-9. Failed voice record is saved when possible.
-10. Voice pipeline tests pass.
+1. Confident voice sale получает success message.
+2. Confident sale имеет status `processed`.
+3. Review voice sale получает warning message.
+4. Review keyboard имеет только две кнопки.
+5. Review keyboard не содержит `Открыть отчёт`.
+6. Confirm callback обрабатывает sale.
+7. Cancel callback отменяет sale.
+8. Repeat callback не портит data.
+9. Failed voice record сохраняется, когда возможно.
+10. Voice pipeline tests проходят.
 
-## 26. Out of scope
+## 26. Вне области
 
-1. Replacing Telegraf.
-2. Replacing STT provider.
-3. Replacing LLM/parser.
-4. Physical deletion of sale data.
+1. Замена Telegraf.
+2. Замена STT provider.
+3. Замена LLM/parser.
+4. Физическое удаление sale data.

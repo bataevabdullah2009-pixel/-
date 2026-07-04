@@ -1,53 +1,53 @@
-# Roadmap
+# Дорожная карта
 
-## Current release state
+## Текущее состояние релиза
 
-Продукт готовится к сдаче как Telegram bot + WebApp для реального магазина.
+Продукт готовится к сдаче как Telegram-бот + WebApp для реального магазина.
 
 Актуально реализовано:
 
-- voice pipeline сохраняет уверенные продажи как `processed`;
+- голосовой конвейер сохраняет уверенные продажи как `processed`;
 - сомнительные продажи сохраняются как `needs_review`;
-- Telegram review-message содержит только `✅ Подтвердить` и `❌ Отмена`;
+- сообщение проверки Telegram содержит только `✅ Подтвердить` и `❌ Отмена`;
 - WebApp показывает `Отчёт`, `Проверка`, `Записи`, `Продавцы`;
-- WebApp `/review` подтверждает и отменяет review voice-записи через server actions;
-- edit/delete товаров сохраняются в Supabase и пересчитывают отчёт;
-- soft delete исключает товары из active revenue;
+- WebApp `/review` подтверждает и отменяет голосовые записи на проверке через серверные действия;
+- редактирование/удаление товаров сохраняются в Supabase и пересчитывают отчёт;
+- мягкое удаление исключает товары из активной выручки;
 - диагностика Telegram скрыта от обычного пользователя.
 
-## Release checklist
+## Чеклист релиза
 
 1. Прогнать `npm run lint`.
 2. Прогнать `npm run test`.
 3. Прогнать `npm run build`.
 4. Прогнать `npm run web:build`.
-5. Проверить production env vars.
+5. Проверить переменные окружения production.
 6. Проверить webhook URL.
 7. Проверить Supabase migrations.
-8. Проверить Storage bucket для audio.
-9. Выполнить ручной Telegram smoke.
+8. Проверить Storage bucket для аудио.
+9. Выполнить ручную smoke-проверку Telegram.
 10. Проверить WebApp на мобильном viewport.
 
-## Near-term backlog
+## Ближайший задел
 
-- Реальный Telegram smoke для confirm/cancel после deploy и просмотра `telegram_update_received`.
-- Проверка логов Vercel и Supabase после первых production voice messages.
+- Реальная smoke-проверка Telegram для подтверждения/отмены после развертывания и просмотра `telegram_update_received`.
+- Проверка логов Vercel и Supabase после первых production-голосовых сообщений.
 - Экспорт отчёта в CSV/XLSX.
-- Более подробная аналитика parser confidence.
-- Улучшенный экран восстановления soft-deleted items.
+- Более подробная аналитика уверенности парсера.
+- Улучшенный экран восстановления мягко удалённых позиций.
 
-## Out of scope for current release
+## Вне рамок текущего релиза
 
-- Замена STT provider.
-- Замена parser/LLM contract.
-- Большой desktop admin dashboard.
+- Замена STT-провайдера.
+- Замена контракта parser/LLM.
+- Большая desktop admin-панель.
 - Сложная складская учётная модель.
 
-## Decision log
+## Журнал решений
 
 2026-07-02:
 
-- Review decision доступен в Telegram и на WebApp вкладке `Проверка`.
-- Третья кнопка `Открыть отчёт` удалена из review-message.
-- `/review` снова является пользовательским экраном для active `needs_review`.
-- Revenue защищён от неполных review items; active `processed` items внутри `needs_review` sale учитываются.
+- Решение проверки доступно в Telegram и на вкладке WebApp `Проверка`.
+- Третья кнопка `Открыть отчёт` удалена из сообщения проверки.
+- `/review` снова является пользовательским экраном для активных `needs_review`.
+- Выручка защищена от неполных позиций на проверке; активные позиции `processed` внутри продажи `needs_review` учитываются.

@@ -2,9 +2,9 @@
 
 ## Перед сдачей
 
-- Production smoke с реальным Telegram bot и тестовой Supabase БД.
-- Проверка реального audio playback из Supabase Storage.
-- Проверка Vercel logs после deploy: webhook callbacks, permission errors, missing columns.
+- Production smoke с реальным Telegram-ботом и тестовой БД Supabase.
+- Проверка реального воспроизведения аудио из Supabase Storage.
+- Проверка логов Vercel после развертывания: webhook callbacks, ошибки прав, отсутствующие колонки.
 - Ручная проверка сценариев из README product smoke.
 
 ## После сдачи
@@ -12,13 +12,13 @@
 - Роль владельца магазина с отдельной страницей управления продавцами.
 - Экспорт отчёта в CSV/XLSX.
 - Фильтр по товару в журнале записей.
-- Восстановление soft-deleted items через отдельный audit-safe экран.
-- Улучшенный мониторинг parser confidence и STT failures.
+- Восстановление мягко удалённых позиций через отдельный audit-safe экран.
+- Улучшенный мониторинг уверенности парсера и сбоев STT.
 
-## Не планируется в текущем scope
+## Не планируется в текущей области
 
-- Переписывание уже работающего WebApp confirm/cancel flow.
+- Переписывание уже работающего сценария подтверждения/отмены WebApp.
 - Переписывание STT.
-- Переписывание parser.
-- Замена Supabase persistence.
-- Полный desktop admin dashboard.
+- Переписывание парсера.
+- Замена сохранения в Supabase.
+- Полная desktop admin-панель.

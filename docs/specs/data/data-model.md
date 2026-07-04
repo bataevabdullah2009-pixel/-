@@ -1,17 +1,17 @@
-# Data Model
+# Модель данных
 
-Data model построен вокруг одной voice-записи, parent sale и item-level строк. Выручка считается по `sale_items`, а parent sale status используется как lifecycle и как исключение для `cancelled`/`failed`.
+Модель данных построена вокруг одной голосовой записи, родительской продажи и строк уровня позиции. Выручка считается по `sale_items`, а статус родительской продажи используется как lifecycle и как исключение для `cancelled`/`failed`.
 
 ## Создаваемые сущности
 
 Одна Telegram voice запись создаёт:
 
-1. `voice_records` - исходный/очищенный текст, parser JSON, статус pipeline, аудио metadata.
-2. `sales` - parent sale record, seller/shop, текущий total amount.
+1. `voice_records` - исходный/очищенный текст, JSON парсера, статус конвейера, metadata аудио.
+2. `sales` - запись родительской продажи, продавец/магазин, текущая общая сумма.
 3. Один или несколько `sale_items` - товарные позиции.
-4. `audit_logs` - best-effort события pipeline и mutations.
+4. `audit_logs` - best-effort события конвейера и мутаций.
 
-Audio может быть сохранено в Supabase Storage bucket `voice-records`, но upload не является обязательным для продажи.
+Аудио может быть сохранено в bucket Supabase Storage `voice-records`, но загрузка не является обязательной для продажи.
 
 ## `voice_records`
 
@@ -29,7 +29,7 @@ Audio может быть сохранено в Supabase Storage bucket `voice-r
 10. `error_message`.
 11. `created_at`.
 
-`voice_records.status` отражает итог pipeline или review decision.
+`voice_records.status` отражает итог конвейера или решение проверки.
 
 ## `sales`
 
@@ -44,7 +44,7 @@ Audio может быть сохранено в Supabase Storage bucket `voice-r
 7. `status`.
 8. `created_at`.
 
-`sales.total_amount` не является исходным parser total. Он пересчитывается по active processed items.
+`sales.total_amount` не является исходной суммой парсера. Он пересчитывается по активным обработанным позициям.
 
 ## `sale_items`
 
@@ -65,65 +65,65 @@ Audio может быть сохранено в Supabase Storage bucket `voice-r
 13. `deleted_reason`.
 14. `deleted_previous_status`.
 
-`price` - unit price. `total` - итог по строке. `unit_price` и `total_price` в текущей схеме не используются.
+`price` - цена за единицу. `total` - итог по строке. `unit_price` и `total_price` в текущей схеме не используются.
 
-## Parent statuses
+## Родительские статусы
 
 `voice_records.status` и `sales.status`:
 
-1. `pending` - техническое начальное состояние, не должно быть финальным состоянием текущего completed pipeline.
-2. `processed` - запись готова; active processed items входят в отчёт.
-3. `needs_review` - запись сохранена и содержит unresolved active items.
+1. `pending` - техническое начальное состояние, не должно быть финальным состоянием текущего завершённого конвейера.
+2. `processed` - запись готова; активные обработанные позиции входят в отчёт.
+3. `needs_review` - запись сохранена и содержит нерешённые активные позиции.
 4. `cancelled` - запись отменена пользователем и не входит в отчёт.
 5. `failed` - обработка завершилась ошибкой и не входит в отчёт.
 
-## Item statuses
+## Статусы позиций
 
 `sale_items.status`:
 
 1. `processed` - позиция готова и может входить в отчёт.
 2. `needs_review` - позицию нужно проверить.
-3. `needs_price` - legacy состояние старых строк, в UI равно `Нужно проверить`.
+3. `needs_price` - устаревшее состояние старых строк, в UI равно `Нужно проверить`.
 4. `failed` - технически неудачная позиция, в UI равно `Нужно проверить`.
-5. `excluded` - soft-deleted позиция.
+5. `excluded` - мягко удалённая позиция.
 
 Новые неполные позиции должны использовать `needs_review`, не `needs_price`.
 
-## Readiness rule
+## Правило готовности
 
 Новая voice-позиция становится `processed`, если:
 
 1. Товар осмысленный.
 2. Количество или вес распознаны.
-3. Цена распознана или есть total.
-4. Total валиден.
+3. Цена распознана или есть сумма.
+4. Сумма валидна.
 5. `confidence >= 0.80`.
 
 Иначе позиция сохраняется как `needs_review`.
 
-## Units
+## Единицы
 
-Supported units:
+Поддерживаемые единицы:
 
 1. `шт`.
 2. `кг`.
 3. `г`.
 
-Normalization:
+Нормализация:
 
 1. `бутылка`, `бутылки`, `бутылок` -> `шт`.
 2. `килограмм`, `килограмма`, `килограммов` -> `кг`.
 3. `грамм`, `грамма`, `граммов`, `гр` -> `г`.
 
-Total:
+Сумма:
 
 1. `шт`: `quantity * price`.
 2. `кг`: `quantity * price`.
 3. `г`: `(quantity / 1000) * price`.
 
-## Parser fallback
+## Резервный парсер
 
-Deterministic parser fallback создаёт отдельную `sale_items` row для каждого товара, найденного по evidence в transcript.
+Детерминированный резервный парсер создаёт отдельную строку `sale_items` для каждого товара, найденного по доказательствам в расшифровке.
 
 Пример:
 
@@ -131,79 +131,79 @@ Deterministic parser fallback создаёт отдельную `sale_items` row
 Сникерс, 3 штуки по 200 рублей. Буханка хлеба, 5 штук по 50 рублей.
 ```
 
-Rows:
+Строки:
 
 1. `Сникерс`, `3`, `шт`, `200`, `600`.
 2. `Буханка хлеба`, `5`, `шт`, `50`, `250`.
 
-Если часть фразы неполная, она сохраняется отдельной `needs_review` row, а не склеивается с валидным товаром.
+Если часть фразы неполная, она сохраняется отдельной строкой `needs_review`, а не склеивается с валидным товаром.
 
-## Mixed cart
+## Смешанная корзина
 
-Mixed cart - одна sale с готовыми и неполными items.
+Смешанная корзина - одна продажа с готовыми и неполными позициями.
 
 Правила:
 
-1. Валидные items могут стать `processed`.
-2. Неполные items остаются `needs_review`.
-3. Parent sale может остаться `needs_review`.
-4. Active processed items могут войти в revenue.
-5. Неполные active items видны на вкладке `Проверка`.
-6. Confirm не должен блокировать всю sale из-за одной плохой строки.
+1. Валидные позиции могут стать `processed`.
+2. Неполные позиции остаются `needs_review`.
+3. Родительская продажа может остаться `needs_review`.
+4. Активные обработанные позиции могут войти в выручку.
+5. Неполные активные позиции видны на вкладке `Проверка`.
+6. Подтверждение не должно блокировать всю продажу из-за одной плохой строки.
 
-## Revenue rule
+## Правило выручки
 
-`sales.total_amount` равен сумме active processed items с валидным `total`.
+`sales.total_amount` равен сумме активных обработанных позиций с валидным `total`.
 
-Item входит в revenue, если:
+Позиция входит в выручку, если:
 
-1. Parent sale в текущем shop.
-2. Parent sale не `cancelled`.
-3. Parent sale не `failed`.
-4. Item `status = processed`.
-5. Item `deleted_at is null`.
-6. Item `total` валиден.
+1. Родительская продажа в текущем магазине.
+2. Родительская продажа не `cancelled`.
+3. Родительская продажа не `failed`.
+4. Позиция `status = processed`.
+5. Позиция `deleted_at is null`.
+6. Позиция `total` валидна.
 
-Item не входит, если:
+Позиция не входит, если:
 
 1. `needs_review`.
 2. `needs_price`.
 3. `failed`.
 4. `excluded`.
-5. Soft-deleted.
-6. Parent sale cancelled.
-7. Parent sale failed.
+5. Мягко удалена.
+6. Родительская продажа отменена.
+7. Родительская продажа завершилась сбоем.
 
-## WebApp edit
+## Редактирование WebApp
 
-WebApp edit review item:
+Редактирование позиции проверки в WebApp:
 
-1. Сохраняет product name.
-2. Сохраняет quantity.
-3. Сохраняет unit.
-4. Сохраняет price.
-5. Пересчитывает total.
-6. Ставит item `processed`.
-7. Ставит confidence `1`.
-8. Пересчитывает parent sale.
+1. Сохраняет название товара.
+2. Сохраняет количество.
+3. Сохраняет единицу.
+4. Сохраняет цену.
+5. Пересчитывает сумму.
+6. Ставит позицию `processed`.
+7. Ставит уверенность `1`.
+8. Пересчитывает родительскую продажу.
 
-Такая позиция может войти в выручку сразу. Parent sale остаётся `needs_review`, если рядом ещё есть неполные active items.
+Такая позиция может войти в выручку сразу. Родительская продажа остаётся `needs_review`, если рядом ещё есть неполные активные позиции.
 
-## Cancel
+## Отмена
 
-Cancel review sale:
+Отмена продажи на проверке:
 
-1. Переводит sale в `cancelled`.
-2. Переводит voice record в `cancelled`.
-3. Soft-delete active items.
+1. Переводит продажу в `cancelled`.
+2. Переводит голосовую запись в `cancelled`.
+3. Мягко удаляет активные позиции.
 4. Ставит `sales.total_amount = 0`.
-5. Исключает всю voice-запись из revenue.
+5. Исключает всю голосовую запись из выручки.
 
-## Acceptance criteria
+## Критерии приёмки
 
-1. One voice can create multiple item rows.
-2. Parser fallback preserves valid items and incomplete leftovers separately.
-3. Parent `needs_review` does not block processed item revenue.
-4. Cancelled and failed parents block revenue.
-5. Soft-deleted rows never count.
-6. Legacy `needs_price` remains readable but not used for new incomplete items.
+1. Один голос может создать несколько строк позиций.
+2. Резервный парсер сохраняет валидные позиции и неполные остатки отдельно.
+3. Родительский `needs_review` не блокирует выручку обработанной позиции.
+4. Родители `cancelled` и `failed` блокируют выручку.
+5. Мягко удалённые строки никогда не учитываются.
+6. Устаревший `needs_price` остаётся читаемым, но не используется для новых неполных позиций.

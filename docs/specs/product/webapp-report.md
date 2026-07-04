@@ -1,4 +1,4 @@
-# Product Spec: WebApp Report
+# Продуктовая спецификация: отчёт WebApp
 
 ## 1. Цель
 
@@ -39,7 +39,7 @@
 7. Ошибка загрузки показывается action notice без падения страницы.
 8. Основные данные грузятся server-side через `getReport(filters)`.
 
-## 5. Summary cards
+## 5. Summary-карточки
 
 1. Summary содержит четыре компактные карточки 2x2.
 2. `Выручка` показывает `summary.totalRevenue`.
@@ -50,7 +50,7 @@
 7. Карточки не должны занимать половину мобильного экрана.
 8. Значения форматируются через `formatCurrency` и `formatQuantity`.
 
-## 6. Period filters
+## 6. Фильтры периода
 
 1. Фильтры периода находятся ниже summary/action toolbar.
 2. Доступные presets: `Сегодня`, `Вчера`, `Неделя`, `Месяц`.
@@ -59,7 +59,7 @@
 5. Фильтры сохраняют существующие query params, кроме mutation notices.
 6. На мобильном segmented controls могут горизонтально скроллиться.
 7. Фильтры должны быть компактными.
-8. Фильтры не должны визуально вытеснять report content.
+8. Фильтры не должны визуально вытеснять содержимое отчёта.
 
 ## 7. Аналитика
 
@@ -69,7 +69,7 @@
 4. Если данных мало или нет, показывается аккуратный EmptyState.
 5. График использует restrained accent, а не сплошную оранжевую заливку.
 
-## 8. Top products
+## 8. Топ товаров
 
 1. Раздел называется `Топ товаров`.
 2. Источник данных: `summary.rows`.
@@ -80,7 +80,7 @@
 7. Review, cancelled, failed и deleted rows не попадают в топ.
 8. Если данных нет, показывается EmptyState.
 
-## 9. Sales for period
+## 9. Продажи за период
 
 1. Раздел называется `Продажи за период`.
 2. Показывает active processed sale items.
@@ -107,7 +107,7 @@
 13. Если sale содержит валидные и неполные items, валидные items подтверждаются и входят в выручку, неполные остаются `needs_review`.
 14. Отменённая запись не входит в выручку.
 
-## 11. Deleted items
+## 11. Удалённые items
 
 1. Deleted/excluded items показываются в details panel там, где это уместно для аудита.
 2. Panel не входит в active revenue.
@@ -141,7 +141,7 @@
 7. Показывается выручка за период.
 8. Revenue считается только по active processed items.
 
-## 14. Business logic
+## 14. Бизнес-логика
 
 1. WebApp report не доверяет client-side `shop_id`.
 2. Shop берётся из Telegram WebApp session.
@@ -156,75 +156,75 @@
 11. Parent `failed` не входит в revenue.
 12. `excluded` не входит в active list.
 
-## 15. API and server logic
+## 15. API и серверная логика
 
-1. Report page calls `getReport(filters)`.
-2. Review page calls `getReviewItems(filters)`.
-3. Records page calls `getRecords(filters)`.
-4. Sellers page calls `getSellerStats(filters)`.
-5. Date filters use shared `getDateRange`.
-6. Item update uses `updateSaleItemAction`.
-7. Item delete uses `excludeSaleItemAction`.
+1. Страница отчёта вызывает `getReport(filters)`.
+2. Страница проверки вызывает `getReviewItems(filters)`.
+3. Страница записей вызывает `getRecords(filters)`.
+4. Страница продавцов вызывает `getSellerStats(filters)`.
+5. Date filters используют общий `getDateRange`.
+6. Item update использует `updateSaleItemAction`.
+7. Item delete использует `excludeSaleItemAction`.
 8. Restore uses `restoreSaleItemAction`.
-9. Reset day uses `resetDayRevenueAction`.
-10. Review confirm uses `confirmReviewSaleAction`.
-11. Review cancel uses `cancelReviewSaleAction`.
-12. Bulk review confirm uses `confirmAllReviewSalesAction`.
-13. Mutations revalidate affected routes.
-14. Mutations return structured action state or redirect with safe query params.
+9. Reset day использует `resetDayRevenueAction`.
+10. Review confirm использует `confirmReviewSaleAction`.
+11. Review cancel использует `cancelReviewSaleAction`.
+12. Bulk review confirm использует `confirmAllReviewSalesAction`.
+13. Mutations делают revalidate affected routes.
+14. Mutations возвращают structured action state или redirect с safe query params.
 
-## 16. Database tables
+## 16. Таблицы базы данных
 
-1. `sales` stores parent sale.
-2. `voice_records` stores transcript/audio metadata.
-3. `sale_items` stores product rows.
-4. `sellers` stores Telegram sellers.
-5. `shops` scopes data.
-6. `products` can match product names and units.
-7. `audit_logs` stores mutation audit entries.
+1. `sales` хранит parent sale.
+2. `voice_records` хранит transcript/audio metadata.
+3. `sale_items` хранит product rows.
+4. `sellers` хранит Telegram sellers.
+5. `shops` ограничивает data.
+6. `products` может сопоставлять product names and units.
+7. `audit_logs` хранит mutation audit entries.
 
-## 17. Errors
+## 17. Ошибки
 
-1. Missing Telegram session shows a clear WebApp session message.
-2. Invalid Telegram session asks user to reopen WebApp.
-3. Seller not linked shows access error.
-4. Supabase load failure shows `Не удалось загрузить отчёт`.
-5. Item update failure keeps edit data visible.
-6. Item delete failure keeps card visible.
-7. Review action failure redirects back with readable message.
-8. Audio signed URL failure falls back to stored audio URL or hides audio button.
+1. Отсутствующая Telegram session показывает понятное сообщение WebApp session.
+2. Некорректная Telegram session просит пользователя заново открыть WebApp.
+3. Seller not linked показывает access error.
+4. Supabase load failure показывает `Не удалось загрузить отчёт`.
+5. Item update failure оставляет edit data видимыми.
+6. Item delete failure оставляет карточку видимой.
+7. Review action failure возвращает назад с readable message.
+8. Audio signed URL failure переключается на stored audio URL или скрывает audio button.
 
-## 18. Edge cases
+## 18. Крайние случаи
 
-1. Sale exists with zero active items after delete.
-2. Processed sale with all items deleted remains not review-required.
-3. Needs_review sale with active item status `processed` contributes that item to revenue.
-4. Legacy `needs_price` is shown as review.
-5. Legacy `excluded` without `deleted_at` is not active.
-6. Deleted row with previous review status restores as review.
-7. Empty report period shows EmptyState, not a blank page.
-8. Date range uses Moscow calendar boundaries.
-9. Repeated review action is idempotent and does not corrupt revenue.
+1. Sale существует с нулём active items после delete.
+2. Processed sale со всеми удалёнными items остаётся not review-required.
+3. Needs_review sale с active item status `processed` учитывает этот item в revenue.
+4. Legacy `needs_price` показывается как review.
+5. Legacy `excluded` без `deleted_at` не считается active.
+6. Deleted row с previous review status восстанавливается как review.
+7. Empty report period показывает EmptyState, а не пустую страницу.
+8. Date range использует границы московского календаря.
+9. Повторное review action идемпотентно и не искажает revenue.
 
-## 19. Acceptance criteria
+## 19. Критерии приемки
 
-1. Bottom navigation has exactly `Отчёт`, `Проверка`, `Записи`, `Продавцы`.
-2. `/daily-report` shows one product title, shop context, compact summary cards and chart labels.
-3. Period filters are compact on mobile.
-4. `/review` shows only active review positions.
-5. `/review` can confirm, cancel and bulk-confirm review sales through server actions.
-6. Records page shows review state without duplicating report controls.
-7. Seller page shows records count and revenue.
-8. Processed sale items enter revenue.
-9. Needs_review sale items enter revenue only when the item itself is `processed`.
-10. Cancelled sale items do not enter revenue.
-11. Deleted/excluded items do not enter revenue.
-12. Debug UI is not visible to ordinary users.
+1. Нижняя навигация содержит ровно `Отчёт`, `Проверка`, `Записи`, `Продавцы`.
+2. `/daily-report` показывает один product title, контекст магазина, компактные summary cards и chart labels.
+3. Фильтры периода компактны на mobile.
+4. `/review` показывает только active review positions.
+5. `/review` может confirm, cancel и bulk-confirm review sales через server actions.
+6. Страница records показывает review state без дублирования report controls.
+7. Страница seller показывает records count и revenue.
+8. Processed sale items входят в revenue.
+9. Needs_review sale items входят в revenue только когда сам item имеет `processed`.
+10. Cancelled sale items не входят в revenue.
+11. Deleted/excluded items не входят в revenue.
+12. Debug UI не виден обычным пользователям.
 
-## 20. Out of scope
+## 20. Вне области
 
 1. Desktop-only admin dashboard.
 2. Inventory management.
 3. Product catalog CRUD.
 4. Full accounting export.
-5. Physical deletion of sale data.
+5. Физическое удаление sale data.

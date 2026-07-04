@@ -107,9 +107,9 @@ Telegram confirm/cancel остаётся быстрым flow под сообще
 2. created_at.
 3. sellerName.
 4. cleaned/raw text.
-5. user-facing status source.
+5. Источник пользовательского статуса.
 6. total_amount.
-7. signed audio URL, если audio сохранено.
+7. Подписанный audio URL, если audio сохранено.
 8. sale items для раскрытия `Товары`.
 
 Records не показывает пустое состояние при auth/DB error.
@@ -220,9 +220,9 @@ Records не показывает пустое состояние при auth/DB
 5. Устанавливает `deleted_at`.
 6. Сохраняет `deleted_previous_status`.
 7. Пересчитывает sale.
-8. Revalidate affected routes.
+8. Выполняет revalidate affected routes.
 
-## Redirect-based item actions
+## Redirect-based actions для item
 
 `restoreSaleItemAction`:
 
@@ -234,13 +234,13 @@ Records не показывает пустое состояние при auth/DB
 `resetDayRevenueAction`:
 
 1. Разрешён только для одного дня.
-2. Soft-delete active items выбранного дня.
+2. Выполняет soft-delete active items выбранного дня.
 3. Не удаляет sales.
 4. Делает safe redirect.
 
 `confirmSaleItemAction` больше не используется и не является частью WebApp contract.
 
-## Review decision actions
+## Actions решения review
 
 `confirmReviewSaleAction`:
 
@@ -254,7 +254,7 @@ Records не показывает пустое состояние при auth/DB
 8. Если нет ни одного confirmable item, возвращает `Не удалось подтвердить: нет ни одной полной позиции.`
 9. Пересчитывает `total_amount` по confirmable items.
 10. Revalidate `/review`, `/daily-report`, `/records`, `/sellers`.
-11. Redirects back to `/review` with safe mutation state.
+11. Возвращает назад на `/review` с safe mutation state.
 
 `cancelReviewSaleAction`:
 
@@ -264,8 +264,8 @@ Records не показывает пустое состояние при auth/DB
 4. Вызывает `cancelReviewSale`.
 5. Переводит sale/voice в `cancelled`.
 6. Переводит active items в `excluded`/deleted.
-7. Revalidate affected routes.
-8. Redirects back to `/review` with safe mutation state.
+7. Выполняет revalidate affected routes.
+8. Возвращает назад на `/review` с safe mutation state.
 
 `confirmAllReviewSalesAction`:
 
@@ -275,7 +275,7 @@ Records не показывает пустое состояние при auth/DB
 4. Для невалидных sales возвращает readable summary.
 5. Не подтверждает чужие sales.
 
-## Error contract
+## Контракт ошибок
 
 1. Server logs получает technical reason.
 2. UI получает стабильное русскоязычное сообщение.
@@ -283,7 +283,7 @@ Records не показывает пустое состояние при auth/DB
 4. Mutations возвращают `statusCode`/`code`: 401 session, 403 access, 404 not found, 422 invalid data, 500 server error.
 5. Auth errors отображаются отдельно.
 6. DB loading error не превращается в empty state.
-7. Review action failure does not mutate unrelated rows.
+7. Ошибка review action не меняет unrelated rows.
 
 ## Таблицы
 
@@ -294,18 +294,18 @@ Records не показывает пустое состояние при auth/DB
 5. `products` — optional name/unit matching.
 6. `audit_logs` — best-effort mutation audit.
 
-## Edge cases
+## Крайние случаи
 
 1. Нет sales за период — успешный пустой отчёт.
 2. Есть sale, но все items deleted — sale остаётся, active list пуст.
 3. Legacy `excluded` без `deleted_at` не показывается active.
 4. Product match отсутствует — свободное название сохраняется.
 5. Audit log failure не отменяет update/delete.
-6. Review sale item after edit can be stored as `processed` and counted in revenue; parent `needs_review` only means unresolved sibling items remain.
-7. Repeated review confirm/cancel is idempotent.
-8. Wrong sale id returns readable error.
+6. Review sale item после edit может быть сохранён как `processed` и учитываться в revenue; parent `needs_review` означает только, что остались unresolved sibling items.
+7. Повторный review confirm/cancel идемпотентен.
+8. Неверный sale id возвращает readable error.
 
-## Acceptance criteria
+## Критерии приемки
 
 1. Все чтения используют server-derived shop.
 2. Все мутации повторно проверяют shop.
@@ -315,13 +315,13 @@ Records не показывает пустое состояние при auth/DB
 6. `/review` подтверждает и отменяет parent sale только через server action.
 7. Records раскрывает товары без отдельного client-side Supabase доступа.
 8. Sellers показывает recordsCount и revenue за период.
-9. Errors не маскируются пустыми данными.
+9. Ошибки не маскируются пустыми данными.
 10. Revalidation выполняется для report, review, records и sellers.
 
-## Не входит в scope
+## Вне области
 
 1. Public REST endpoint для item edit.
 2. Client-side service role.
 3. GraphQL.
 4. Client-side подтверждение voice-записи без server action.
-5. Physical deletion of sale rows.
+5. Физическое удаление sale rows.

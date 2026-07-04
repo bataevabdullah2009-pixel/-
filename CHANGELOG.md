@@ -1,99 +1,99 @@
-# CHANGELOG
+# Журнал изменений
 
-## 2026-07-03 - Documentation audit and expanded specs
+## 2026-07-03 - Аудит документации и расширенные спеки
 
-### Docs
+### Документация
 
 - Проверены README, AGENTS, docs/specs, docs/features, docs/overview, docs/rules, roadmap и планы на соответствие текущему коду.
 - Расширен центральный `docs/INDEX.md`: теперь это подробная карта документации и инвариантов проекта, а не короткий список ссылок.
-- Расширены короткие product specs: owner dashboard, roles/access и production readiness.
-- Расширены короткие technical specs: API contract, architecture, deployment, database schema, auth/shop isolation и error handling.
-- Расширены feature docs: voice processing, sales report, manual review, mobile WebApp, records journal, sellers и acceptance matrix.
-- Расширены data specs: data model и soft delete.
+- Расширены короткие продуктовые спеки: панель владельца, роли/доступ и готовность к production.
+- Расширены короткие технические спеки: контракт API, архитектура, развертывание, схема БД, изоляция auth/shop и обработка ошибок.
+- Расширены описания функций: обработка голоса, отчёт продаж, ручная проверка, мобильный WebApp, журнал записей, продавцы и матрица приёмки.
+- Расширены спеки данных: модель данных и мягкое удаление.
 
-### Corrections
+### Исправления
 
-- Исправлено устаревшее описание WebApp review edit: валидно отредактированная item row становится `processed` и может войти в выручку, даже если parent sale остаётся `needs_review` из-за других неполных items.
-- Уточнено cancel behavior: успешная отмена review sale soft-delete все active items этой sale, поэтому уже processed items этой отменённой записи больше не входят в выручку.
-- Уточнены fallback, owner-created seller binding, server-derived shop isolation, production webhook `callback_query`, Supabase RPC read-back и item-level revenue rules.
+- Исправлено устаревшее описание редактирования проверки в WebApp: валидно отредактированная строка позиции становится `processed` и может войти в выручку, даже если родительская продажа остаётся `needs_review` из-за других неполных позиций.
+- Уточнено поведение отмены: успешная отмена продажи на проверке мягко удаляет все активные позиции этой продажи, поэтому уже обработанные позиции отменённой записи больше не входят в выручку.
+- Уточнены резервный разбор, привязка продавца, созданного владельцем, серверная изоляция магазина, production webhook `callback_query`, read-back Supabase RPC и правила выручки на уровне позиций.
 
-## 2026-07-03 - Idempotent confirm without false status error
+## 2026-07-03 - Идемпотентное подтверждение без ложной ошибки статуса
 
-### Root cause
+### Причина
 
-- Confirm/update flow relied on mutation response shape and secondary `voice_records` updates. When the main `sales`/`sale_items` update had already applied, an empty returned `data` or secondary update/read-back problem could still surface to WebApp as `Не удалось обновить статус записи.`.
-- Supabase `update()` does not return updated rows by default unless `.select()` is chained; code must not treat empty mutation data as failure when the final DB state can be read back as correct.
+- Сценарий подтверждения/обновления полагался на форму ответа мутации и вторичные обновления `voice_records`. Когда основное обновление `sales`/`sale_items` уже применилось, пустое возвращённое `data` или проблема вторичного update/read-back всё ещё могли проявиться в WebApp как `Не удалось обновить статус записи.`.
+- Supabase `update()` по умолчанию не возвращает обновлённые строки без цепочки `.select()`; код не должен считать пустые данные мутации ошибкой, если финальное состояние БД можно прочитать обратно как корректное.
 
-### Fix
+### Исправление
 
-- Telegram and WebApp confirm are idempotent: already confirmed records return `✅ Уже подтверждено`.
-- Confirm now updates valid active items, refetches active items and parent sale, recalculates `total_amount`, and returns a normalized success response with `ok`, `recordId`, `confirmedItemsCount`, `totalAmount`, `status`, `message`.
-- If incomplete items remain, the parent sale/voice record can stay `needs_review`; active `processed` items are still counted in revenue and incomplete items stay visible in `Проверка`.
-- WebApp review and daily-report actions no longer turn a successful backend mutation into a user-facing error if route revalidation fails; they show a soft refresh message instead.
-- Debug logs were added for confirm record id, found/valid item counts, item update results, sale update result, final sale read-back and returned response. Logs do not include tokens, initData or keys.
+- Подтверждение в Telegram и WebApp идемпотентно: уже подтверждённые записи возвращают `✅ Уже подтверждено`.
+- Подтверждение теперь обновляет валидные активные позиции, повторно читает активные позиции и родительскую продажу, пересчитывает `total_amount` и возвращает нормализованный успешный ответ с `ok`, `recordId`, `confirmedItemsCount`, `totalAmount`, `status`, `message`.
+- Если остаются неполные позиции, родительская продажа/голосовая запись может остаться `needs_review`; активные позиции `processed` всё равно учитываются в выручке, а неполные позиции остаются видимыми в `Проверка`.
+- Действия WebApp для проверки и дневного отчёта больше не превращают успешную backend-мутацию в пользовательскую ошибку, если revalidation маршрута упала; вместо этого они показывают мягкое сообщение об обновлении.
+- Добавлены отладочные логи для id подтверждаемой записи, количества найденных/валидных позиций, результатов обновления позиций, результата обновления продажи, финального read-back продажи и возвращённого ответа. Логи не содержат токены, initData или ключи.
 
-### Verification
+### Проверка
 
-- Added regression coverage for empty Supabase update `data` with no `error`, already-confirmed confirm, mixed valid+invalid confirm, no-valid-items confirm, cancel and WebApp-save-then-confirm behavior.
-- Revenue scope now counts active `processed` items when parent sale is `needs_review`, while `cancelled`/`failed` parents and deleted/excluded items remain excluded.
+- Добавлено регрессионное покрытие для пустого `data` в Supabase update без `error`, уже подтверждённого подтверждения, смешанного подтверждения валидных+невалидных позиций, подтверждения без валидных позиций, отмены и сценария WebApp-сохранить-затем-подтвердить.
+- Область выручки теперь учитывает активные позиции `processed`, когда родительская продажа `needs_review`, а родительские `cancelled`/`failed` и удалённые/исключённые позиции остаются исключёнными.
 
-## 2026-07-03 - Parser fallback restores multi-item sale_items
+## 2026-07-03 - Резервный парсер восстанавливает multi-item sale_items
 
-### Root cause
+### Причина
 
-- Причина склейки товаров была в deterministic evidence fallback: он грубо делил по запятой, поэтому `Сникерс, 3 штуки по 200 рублей` распадался на `Сникерс` и `3 штуки...`, а complete item не создавался. Если LLM возвращал один длинный item, в `sale_items` уходила одна строка с полным текстом, `quantity = 1`, `price = null`, `total = null`.
-- Read-only Supabase проверка последних записей подтвердила старые glued rows: последние multi-item voice sales имели один `sale_items.product_name` с полным текстом и `needs_review`/неполные цены.
+- Причина склейки товаров была в детерминированном evidence fallback: он грубо делил по запятой, поэтому `Сникерс, 3 штуки по 200 рублей` распадался на `Сникерс` и `3 штуки...`, а полная позиция не создавалась. Если LLM возвращал одну длинную позицию, в `sale_items` уходила одна строка с полным текстом, `quantity = 1`, `price = null`, `total = null`.
+- Read-only проверка последних записей в Supabase подтвердила старые склеенные строки: последние голосовые продажи с несколькими позициями имели один `sale_items.product_name` с полным текстом и `needs_review`/неполные цены.
 
-### Parser and normalization
+### Парсер и нормализация
 
-- Fallback parser теперь ищет complete item evidence по всей фразе без split по запятой между названием и количеством.
+- Резервный парсер теперь ищет доказательство полной позиции по всей фразе без разделения по запятой между названием и количеством.
 - Поддержаны формы `Сникерс 5 по 100`, `Пицца 1 штука 500 рублей`, `Хлеб 3 штуки по 50, шоколад 2 штуки по 100`, `Кола 2 бутылки по 150 рублей`.
-- Неполные остатки вроде `Корзина продуктов` сохраняются отдельными `needs_review` items и не блокируют валидные позиции.
-- Parser fallback используется также при invalid LLM JSON/parser fallback, чтобы recoverable parser failure не превращал всю продажу в одну строку.
+- Неполные остатки вроде `Корзина продуктов` сохраняются отдельными позициями `needs_review` и не блокируют валидные позиции.
+- Резервный парсер используется также при невалидном JSON от LLM/parser fallback, чтобы восстанавливаемый сбой парсера не превращал всю продажу в одну строку.
 
-### Confirm and WebApp save
+### Подтверждение и сохранение в WebApp
 
-- Telegram и WebApp confirm логируют найденные items, валидные items и причины невалидности по каждой позиции.
-- Успешный confirm теперь отвечает `✅ Подтверждено: N позиций, сумма X ₽`.
-- Ручное сохранение товара в WebApp обновляет `sale_items`, пересчитывает `total`, ставит item `processed` и revalidate затронутые report/review/records/sellers routes. Active `processed` item может входить в выручку, даже если parent sale остаётся `needs_review` из-за других неполных позиций.
+- Подтверждение в Telegram и WebApp логирует найденные позиции, валидные позиции и причины невалидности по каждой позиции.
+- Успешное подтверждение теперь отвечает `✅ Подтверждено: N позиций, сумма X ₽`.
+- Ручное сохранение товара в WebApp обновляет `sale_items`, пересчитывает `total`, ставит позицию `processed` и revalidate затронутые маршруты отчёта/проверки/записей/продавцов. Активная позиция `processed` может входить в выручку, даже если родительская продажа остаётся `needs_review` из-за других неполных позиций.
 
-### Verification
+### Проверка
 
-- Добавлены regression tests для точного сценария `Сникерс, 3 штуки по 200 рублей. Буханка хлеба, 5 штук по 50 рублей.`: 2 items, сумма `850`, оба valid.
-- Добавлены tests для mixed valid+incomplete sale, text-only incomplete sale, bare quantity `5 по 100`, bottles и ручного WebApp save patch.
-- Пройдены `npm.cmd run test` (8 files, 109 tests), `npm.cmd run lint`, `npm.cmd run build`, `npm.cmd run web:build`.
-- Supabase smoke через реальный `save_voice_sale` RPC создал временную запись с двумя `sale_items` (`600 + 250 = 850`) и затем удалил созданные `sales`, `sale_items`, `voice_records`; cleanup check вернул нули.
+- Добавлены регрессионные тесты для точного сценария `Сникерс, 3 штуки по 200 рублей. Буханка хлеба, 5 штук по 50 рублей.`: 2 позиции, сумма `850`, обе валидны.
+- Добавлены тесты для смешанной валидной+неполной продажи, текстовой неполной продажи, голого количества `5 по 100`, бутылок и ручного patch сохранения в WebApp.
+- Пройдены `npm.cmd run test` (8 файлов, 109 тестов), `npm.cmd run lint`, `npm.cmd run build`, `npm.cmd run web:build`.
+- Supabase smoke через реальный RPC `save_voice_sale` создал временную запись с двумя `sale_items` (`600 + 250 = 850`) и затем удалил созданные `sales`, `sale_items`, `voice_records`; проверка очистки вернула нули.
 
-## 2026-07-02 - Mixed cart confirmation and calm SaaS WebApp
+## 2026-07-02 - Подтверждение смешанной корзины и спокойный SaaS WebApp
 
-### Confirm flow
+### Сценарий подтверждения
 
-- Исправлена причина ошибки `Перед подтверждением нужны товар, количество и цена хотя бы в одной позиции.`: confirm-flow требовал, чтобы все active `sale_items` были полными, и блокировал всю корзину при одной неполной позиции.
-- Telegram `confirmVoiceSaleWithClient` и WebApp `confirmReviewSale` теперь подтверждают все валидные active items, переводят их в `processed`, пересчитывают `sales.total_amount`, а неполные active items оставляют в `needs_review`.
-- Если нет ни одной полной позиции, confirm не меняет sale/items и возвращает `Не удалось подтвердить: нет ни одной полной позиции.`
-- Валидная позиция: осмысленный `product_name`, положительное количество/вес и либо `price`, либо `total`, из которого можно вывести unit price.
+- Исправлена причина ошибки `Перед подтверждением нужны товар, количество и цена хотя бы в одной позиции.`: сценарий подтверждения требовал, чтобы все активные `sale_items` были полными, и блокировал всю корзину при одной неполной позиции.
+- Telegram `confirmVoiceSaleWithClient` и WebApp `confirmReviewSale` теперь подтверждают все валидные активные позиции, переводят их в `processed`, пересчитывают `sales.total_amount`, а неполные активные позиции оставляют в `needs_review`.
+- Если нет ни одной полной позиции, подтверждение не меняет продажу/позиции и возвращает `Не удалось подтвердить: нет ни одной полной позиции.`
+- Валидная позиция: осмысленный `product_name`, положительное количество/вес и либо `price`, либо `total`, из которого можно вывести цену за единицу.
 - Поддержаны весовые единицы `кг` и `г`; `300 грамм по 200 рублей` считается как `0.3 * 200 = 60`.
 
 ### WebApp
 
-- WebApp переведён на спокойный premium SaaS дизайн-сет: background `#0B1020`, surface `#12192B`, surface2 `#161F34`, accent `#5B8CFF`, warning `#F59E0B`, danger `#EF4444`.
-- Оранжевый убран из основного интерфейсного акцента и оставлен только для review/warning состояний.
-- KPI, фильтры, график, топ товаров, последние продажи, проверка, записи и продавцы получили компактные карточки, ровные hit areas и единый spacing.
+- WebApp переведён на спокойный премиальный SaaS-дизайн: фон `#0B1020`, поверхность `#12192B`, вторая поверхность `#161F34`, акцент `#5B8CFF`, предупреждение `#F59E0B`, опасность `#EF4444`.
+- Оранжевый убран из основного интерфейсного акцента и оставлен только для состояний проверки/предупреждения.
+- KPI, фильтры, график, топ товаров, последние продажи, проверка, записи и продавцы получили компактные карточки, ровные зоны нажатия и единые отступы.
 - `SaleItemCard` показывает причины проверки (`нет цены`, `нет количества или веса`, `не удалось выделить отдельный товар`) и поддерживает редактирование единицы `шт`/`кг`/`г`.
 - Быстрые периоды в UI: `Сегодня`, `Вчера`, `Неделя`, `Месяц` плюс выбор даты.
-- Добавлена явная `favicon.svg` в новой палитре, чтобы WebApp не создавал 404 на browser smoke.
+- Добавлена явная `favicon.svg` в новой палитре, чтобы WebApp не создавал 404 при браузерной smoke-проверке.
 
-### Tests and docs
+### Тесты и документация
 
-- Добавлены regression tests для полной корзины, mixed cart и корзины без валидных позиций.
-- Добавлены parser/shared tests для граммов и total-only распознавания.
+- Добавлены регрессионные тесты для полной корзины, смешанной корзины и корзины без валидных позиций.
+- Добавлены тесты parser/shared для граммов и распознавания только по сумме.
 - Обновлены README, AGENTS, specs, features, architecture/rules/overview и планы под фактический код.
 
-## 2026-07-02 - Callback delivery, parser split and premium review dashboard
+## 2026-07-02 - Доставка callback, разделение парсера и премиальная панель проверки
 
 ### Telegram
 
-- Root cause callback-кнопок найден и подтверждён live `getWebhookInfo`: production URL был верный, но webhook был установлен с `allowed_updates: ["message"]`, поэтому Telegram не доставлял `callback_query`.
+- Причина с callback-кнопками найдена и подтверждена live `getWebhookInfo`: production URL был верный, но webhook был установлен с `allowed_updates: ["message"]`, поэтому Telegram не доставлял `callback_query`.
 - `scripts/set-telegram-webhook.ts` теперь устанавливает `allowed_updates: ["message", "callback_query"]`; live webhook-info подтверждает оба типа update.
 - Webhook route логирует безопасный `telegram_update_received` с `has_message`, `has_voice`, `has_callback_query`, `callback_query_id`, `callback_data`, `callback_from_id`, `callback_message_id`.
 - Review callback data остаются короткими: `confirm:<sale_id>` и `cancel:<sale_id>`.
@@ -101,9 +101,9 @@
 - Повторное нажатие получает `answerCallbackQuery` с текстом `Эта запись уже обработана`.
 - Неправильный callback format получает понятный ответ `Некорректная кнопка.`.
 
-### Parser
+### Парсер
 
-- `enforceTranscriptEvidence` разбивает один склеенный LLM item на несколько sale_items, если transcript содержит несколько товарных сегментов через точку, запятую или союз.
+- `enforceTranscriptEvidence` разбивает одну склеенную позицию LLM на несколько `sale_items`, если расшифровка содержит несколько товарных сегментов через точку, запятую или союз.
 - Поддержан порядок `3 штуки Сникерса по 200 рублей`, где количество стоит перед названием товара.
 - Регрессия покрывает фразы `Буханка хлеба 5 штук по 100 рублей. 3 штуки Сникерса по 200 рублей.` и `Шоколад 5 штук по 100 рублей, хлеб 4 штуки по 50 рублей`.
 
@@ -111,61 +111,61 @@
 
 - Нижняя навигация приведена к четырём разделам: `Отчёт`, `Проверка`, `Записи`, `Продавцы`.
 - `/review` снова является пользовательским экраном: показывает только active `needs_review` позиции, отдельные карточки товаров, `Подтвердить`, `Отмена` и `Подтвердить всё`.
-- WebApp review actions используют server-side shop/session checks, переводят parent sale/voice/items в те же статусы, что Telegram callback, и пересчитывают выручку.
-- Report UI получил первую compact SaaS-итерацию; актуальная палитра после текущего изменения описана выше и использует `#0B1020`, `#12192B`/`#161F34` и accent `#5B8CFF`.
+- Действия проверки WebApp используют серверные проверки магазина/сессии, переводят родительскую продажу/голосовую запись/позиции в те же статусы, что callback Telegram, и пересчитывают выручку.
+- Интерфейс отчёта получил первую компактную SaaS-итерацию; актуальная палитра после текущего изменения описана выше и использует `#0B1020`, `#12192B`/`#161F34` и акцент `#5B8CFF`.
 - Аналитика получила bar chart с ограниченной шириной столбцов и подписями день + сумма; один столбец больше не растягивается на весь экран.
-- Карточки товаров остаются компактными: обычный режим показывает только `✏️` edit и `🗑` delete, edit/delete открываются inline.
+- Карточки товаров остаются компактными: обычный режим показывает только `✏️` редактирование и `🗑` удаление, редактирование/удаление открываются inline.
 
-### Data and revenue
+### Данные и выручка
 
 - Confirm переводит sale/voice/items в `processed`, пересчитывает `total_amount` и добавляет запись в выручку.
 - Cancel переводит sale/voice в `cancelled`, items в `excluded` с `deleted_at`, и оставляет выручку нулевой.
-- Report scope rule from this entry was superseded on 2026-07-03: current revenue counts active item `processed` when parent sale is not `cancelled`/`failed`.
+- Правило области отчёта из этой записи было заменено 2026-07-03: текущая выручка учитывает активную позицию `processed`, когда родительская продажа не `cancelled`/`failed`.
 
-### Tests
+### Тесты
 
 - Локально пройдены `npm.cmd run lint`, `npm.cmd run test`, `npm.cmd run build` и `npm.cmd run web:build`.
-- `npm.cmd run test`: 8 test files, 96 tests.
-- Browser smoke через Playwright + системный Chrome проверил `/daily-report`, `/review`, `/records`, `/sellers` в demo mode: страницы рендерятся без Next error overlay, навигация содержит четыре раздела.
-- Без demo/fallback локальный browser получает ожидаемое auth-сообщение `Telegram не передал данные сессии...`; это не проверяет реальный Telegram initData.
+- `npm.cmd run test`: 8 тестовых файлов, 96 тестов.
+- Браузерная smoke-проверка через Playwright + системный Chrome проверила `/daily-report`, `/review`, `/records`, `/sellers` в демо-режиме: страницы рендерятся без Next error overlay, навигация содержит четыре раздела.
+- Без demo/fallback локальный браузер получает ожидаемое auth-сообщение `Telegram не передал данные сессии...`; это не проверяет реальный Telegram initData.
 
-### Docs
+### Документы
 
-- Обновлены README, AGENTS, overview, specs, features, plans, roadmap, architecture, rules и локальный Codex skill под фактический `/review` и callback delivery.
+- Обновлены README, AGENTS, overview, specs, features, plans, roadmap, architecture, rules и локальный skill Codex под фактический `/review` и доставку callback.
 
-## 2026-06-30 - Release stabilization, superseded details
+## 2026-06-30 - Стабилизация релиза, заменённые детали
 
 - Ветка стабилизации добавляла короткие callback data, WebApp review screen и расширенные проверки update/delete.
 - Текущий контракт от 2026-07-02 оставляет две Telegram-кнопки без `Открыть отчёт` и использует `/review` как пользовательский экран проверки.
 - Актуальные правила см. в `README.md`, `AGENTS.md` и `docs/specs`.
 
-## 2026-06-25 - WebApp persistence hardening
+## 2026-06-25 - Укрепление сохранения WebApp
 
-- Укреплены update/delete server actions для sale items.
-- Добавлен soft delete через `deleted_at`.
-- Report начал отделять active и deleted items.
-- Добавлены regression tests для report totals after update/delete.
+- Укреплены серверные действия update/delete для позиций продажи.
+- Добавлено мягкое удаление через `deleted_at`.
+- Отчёт начал отделять активные и удалённые позиции.
+- Добавлены регрессионные тесты для итогов отчёта после update/delete.
 
-## 2026-06-20 - Sales flow stabilization
+## 2026-06-20 - Стабилизация сценария продаж
 
-- Уверенные voice-записи сохраняются как `processed`.
+- Уверенные голосовые записи сохраняются как `processed`.
 - Неполные или низкоуверенные распознавания сохраняются как `needs_review`.
 - Добавлены audit logs для ключевых этапов обработки.
-- Сохранение voice sale стало проверять read-back identifiers.
+- Сохранение голосовой продажи стало проверять read-back идентификаторы.
 
-## 2026-06-18 - Soft delete foundation
+## 2026-06-18 - Основа мягкого удаления
 
 - Добавлены `sale_items.deleted_at`, `deleted_reason`, `deleted_previous_status`.
 - Исключённые товары перестали попадать в active report.
-- Restore сохраняет previous status.
+- Восстановление сохраняет previous status.
 
-## 2026-06-17 - Parser diagnostics
+## 2026-06-17 - Диагностика парсера
 
-- Добавлены parser JSON diagnostics.
-- STT/LLM fallback переводит запись в review вместо тихого failure, если продажу можно сохранить для проверки.
+- Добавлена диагностика JSON парсера.
+- Резервный STT/LLM-сценарий переводит запись в проверку вместо тихого сбоя, если продажу можно сохранить для проверки.
 
-## 2026-06-16 - Initial product baseline
+## 2026-06-16 - Начальная продуктовая база
 
-- Создан Telegram bot voice pipeline.
+- Создан голосовой конвейер Telegram-бота.
 - Созданы Supabase таблицы `shops`, `sellers`, `voice_records`, `sales`, `sale_items`, `products`, `audit_logs`.
 - Добавлен Next.js WebApp с отчётом и журналом записей.

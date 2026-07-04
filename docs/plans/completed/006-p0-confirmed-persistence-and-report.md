@@ -2,24 +2,24 @@
 
 ## Причина
 
-Evidence validator отбрасывал корректные quantity/price при латинской транслитерации STT, а приложение доверяло RPC identifiers без проверки фактического числа `sale_items`. WebApp мог начать auth в fallback до появления initData.
+Валидатор доказательств отбрасывал корректные quantity/price при латинской транслитерации STT, а приложение доверяло RPC-идентификаторам без проверки фактического числа `sale_items`. WebApp мог начать auth в fallback до появления initData.
 
 ## Исправлено
 
 - русский язык и контекст для STT;
 - совпадающий cleaned-text evidence для транслитерации;
-- status только по полноте и confidence конкретных items;
-- RPC без неатомарного direct fallback;
-- read-back sale и точного item count до bot success;
-- полные pipeline logs с безопасной redaction;
-- seller-first shop resolution и проверенный fallback seller;
+- статус только по полноте и уверенности конкретных позиций;
+- RPC без неатомарного прямого fallback;
+- read-back продажи и точного количества позиций до успеха бота;
+- полные логи конвейера с безопасной redaction;
+- seller-first определение магазина и проверенный fallback-продавец;
 - report/review/timezone и подтверждение WebApp mutations;
 - backfill migration для однозначных старых записей;
-- parser, persistence, report, review, shop и timezone tests.
+- тесты парсера, сохранения, отчёта, проверки, магазина и timezone.
 
-## Release gate
+## Релизная проверка
 
-- `npm run lint` — passed;
-- `npm run test` — 8 files, 72 tests passed;
-- `npm run build` — bot/web/shared passed;
+- `npm run lint` — пройдено;
+- `npm run test` — 8 файлов, 72 теста пройдены;
+- `npm run build` — bot/web/shared пройдены;
 - live Supabase candidate preview и read-back — 2 строки исправлены, текущая выручка 400.

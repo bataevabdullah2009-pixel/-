@@ -1,61 +1,61 @@
-# Architecture
+# Архитектура
 
-## System boundary
+## Граница системы
 
 `Голосовой журнал продаж` состоит из трёх основных частей:
 
-1. Telegram bot in `apps/bot`.
-2. Next.js Telegram WebApp in `apps/web`.
-3. Supabase database/storage.
+1. Telegram-бот в `apps/bot`.
+2. Next.js Telegram WebApp в `apps/web`.
+3. База данных и хранилище Supabase.
 
-Shared business utilities находятся в `packages/shared`.
+Общие бизнес-утилиты находятся в `packages/shared`.
 
-## High-level flow
+## Общий поток
 
 ```text
-Telegram user
-  -> bot webhook
+Пользователь Telegram
+  -> webhook бота
   -> voice.handler
-  -> Telegram file download
-  -> audio conversion/preparation
+  -> скачивание файла Telegram
+  -> конвертация/подготовка аудио
   -> STT
-  -> cleanup/parser
-  -> deterministic evidence fallback
+  -> очистка/парсер
+  -> детерминированный резервный разбор доказательств
   -> records.service
   -> Supabase RPC save_voice_sale
-  -> Telegram response
-  -> WebApp report/review/records/sellers
+  -> ответ Telegram
+  -> отчёт/проверка/записи/продавцы WebApp
 ```
 
-## Bot modules
+## Модули бота
 
-- `apps/bot/src/core/process-update.ts` registers handlers.
-- `apps/bot/src/handlers/start.handler.ts` handles `/start`.
-- `apps/bot/src/handlers/voice.handler.ts` owns voice pipeline orchestration.
-- `apps/bot/src/handlers/review.handler.ts` owns Telegram callback decisions.
-- `apps/bot/src/services/transcription.service.ts` calls STT.
-- `apps/bot/src/services/cleanup-text.service.ts` calls parser/LLM and fallback.
-- `apps/bot/src/services/records.service.ts` persists records and review decisions.
-- `apps/bot/src/services/storage.service.ts` archives voice audio.
-- `apps/bot/src/services/telegram.service.ts` creates Telegram keyboards/messages.
+- `apps/bot/src/core/process-update.ts` регистрирует обработчики.
+- `apps/bot/src/handlers/start.handler.ts` обрабатывает `/start`.
+- `apps/bot/src/handlers/voice.handler.ts` управляет оркестрацией голосового конвейера.
+- `apps/bot/src/handlers/review.handler.ts` управляет решениями callback Telegram.
+- `apps/bot/src/services/transcription.service.ts` вызывает STT.
+- `apps/bot/src/services/cleanup-text.service.ts` вызывает парсер/LLM и резервный разбор.
+- `apps/bot/src/services/records.service.ts` сохраняет записи и решения проверки.
+- `apps/bot/src/services/storage.service.ts` архивирует голосовое аудио.
+- `apps/bot/src/services/telegram.service.ts` создаёт клавиатуры/сообщения Telegram.
 
-## Web modules
+## Модули WebApp
 
-- `apps/web/src/app/daily-report/page.tsx` renders report.
-- `apps/web/src/app/review/page.tsx` renders review queue and review decisions.
-- `apps/web/src/app/review/actions.ts` owns WebApp confirm/cancel review actions.
-- `apps/web/src/app/records/page.tsx` renders record journal.
-- `apps/web/src/app/sellers/page.tsx` renders seller stats.
-- `apps/web/src/app/daily-report/actions.ts` owns sale item update/delete/restore/reset actions.
-- `apps/web/src/features/records/records.api.ts` reads reports and performs mutations.
-- `apps/web/src/features/records/report-scope.ts` scopes sale_items through sales from current shop.
-- `apps/web/src/components/SaleItemCard.tsx` owns compact item edit/delete UX.
-- `apps/web/src/components/RecordCard.tsx` owns record display and Telegram review badge.
-- `apps/web/src/components/MobileNavigation.tsx` owns four-tab mobile navigation.
+- `apps/web/src/app/daily-report/page.tsx` рендерит отчёт.
+- `apps/web/src/app/review/page.tsx` рендерит очередь проверки и решения проверки.
+- `apps/web/src/app/review/actions.ts` управляет действиями подтверждения/отмены проверки в WebApp.
+- `apps/web/src/app/records/page.tsx` рендерит журнал записей.
+- `apps/web/src/app/sellers/page.tsx` рендерит статистику продавцов.
+- `apps/web/src/app/daily-report/actions.ts` управляет действиями update/delete/restore/reset для позиций продажи.
+- `apps/web/src/features/records/records.api.ts` читает отчёты и выполняет мутации.
+- `apps/web/src/features/records/report-scope.ts` ограничивает `sale_items` через продажи текущего магазина.
+- `apps/web/src/components/SaleItemCard.tsx` управляет компактным UX редактирования/удаления позиции.
+- `apps/web/src/components/RecordCard.tsx` управляет отображением записи и бейджем проверки Telegram.
+- `apps/web/src/components/MobileNavigation.tsx` управляет мобильной навигацией с четырьмя вкладками.
 
-## Data model
+## Модель данных
 
-Main tables:
+Основные таблицы:
 
 - `shops`;
 - `sellers`;
@@ -65,9 +65,9 @@ Main tables:
 - `products`;
 - `audit_logs`.
 
-Audio lives in Supabase Storage bucket configured by `SUPABASE_STORAGE_BUCKET`.
+Аудио хранится в bucket Supabase Storage, настроенном через `SUPABASE_STORAGE_BUCKET`.
 
-## Status lifecycle
+## Жизненный цикл статусов
 
 `sales` and `voice_records`:
 
@@ -80,13 +80,13 @@ Audio lives in Supabase Storage bucket configured by `SUPABASE_STORAGE_BUCKET`.
 
 - `processed`;
 - `needs_review`;
-- `needs_price` legacy;
+- `needs_price` устаревший;
 - `failed`;
 - `excluded`.
 
-## Revenue boundary
+## Граница выручки
 
-Revenue is derived from scoped active rows only:
+Выручка выводится только из активных строк в области текущего магазина:
 
 ```text
 sales.shop_id = current shop
@@ -99,101 +99,101 @@ sale_items.quantity/weight is valid
 sale_items.price is valid or derivable from total
 ```
 
-`scopeReportRows` prevents cross-shop reads, excludes cancelled/failed parent sales, and keeps item status as the revenue source of truth. A `needs_review` sale can contribute revenue through active `processed` items while incomplete items remain in review.
+`scopeReportRows` предотвращает чтение между магазинами, исключает родительские продажи `cancelled`/`failed` и оставляет статус позиции источником истины для выручки. Продажа `needs_review` может давать выручку через активные позиции `processed`, пока неполные позиции остаются на проверке.
 
-`buildSalesReport` then aggregates only `processed` active items.
+`buildSalesReport` затем агрегирует только активные позиции `processed`.
 
-## Parser fallback boundary
+## Граница резервного парсера
 
-`packages/shared/utils/sale-parser.ts` is the deterministic guard between LLM output and persistence:
+`packages/shared/utils/sale-parser.ts` - детерминированная защита между выводом LLM и сохранением:
 
-- it verifies quantity/price evidence against the STT transcript;
-- it splits glued parser output into separate `sale_items`;
-- it handles comma after product name, dot, newline, conjunctions and adjacent products;
-- it supports `шт`, `кг`, `г`, bottles as pieces, and bare `5 по 100`;
-- it keeps incomplete leftovers as separate review items instead of folding them into a valid product.
+- проверяет доказательства количества/цены по STT-расшифровке;
+- разделяет склеенный вывод парсера на отдельные `sale_items`;
+- обрабатывает запятую после названия товара, точку, новую строку, союзы и соседние товары;
+- поддерживает `шт`, `кг`, `г`, бутылки как штуки и голое `5 по 100`;
+- сохраняет неполные остатки как отдельные позиции на проверку вместо склейки с валидным товаром.
 
-## Telegram review decision
+## Решение проверки в Telegram
 
 ```text
-needs_review sale
-  -> Telegram message with:
+продажа needs_review
+  -> сообщение Telegram с:
        ✅ Подтвердить
        ❌ Отмена
   -> callback:
        confirm:<sale_id>
        cancel:<sale_id>
-  -> requireSeller resolves Telegram user
-  -> records.service validates sale shop and seller
-  -> mutation updates Supabase
+  -> requireSeller определяет пользователя Telegram
+  -> records.service проверяет магазин и продавца продажи
+  -> мутация обновляет Supabase
 ```
 
-Confirm:
+Подтверждение:
 
-- validates active items individually;
-- requires meaningful product, quantity/weight and price-or-total for a confirmable item;
-- sets valid items to `processed`;
-- leaves incomplete active items as `needs_review`;
-- fails only when there is no confirmable item;
-- sets sale/voice to `processed`;
-- recalculates total.
+- проверяет активные позиции по отдельности;
+- требует осмысленный товар, количество/вес и цену или сумму для подтверждаемой позиции;
+- ставит валидные позиции в `processed`;
+- оставляет неполные активные позиции как `needs_review`;
+- падает только когда нет ни одной подтверждаемой позиции;
+- ставит продажу/голосовую запись в `processed`;
+- пересчитывает сумму.
 
-Cancel:
+Отмена:
 
-- sets sale/voice to `cancelled`;
-- soft-delete active items;
-- stores previous item status;
-- total becomes zero.
+- ставит продажу/голосовую запись в `cancelled`;
+- мягко удаляет активные позиции;
+- сохраняет предыдущий статус позиции;
+- сумма становится нулевой.
 
-## WebApp responsibility
+## Ответственность WebApp
 
-WebApp responsibilities:
+Ответственности WebApp:
 
-- show report;
-- show review queue;
-- confirm/cancel review sales through server actions;
-- show records;
-- show sellers;
-- edit sale item fields;
-- delete sale item from active report;
-- display review/cancel/processed states consistently.
+- показывать отчёт;
+- показывать очередь проверки;
+- подтверждать/отменять продажи на проверке через серверные действия;
+- показывать записи;
+- показывать продавцов;
+- редактировать поля позиции продажи;
+- удалять позицию продажи из активного отчёта;
+- единообразно отображать состояния проверки/отмены/обработки.
 
-## Authentication and shop isolation
+## Аутентификация и изоляция магазина
 
-Telegram WebApp session:
+Сессия Telegram WebApp:
 
-- client receives Telegram initData;
-- server verifies initData with bot token;
-- server resolves owner/seller principal;
-- session cookie stores derived context;
-- mutations call `requireOwner()`;
-- `shop_id` is never accepted from client form data as authority.
+- клиент получает Telegram initData;
+- сервер проверяет initData токеном бота;
+- сервер определяет principal владельца/продавца;
+- session cookie хранит выведенный контекст;
+- мутации вызывают `requireOwner()`;
+- `shop_id` никогда не принимается из данных клиентской формы как источник правды.
 
-Bot callback:
+Callback бота:
 
-- resolves seller by `ctx.from.id`;
-- filters sale by `shop_id` and `seller_id`;
-- does not trust callback data beyond sale id and action.
+- определяет продавца по `ctx.from.id`;
+- фильтрует продажу по `shop_id` и `seller_id`;
+- не доверяет данным callback сверх id продажи и действия.
 
-## Diagnostics
+## Диагностика
 
 `/debug-telegram` is available only:
 
-- in development;
-- or in production when `DEBUG_TELEGRAM_WEBAPP=true`.
+- в разработке;
+- или в production при `DEBUG_TELEGRAM_WEBAPP=true`.
 
-No diagnostics button is shown in the ordinary review-message. `/start` report keyboard can include diagnostics only behind the debug flag.
+В обычном сообщении проверки диагностическая кнопка не показывается. Клавиатура отчёта `/start` может включать диагностику только за debug-флагом.
 
-## Non-goals
+## Не цели
 
-- No rewrite of STT.
-- No rewrite of parser.
-- No database schema reset.
-- No broad UI framework rewrite.
+- Не переписывать STT.
+- Не переписывать парсер.
+- Не сбрасывать схему базы данных.
+- Не делать широкое переписывание UI-фреймворка.
 
-## Verification
+## Проверка
 
-Architecture-sensitive tests:
+Архитектурно чувствительные тесты:
 
 - `tests/stabilization.test.ts`;
 - `tests/telegram-web-app.test.ts`;
@@ -201,7 +201,7 @@ Architecture-sensitive tests:
 - `tests/sale-parser.test.ts`;
 - `tests/transcript.test.ts`.
 
-Required commands:
+Обязательные команды:
 
 ```bash
 npm run lint
