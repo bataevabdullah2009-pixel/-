@@ -1,56 +1,59 @@
 # AGENTS.md
 
-Этот файл задаёт рабочие правила для агентов и разработчиков проекта `Голосовой журнал продаж`.
+## Читать перед правкой
 
-## Главные источники
+1. `README.md`
+2. `docs/specs/global.md`
+3. `docs/INDEX.md`
+4. `docs/architecture/architecture.md`
+5. Профильные документы из `docs/specs/`, `docs/features/`, `docs/rules/`
+6. Текущий diff: `git status -sb`, `git diff --stat`, `git diff`
 
-Перед изменениями читать:
+Если краткий документ расходится с `docs/specs/global.md`, свериться с кодом и исправить документацию.
 
-1. [docs/specs/global.md](docs/specs/global.md) - главный системный документ проекта.
-2. [docs/INDEX.md](docs/INDEX.md) - карта документации.
-3. [docs/architecture/architecture.md](docs/architecture/architecture.md) - архитектура модулей.
-4. Профильный документ из `docs/specs/`, `docs/features/` или `docs/rules/` по области задачи.
+## Границы проекта
 
-Если короткий документ противоречит `docs/specs/global.md`, сначала проверить фактический код и затем обновить документацию, чтобы устранить расхождение.
+1. `apps/bot` - Telegram-бот, voice pipeline, callbacks.
+2. `apps/web` - Next.js WebApp, route handlers, Server Components, Server Actions.
+3. `packages/shared` - типы, схемы, parser/evidence, расчёт отчёта.
+4. `supabase/migrations` - схема, RLS/grants, RPC, soft delete.
+5. `docs` - спецификации, правила, планы, changelog.
+6. `.Agent.skills` - локальный skill агента.
 
-## Ограничения проекта
+## Нельзя без прямой задачи
 
-1. Не менять голосовой конвейер, Telegram callbacks, WebApp flow или Supabase schema без прямой задачи.
-2. Не принимать `shop_id` от клиента как источник прав.
-3. Не раскрывать `SUPABASE_SERVICE_ROLE_KEY`, Telegram token, STT/LLM keys или raw initData в клиенте и логах.
-4. Не превращать ошибки авторизации или БД в пустой отчёт.
-5. Не использовать физическое удаление `sale_items` в пользовательском сценарии; удаление должно быть мягким.
-6. Не оставлять документацию, которая описывает несуществующий UI/API или устаревшие правила выручки.
+1. Переписывать voice/STT/LLM/parser/webhook/WebApp/Supabase schema.
+2. Доверять клиентскому `shop_id`.
+3. Логировать или коммитить `SUPABASE_SERVICE_ROLE_KEY`, Telegram token, STT/LLM keys, raw initData.
+4. Маскировать auth/DB ошибки пустым отчётом.
+5. Физически удалять `sale_items` в пользовательском сценарии.
+6. Оставлять документацию, противоречащую коду.
+7. Делать destructive git-команды без прямой просьбы.
 
-## Инварианты поведения
+## Инварианты
 
-Канонические правила статусов, полной позиции, сомнительной позиции, подтверждения, отмены и расчёта выручки находятся в [docs/specs/global.md](docs/specs/global.md).
-
-Кратко:
-
-1. Уверенная голосовая продажа становится `processed`.
-2. Сомнительная позиция остаётся `needs_review` до решения.
-3. Сообщение проверки Telegram содержит только `✅ Подтвердить` и `❌ Отмена`.
-4. Callback-данные нового формата: `confirm:<sale_id>` и `cancel:<sale_id>`.
-5. Подтверждение смешанной корзины подтверждает валидные позиции и оставляет неполные на проверке.
+1. Уверенная голосовая продажа -> `processed`.
+2. Сомнительная позиция -> `needs_review` до решения.
+3. Telegram-проверка содержит только `✅ Подтвердить` и `❌ Отмена`.
+4. Callback format: `confirm:<sale_id>`, `cancel:<sale_id>`.
+5. Подтверждение смешанной корзины подтверждает валидные позиции, неполные оставляет на проверке.
 6. Отмена переводит запись в `cancelled` и мягко удаляет активные позиции.
 7. Выручка считается по активным `sale_items.status = processed`, если родительская продажа не `cancelled` и не `failed`.
+8. Родительский `needs_review` не блокирует выручку обработанной соседней позиции.
+9. WebApp проверяет магазин и права на сервере.
 
 ## Документация
 
-После изменения кода обновлять документацию в той же задаче:
-
-1. Изменение голосового конвейера - `docs/specs/global.md`, Telegram/product specs, feature-документы.
-2. Изменение WebApp - WebApp specs, feature-документы и acceptance matrix.
-3. Изменение БД - технические specs, data specs, миграции и changelog.
-4. Изменение deploy/webhook - deployment docs, Telegram webhook docs и README.
-5. Изменение только документации - не менять код приложения, bot logic, WebApp logic и Supabase schema.
-
-Документация проекта ведётся на русском языке.
+1. Голосовой конвейер: `docs/specs/global.md`, Telegram/product specs, feature-документы.
+2. WebApp: WebApp specs, feature-документы, acceptance matrix.
+3. БД: technical/data specs, migrations, `CHANGELOG.md`.
+4. Deploy/webhook: deployment docs, Telegram webhook docs, README.
+5. Выручка/проверка/подтверждение/отмена: `docs/specs/global.md`, data specs, feature-документы, `CHANGELOG.md`.
+6. Только docs-задача: не менять app/bot/WebApp/Supabase код.
 
 ## Проверки
 
-Для изменений кода запускать:
+Для кода:
 
 ```bash
 npm.cmd run lint
@@ -59,10 +62,52 @@ npm.cmd run build
 npm.cmd run web:build
 ```
 
-Для документационных изменений проверять:
+Для документации/skills:
 
-1. `git diff --stat`.
-2. Markdown-ссылки.
-3. Отсутствие изменений вне документации.
+```bash
+git diff --stat
+git diff --check
+```
 
-Нельзя писать, что работа готова, если обязательные проверки для её типа не выполнялись или завершились ошибкой.
+Для `.Agent.skills`:
+
+```bash
+python C:\Users\batae\.codex\skills\.system\skill-creator\scripts\quick_validate.py .Agent.skills
+```
+
+## GitHub-flow
+
+1. Перед правкой с `main`:
+
+```bash
+git fetch origin main
+git switch -c agent/<kratkoe-opisanie> origin/main
+```
+
+2. Перед commit:
+
+```bash
+git status -sb
+git diff --stat
+git diff
+```
+
+3. Коммитить только файлы задачи:
+
+```bash
+git add <files>
+git commit -m "docs: update agent workflow"
+```
+
+4. После commit:
+
+```bash
+git push -u origin HEAD
+gh pr create --draft --base main --head <branch> --title "[agent] <opisanie>" --body-file <body.md>
+```
+
+Если `gh` не авторизован или push отклонён, не обходить доступ; сообщить точную команду для продолжения.
+
+## Финальный отчёт
+
+Указать: изменения, файлы, проверки, ветку, commit hash, статус push, PR или причину отсутствия PR.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Рабочий skill"
+  short_description: "Правки, проверки и GitHub-flow"
+  default_prompt: "Используй $agent-workflow для безопасного изменения репозитория, проверок и GitHub-flow."
