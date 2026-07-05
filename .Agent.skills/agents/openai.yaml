@@ -1,4 +1,4 @@
 interface:
   display_name: "Рабочий skill"
-  short_description: "Правки, проверки и GitHub-flow"
-  default_prompt: "Используй $agent-workflow для безопасного изменения репозитория, проверок и GitHub-flow."
+  short_description: "Только для этого workspace"
+  default_prompt: "Используй $agent-workflow только для задач внутри этого репозитория: код, docs, проверки и GitHub-flow."
