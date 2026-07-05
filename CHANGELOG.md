@@ -1,5 +1,12 @@
 # Журнал изменений
 
+## 2026-07-05 - Расширение глобальной спецификации
+
+### Документация
+
+- `docs/specs/global.md` дополнен системными правилами owner binding, fallback/demo, API/server boundary, Storage/audio, WebApp restore/reset/confirm-all/search, ошибок, логирования и production release gate.
+- Обновлены индексы документации, чтобы описание глобальной спецификации соответствовало новому содержанию.
+
 ## 2026-07-05 - Регламент работы агентов и GitHub-flow
 
 ### Документация
