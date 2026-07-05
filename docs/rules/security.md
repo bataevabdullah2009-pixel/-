@@ -1,6 +1,6 @@
 # Правила безопасности
 
-Этот документ описывает угрозы, границы доверия и checklist безопасности проекта. Подробности авторизации WebApp описаны в [../specs/technical/auth-and-shop-isolation.md](../specs/technical/auth-and-shop-isolation.md).
+Этот документ описывает угрозы, границы доверия и checklist безопасности проекта. Подробности авторизации WebApp описаны в [../specs/24-technical-auth-and-shop-isolation.md](../specs/24-technical-auth-and-shop-isolation.md).
 
 ## 1. Главный принцип
 

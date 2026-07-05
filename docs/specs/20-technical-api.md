@@ -2,7 +2,7 @@
 
 Статус: реализовано через Next.js route handlers, Server Components и Server Actions. Отдельных публичных REST endpoints для отчётов, записей, продавцов и item mutations нет.
 
-Подробный контракт WebApp Server Actions: [`webapp-api.md`](./webapp-api.md).
+Подробный контракт WebApp Server Actions: [`21-technical-webapp-api.md`](./21-technical-webapp-api.md).
 
 ## Границы API
 

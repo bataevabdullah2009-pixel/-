@@ -2,7 +2,7 @@
 
 Статус: завершённый исторический план.
 
-Актуальные правила развертывания описаны в [../../rules/deployment.md](../../rules/deployment.md) и [../../specs/technical/deployment-vercel.md](../../specs/technical/deployment-vercel.md).
+Актуальные правила развертывания описаны в [../../rules/deployment.md](../../rules/deployment.md) и [../../specs/29-technical-deployment-vercel.md](../../specs/29-technical-deployment-vercel.md).
 
 ## Контекст
 
@@ -79,6 +79,6 @@ Fallback WebApp не меняет контракт Telegram webhook.
 ## Связанные документы
 
 1. [Правила развертывания](../../rules/deployment.md).
-2. [Развертывание Vercel](../../specs/technical/deployment-vercel.md).
-3. [Telegram webhook](../../specs/technical/telegram-webhook.md).
+2. [Развертывание Vercel](../../specs/29-technical-deployment-vercel.md).
+3. [Telegram webhook](../../specs/22-technical-telegram-webhook.md).
 4. [Правила безопасности](../../rules/security.md).

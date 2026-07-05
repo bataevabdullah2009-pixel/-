@@ -16,4 +16,4 @@
 - [014 - Подтверждение смешанной корзины и спокойный SaaS WebApp](./014-mixed-cart-confirm-saas-webapp.md)
 - [015 - Парсер sale_items, подтверждение и выручка](./015-parser-sale-items-confirm-revenue.md)
 
-Актуальное состояние продукта описано в `README.md`, `AGENTS.md` и `docs/specs/global.md`.
+Актуальное состояние продукта описано в `README.md`, `AGENTS.md` и `docs/specs/00-global.md`.

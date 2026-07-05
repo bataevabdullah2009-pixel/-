@@ -37,16 +37,16 @@ git diff
 
 1. `AGENTS.md`
 2. `README.md`
-3. `docs/specs/global.md`
+3. `docs/specs/00-global.md`
 4. `docs/INDEX.md`
 5. `docs/architecture/architecture.md`
 
 Дальше читать только профильные документы:
 
-1. Telegram/callback/webhook - `docs/specs/product/telegram-confirmation-flow.md`, `docs/specs/technical/telegram-webhook.md`.
-2. WebApp/report/review - `docs/specs/product/webapp-report.md`, `docs/specs/product/sale-item-editing.md`, `docs/specs/technical/webapp-api.md`.
-3. БД/выручка/status - `docs/specs/technical/database.md`, `docs/specs/technical/database-schema.md`, `docs/specs/data/status-lifecycle.md`.
-4. Deploy/env - `docs/rules/deployment.md`, `docs/specs/technical/deployment-vercel.md`.
+1. Telegram/callback/webhook - `docs/specs/13-product-telegram-confirmation-flow.md`, `docs/specs/22-technical-telegram-webhook.md`.
+2. WebApp/report/review - `docs/specs/15-product-webapp-report.md`, `docs/specs/14-product-sale-item-editing.md`, `docs/specs/21-technical-webapp-api.md`.
+3. БД/выручка/status - `docs/specs/25-technical-database.md`, `docs/specs/26-technical-database-schema.md`, `docs/specs/41-data-status-lifecycle.md`.
+4. Deploy/env - `docs/rules/deployment.md`, `docs/specs/29-technical-deployment-vercel.md`.
 
 ## 2. Ветка
 
@@ -86,7 +86,7 @@ git switch -c agent/<kratkoe-opisanie> origin/main
 
 Обновлять документацию в той же задаче:
 
-1. Поведение продукта - `docs/specs/global.md` и профильные specs/features.
+1. Поведение продукта - `docs/specs/00-global.md` и профильные specs/features.
 2. WebApp - WebApp specs и acceptance matrix.
 3. БД - technical/data specs, migrations, `CHANGELOG.md`.
 4. Deploy/webhook - deployment docs, webhook docs, README.

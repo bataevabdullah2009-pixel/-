@@ -1,9 +1,9 @@
 # Инженерные правила
 
-- Сначала читать `README.md`, `docs/specs/global.md`, локальные спеки и текущий diff.
-- Перед WebApp изменением читать `docs/specs/product/webapp-report.md` и `docs/specs/product/sale-item-editing.md`.
-- Перед БД изменением читать `docs/specs/technical/database.md`.
-- Перед Telegram изменением читать `docs/specs/technical/telegram-webapp-session.md`.
+- Сначала читать `README.md`, `docs/specs/00-global.md`, локальные спеки и текущий diff.
+- Перед WebApp изменением читать `docs/specs/15-product-webapp-report.md` и `docs/specs/14-product-sale-item-editing.md`.
+- Перед БД изменением читать `docs/specs/25-technical-database.md`.
+- Перед Telegram изменением читать `docs/specs/23-technical-telegram-webapp-session.md`.
 - Не переписывать несвязанные изменения.
 - Для общей логики добавлять сфокусированные регрессионные тесты.
 - Все браузерные запросы Mini App идут через `apiFetch()`.
@@ -11,4 +11,5 @@
 - После каждого изменения кода агент обязан обновлять документацию, журнал изменений, активные планы и технические спецификации так, чтобы они соответствовали фактическому состоянию проекта. Запрещено оставлять документацию, противоречащую текущему коду.
 - Не оставлять устаревшие документы и не заявлять готовность до успешных release-проверок.
 - Не трогать voice/STT/parser/webhook и не делать большие переписывания без прямой необходимости.
-- Перед финалом запускать `npm run lint`, `npm run test`, `npm run build` или честно указать, что команда не запускалась/упала.
+- Перед финалом для кода запускать `npm run lint`, `npm run test`, `npm run build`, `npm run web:build` или честно указать, что команда не запускалась/упала.
+- Для docs-only задач достаточно проверить ссылки и `git diff --check`, если код приложения не менялся.
