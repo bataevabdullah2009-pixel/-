@@ -1,10 +1,19 @@
 # Журнал изменений
 
+## 2026-07-05 - Нумерация спецификаций и чистка документации
+
+### Документация
+
+- Все spec-файлы перенесены в один уровень `docs/specs/` и получили числовые префиксы.
+- Обновлены ссылки на specs в README, AGENTS, `.Agent.skills`, правилах, планах, overview и feature-документах.
+- `docs/INDEX.md` дополнен картой, какие документы обновлять при изменениях Telegram, WebApp, БД, auth/fallback и deployment.
+- `docs/features/implemented.md`, acceptance matrix, testing strategy и engineering rules синхронизированы с реализованными restore/reset/search/filter/mass confirm и обязательным `web:build`.
+
 ## 2026-07-05 - Расширение глобальной спецификации
 
 ### Документация
 
-- `docs/specs/global.md` дополнен системными правилами owner binding, fallback/demo, API/server boundary, Storage/audio, WebApp restore/reset/confirm-all/search, ошибок, логирования и production release gate.
+- `docs/specs/00-global.md` дополнен системными правилами owner binding, fallback/demo, API/server boundary, Storage/audio, WebApp restore/reset/confirm-all/search, ошибок, логирования и production release gate.
 - Обновлены индексы документации, чтобы описание глобальной спецификации соответствовало новому содержанию.
 
 ## 2026-07-05 - Регламент работы агентов и GitHub-flow
@@ -20,9 +29,9 @@
 
 ### Документация
 
-- `docs/specs/global.md` расширен до главного системного документа: назначение проекта, роли, голосовой сценарий, Telegram bot flow, WebApp flow, статусы, правила полной и сомнительной позиции, проверка, подтверждение, отмена, аналитика, вкладки WebApp, MVP scope, non-goals, acceptance criteria и тестовые сценарии.
-- Каноническая архитектура оставлена в `docs/architecture/architecture.md`; технический дубль `docs/specs/technical/architecture.md` заменён ссылкой на неё.
-- `README.md`, `AGENTS.md`, `docs/INDEX.md` и обзорные документы сокращены до навигаторов и рабочих правил со ссылками на `docs/specs/global.md`.
+- `docs/specs/00-global.md` расширен до главного системного документа: назначение проекта, роли, голосовой сценарий, Telegram bot flow, WebApp flow, статусы, правила полной и сомнительной позиции, проверка, подтверждение, отмена, аналитика, вкладки WebApp, MVP scope, non-goals, acceptance criteria и тестовые сценарии.
+- Каноническая архитектура оставлена в `docs/architecture/architecture.md`; технический дубль `docs/specs/31-technical-architecture.md` заменён ссылкой на неё.
+- `README.md`, `AGENTS.md`, `docs/INDEX.md` и обзорные документы сокращены до навигаторов и рабочих правил со ссылками на `docs/specs/00-global.md`.
 - Внутренние `README.md` в `docs` переименованы в `index.md` для единого стиля имён.
 - Ссылки на переименованные документы обновлены.
 

@@ -3,13 +3,13 @@
 ## Читать перед правкой
 
 1. `README.md`
-2. `docs/specs/global.md`
+2. `docs/specs/00-global.md`
 3. `docs/INDEX.md`
 4. `docs/architecture/architecture.md`
 5. Профильные документы из `docs/specs/`, `docs/features/`, `docs/rules/`
 6. Текущий diff: `git status -sb`, `git diff --stat`, `git diff`
 
-Если краткий документ расходится с `docs/specs/global.md`, свериться с кодом и исправить документацию.
+Если краткий документ расходится с `docs/specs/00-global.md`, свериться с кодом и исправить документацию.
 
 ## Границы проекта
 
@@ -44,11 +44,11 @@
 
 ## Документация
 
-1. Голосовой конвейер: `docs/specs/global.md`, Telegram/product specs, feature-документы.
+1. Голосовой конвейер: `docs/specs/00-global.md`, Telegram/product specs, feature-документы.
 2. WebApp: WebApp specs, feature-документы, acceptance matrix.
 3. БД: technical/data specs, migrations, `CHANGELOG.md`.
 4. Deploy/webhook: deployment docs, Telegram webhook docs, README.
-5. Выручка/проверка/подтверждение/отмена: `docs/specs/global.md`, data specs, feature-документы, `CHANGELOG.md`.
+5. Выручка/проверка/подтверждение/отмена: `docs/specs/00-global.md`, data specs, feature-документы, `CHANGELOG.md`.
 6. Только docs-задача: не менять app/bot/WebApp/Supabase код.
 
 ## Проверки

@@ -224,4 +224,4 @@ Dashboard должен показывать ошибки явно:
 9. Статистика продавцов не включает cancelled/failed/deleted строки.
 10. Ошибки auth/БД не маскируются как пустая успешная панель.
 
-Подробные связанные спеки: [`webapp-report.md`](./webapp-report.md), [`sale-item-editing.md`](./sale-item-editing.md), [`telegram-confirmation-flow.md`](./telegram-confirmation-flow.md), [`../technical/webapp-api.md`](../technical/webapp-api.md).
+Подробные связанные спеки: [`15-product-webapp-report.md`](./15-product-webapp-report.md), [`14-product-sale-item-editing.md`](./14-product-sale-item-editing.md), [`13-product-telegram-confirmation-flow.md`](./13-product-telegram-confirmation-flow.md), [`21-technical-webapp-api.md`](./21-technical-webapp-api.md).

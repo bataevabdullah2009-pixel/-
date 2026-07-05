@@ -2,7 +2,7 @@
 
 Статус: завершённый исторический план.
 
-Актуальное поведение проверки описано в [../../specs/global.md](../../specs/global.md), [../../specs/product/telegram-confirmation-flow.md](../../specs/product/telegram-confirmation-flow.md) и [../../features/manual-review.md](../../features/manual-review.md).
+Актуальное поведение проверки описано в [../../specs/00-global.md](../../specs/00-global.md), [../../specs/13-product-telegram-confirmation-flow.md](../../specs/13-product-telegram-confirmation-flow.md) и [../../features/manual-review.md](../../features/manual-review.md).
 
 ## Контекст
 
@@ -88,8 +88,8 @@
 
 ## Связанные документы
 
-1. [Глобальная спецификация](../../specs/global.md).
+1. [Глобальная спецификация](../../specs/00-global.md).
 2. [Ручная проверка](../../features/manual-review.md).
-3. [Сценарий подтверждения Telegram](../../specs/product/telegram-confirmation-flow.md).
-4. [Редактирование позиции продажи](../../specs/product/sale-item-editing.md).
-5. [Мягкое удаление](../../specs/data/soft-delete.md).
+3. [Сценарий подтверждения Telegram](../../specs/13-product-telegram-confirmation-flow.md).
+4. [Редактирование позиции продажи](../../specs/14-product-sale-item-editing.md).
+5. [Мягкое удаление](../../specs/42-data-soft-delete.md).

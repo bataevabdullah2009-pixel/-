@@ -1,6 +1,6 @@
 # Правила развертывания
 
-Этот документ описывает порядок безопасного развертывания Telegram-бота и WebApp. Системные правила продукта находятся в [../specs/global.md](../specs/global.md), технические детали deployment - в [../specs/technical/deployment-vercel.md](../specs/technical/deployment-vercel.md).
+Этот документ описывает порядок безопасного развертывания Telegram-бота и WebApp. Системные правила продукта находятся в [../specs/00-global.md](../specs/00-global.md), технические детали deployment - в [../specs/29-technical-deployment-vercel.md](../specs/29-technical-deployment-vercel.md).
 
 ## 1. Главный принцип
 

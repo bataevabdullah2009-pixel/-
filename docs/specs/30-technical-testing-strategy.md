@@ -37,7 +37,8 @@
 - отсутствие client `shop_id`;
 - Web App buttons;
 - bot reply без internal enum;
-- WebApp `/review` decision surface и cross-shop callback denial.
+- WebApp `/review` decision surface и cross-shop callback denial;
+- restore, reset day, records search/filter и WebApp smoke-сценарии, где они указаны в матрице приёмки.
 
 Перед финальным ответом запускаются:
 
@@ -45,6 +46,7 @@
 npm run lint
 npm run test
 npm run build
+npm run web:build
 ```
 
 Дополнительный P0-контроль использует фиксированный Telegram Mini App fixture с `signature`, `chat_instance`, `photo_url` и tamper-проверкой. Production smoke проверяет `POST /api/auth/telegram`, session cookie, seller/shop в Vercel logs и совпадение live Supabase counts с rendered report.
