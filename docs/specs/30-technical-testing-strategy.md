@@ -49,8 +49,22 @@ npm run build
 npm run web:build
 ```
 
+Для внешних интеграций используются отдельные smoke-уровни:
+
+```bash
+npm run smoke:voice
+npm run smoke:webapp
+npm run smoke:telegram
+```
+
+1. `smoke:voice` вызывает реальные STT и LLM endpoints на OGG fixture и затем запускает parser/stabilization regression tests; БД не изменяется.
+2. `smoke:webapp` проверяет production auth с корректно подписанным initData, session cookie, четыре страницы, Next assets и Telegram SDK без вывода initData/token.
+3. `smoke:telegram` read-only проверяет bot, webhook и реальную WebApp menu button.
+4. `smoke:production` проверяет production schema, bucket, RPC, single/multi/mixed sale, confirm/cancel и полный fixture audio pipeline. Он запускается только с `PRODUCTION_SMOKE_CONFIRM=voice-sales-log` и очищает только созданные IDs/object.
+5. Ни один синтетический smoke не заменяет ручную отправку Telegram voice и запуск Mini App на поддерживаемых Telegram clients.
+
 Дополнительный P0-контроль использует фиксированный Telegram Mini App fixture с `signature`, `chat_instance`, `photo_url` и tamper-проверкой. Production smoke проверяет `POST /api/auth/telegram`, session cookie, seller/shop в Vercel logs и совпадение live Supabase counts с rendered report.
 
-Ручной WebApp smoke 25 июня 2026 проверил update quantity, update price, reload persistence, soft delete, reload после delete и restore. После проверки исходные значения позиции восстановлены. 2 июля 2026 локальные tests покрыли короткий callback contract, confirm/cancel, cancelled report filtering, отсутствие третьей review-кнопки, parser split и WebApp `/review` route. 3 июля 2026 тесты обновлены под item-level revenue: active `processed` item внутри parent `needs_review` считается, incomplete sibling остаётся review. 3 июля 2026 Supabase RPC smoke создал временную продажу с двумя `sale_items` и суммой `850`, затем удалил созданные rows; cleanup check показал 0 оставшихся `sales`, `sale_items`, `voice_records`.
+Ручной WebApp smoke 25 июня 2026 проверил update quantity, update price, reload persistence, soft delete, reload после delete и restore. После проверки исходные значения позиции восстановлены. 2 июля 2026 локальные tests покрыли короткий callback contract, confirm/cancel, cancelled report filtering, отсутствие третьей review-кнопки, parser split и WebApp `/review` route. 3 июля 2026 тесты обновлены под item-level revenue: active `processed` item внутри parent `needs_review` считается, incomplete sibling остаётся review. 3 июля 2026 Supabase RPC smoke создал временную продажу с двумя `sale_items` и суммой `850`, затем удалил созданные rows; cleanup check показал 0 оставшихся `sales`, `sale_items`, `voice_records`. 16 июля 2026 production smoke после восстановления Supabase проверил реальный OGG -> Storage -> STT -> parser -> RPC с двумя позициями `500 + 600 = 1100`, schema/bucket, mixed review, confirm/cancel, WebApp session/pages/assets и Telegram webhook/menu; шесть временных наборов и audio object удалены. Реальное пользовательское нажатие в Telegram Android/Desktop и отправка голоса в этот запуск не входили.
 
 Если команда не запускалась или упала, это указывается явно.

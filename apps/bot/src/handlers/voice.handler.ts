@@ -20,7 +20,7 @@ import {
   downloadTelegramVoice
 } from "../services/telegram.service";
 import { transcribeAudio } from "../services/transcription.service";
-import { formatErrorMessage, logger } from "../utils/logger";
+import { formatErrorMessage, getErrorLogMeta, logger } from "../utils/logger";
 
 export type VoiceFailureStage =
   | "seller_resolve"
@@ -41,9 +41,14 @@ async function tryWriteProcessingAuditLog(params: Parameters<typeof writeProcess
 
 export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
   bot.on(message("voice"), async (ctx) => {
+    const startedAt = Date.now();
+    const telegramUpdateId = ctx.update.update_id;
     const telegramId = ctx.from?.id;
     const sellerName = ctx.from?.first_name ?? ctx.from?.username ?? null;
     const telegramMessageId = String(ctx.message.message_id);
+    const telegramFileId = ctx.message.voice.file_id;
+    const voiceDurationSeconds = ctx.message.voice.duration;
+    const isForwarded = "forward_origin" in ctx.message;
     let stage: VoiceFailureStage = "seller_resolve";
     let seller: SellerContext | null = null;
     let audioPath: string | null = null;
@@ -55,20 +60,29 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
     let parserErrorMessage: string | null = null;
     let salePersisted = false;
     const pipelineMeta = () => ({
+      telegramUpdateId,
       telegramMessageId,
       telegramUserId: telegramId ?? null,
+      voiceFileId: telegramFileId,
+      voiceDurationSeconds,
+      isForwarded,
       sellerId: seller?.id ?? null,
-      shopId: seller?.shopId ?? null
+      shopId: seller?.shopId ?? null,
+      processingDurationMs: Date.now() - startedAt
     });
 
-    logger.info("voice_received", pipelineMeta());
+    logger.info("VOICE_RECEIVED", pipelineMeta());
 
     if (!telegramId) {
-      logger.error("voice_failed", {
+      logger.error("VOICE_PROCESSING_FAILED", {
         ...pipelineMeta(),
         stage: "seller_resolve",
         finalStatus: "failed",
-        errorMessage: "telegram_user_id_missing"
+        errorName: "TelegramUserError",
+        errorMessage: "telegram_user_id_missing",
+        errorCode: null,
+        httpStatus: null,
+        responseBody: null
       });
       await ctx.reply("Не удалось определить продавца. Попробуйте команду /start.");
       return;
@@ -76,19 +90,20 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
 
     try {
       seller = await requireSeller(env, telegramId, sellerName);
-      logger.info("seller_resolved", pipelineMeta());
-      logger.info("shop_resolved", pipelineMeta());
+      logger.info("SELLER_RESOLVED", pipelineMeta());
 
       stage = "telegram_reply";
       await ctx.reply("Голосовое получено, обрабатываю.");
 
       stage = "telegram_download";
-      const telegramFileId = ctx.message.voice.file_id;
       const fileUrl = await ctx.telegram.getFileLink(telegramFileId);
-      const audio = await downloadTelegramVoice(fileUrl, telegramFileId);
-      logger.info("telegram_file_downloaded", {
+      logger.info("TELEGRAM_FILE_RESOLVED", {
         ...pipelineMeta(),
-        telegramFileId,
+        telegramFileHost: fileUrl.host
+      });
+      const audio = await downloadTelegramVoice(fileUrl, telegramFileId);
+      logger.info("AUDIO_DOWNLOADED", {
+        ...pipelineMeta(),
         fileSize: audio.fileSize,
         contentType: audio.telegramContentType
       });
@@ -99,7 +114,7 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
         sourceFileName: audio.fileName
       });
       const sttAudio = preparedAudio.audio;
-      logger.info("audio_prepared", {
+      logger.info("AUDIO_PREPARED", {
         ...pipelineMeta(),
         sourceFileSize: audio.fileSize,
         sttFileSize: sttAudio.buffer.byteLength,
@@ -116,15 +131,23 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
         audioPath = uploaded.path;
         audioUrl = uploaded.publicUrl;
       } catch (error) {
-        logger.warn("voice_storage_upload_failed", { ...pipelineMeta(), errorMessage: formatErrorMessage(error) });
+        logger.warn("VOICE_STORAGE_UPLOAD_FAILED", {
+          ...pipelineMeta(),
+          ...getErrorLogMeta(error)
+        });
       }
 
       stage = "stt";
-      logger.info("stt_started", pipelineMeta());
-      rawText = await transcribeAudio(env, sttAudio);
-      logger.info("stt_finished", {
+      logger.info("TRANSCRIPTION_STARTED", {
         ...pipelineMeta(),
-        sttText: rawText,
+        providerHost: new URL(env.STT_API_URL).host,
+        model: env.STT_MODEL,
+        audioFileSize: sttAudio.buffer.byteLength,
+        audioContentType: sttAudio.contentType
+      });
+      rawText = await transcribeAudio(env, sttAudio);
+      logger.info("TRANSCRIPTION_COMPLETED", {
+        ...pipelineMeta(),
         transcriptLength: rawText.length
       });
       await tryWriteProcessingAuditLog({
@@ -136,23 +159,20 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
       });
 
       stage = "llm";
-      logger.info("llm_parse_started", { ...pipelineMeta(), sttText: rawText });
+      logger.info("EXTRACTION_STARTED", {
+        ...pipelineMeta(),
+        providerHost: new URL(env.LLM_API_URL).host,
+        model: env.LLM_MODEL,
+        transcriptLength: rawText.length
+      });
       cleanedText = await cleanupTranscript(env, rawText);
       const parserResult = await parseSaleTranscript(env, rawText, cleanedText);
       parsedSale = parserResult.parsedSale;
       parserJson = parserResult.parserJson;
       parserErrorMessage = parserResult.errorMessage;
-      logger.info("llm_parse_finished", {
+      logger.info("EXTRACTION_COMPLETED", {
         ...pipelineMeta(),
-        sttText: rawText,
         parsedItemsCount: parsedSale.items.length,
-        parsedItems: parsedSale.items.map((item) => ({
-          product: item.product_name,
-          quantity: item.quantity ?? null,
-          price: item.price,
-          total: item.total,
-          confidence: item.confidence
-        })),
         needsReview: parsedSale.needs_review,
         errorMessage: parserErrorMessage
       });
@@ -169,6 +189,10 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
       });
 
       stage = "supabase_insert";
+      logger.info("DATABASE_SAVE_STARTED", {
+        ...pipelineMeta(),
+        parsedItemsCount: parsedSale.items.length
+      });
       const result = await saveProcessedSale({
         env,
         seller,
@@ -181,18 +205,13 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
         errorMessage: parserErrorMessage
       });
       salePersisted = true;
-      logger.info("sale_created", {
-        ...pipelineMeta(),
-        saleInsertResultId: result.saleId,
-        finalStatus: result.status
-      });
-      logger.info("sale_items_created", {
+      logger.info("DATABASE_SAVE_COMPLETED", {
         ...pipelineMeta(),
         saleInsertResultId: result.saleId,
         saleItemsInsertCount: result.itemCount,
         finalStatus: result.status
       });
-      logger.info("voice_processed", {
+      logger.info("VOICE_PROCESSING_COMPLETED", {
         ...pipelineMeta(),
         saleInsertResultId: result.saleId,
         saleItemsInsertCount: result.itemCount,
@@ -209,18 +228,13 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
       }
     } catch (error) {
       const errorMessage = formatErrorMessage(error);
-      logger.error("voice_failed", {
+      logger.error("VOICE_PROCESSING_FAILED", {
         ...pipelineMeta(),
         stage,
-        sttText: rawText,
+        hasTranscript: Boolean(rawText),
         parsedItemsCount: parsedSale?.items.length ?? 0,
-        parsedItems: parsedSale?.items.map((item) => ({
-          product: item.product_name,
-          quantity: item.quantity ?? null,
-          price: item.price
-        })) ?? [],
         finalStatus: "failed",
-        errorMessage
+        ...getErrorLogMeta(error)
       });
 
       if (error instanceof SellerAccessError) {
@@ -242,11 +256,11 @@ export function registerVoiceHandler(bot: Telegraf<Context>, env: AppEnv) {
             errorMessage: `stage=${stage}; ${errorMessage}`
           });
         } catch (saveError) {
-          logger.error("failed_voice_record_save_failed", {
+          logger.error("FAILED_VOICE_RECORD_SAVE_FAILED", {
             ...pipelineMeta(),
             stage: "supabase_insert",
             finalStatus: "failed",
-            errorMessage: formatErrorMessage(saveError)
+            ...getErrorLogMeta(saveError)
           });
         }
       }

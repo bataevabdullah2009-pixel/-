@@ -463,6 +463,9 @@ Owner/fallback правила:
 8. Логи могут содержать только безопасную metadata: mode, ids, stage, counts, boolean-флаги конфигурации и коды ошибок.
 9. Логи не должны содержать raw initData, Telegram token, webhook secret, Supabase service role key, STT/LLM keys и пользовательские секреты.
 10. Debug route в production доступен только при явном `DEBUG_TELEGRAM_WEBAPP=true`.
+11. Voice lifecycle логируется отдельными событиями от `VOICE_RECEIVED` до `VOICE_PROCESSING_COMPLETED` или `VOICE_PROCESSING_FAILED`; failure содержит stage, безопасную metadata Telegram, error name/message/code, HTTP status, ограниченный response body и network cause.
+12. Полный transcript и parser JSON не выводятся в runtime lifecycle logs. Их хранение в защищённой БД/audit log регулируется отдельно.
+13. Если ошибка произошла на `seller_resolve`, `failed`-запись может быть недоступна для сохранения: первичным источником диагностики остаётся server log.
 
 ## 24. Release gate
 
@@ -482,6 +485,8 @@ Owner/fallback правила:
 12. Проверены Vercel/Supabase logs: нет raw initData и секретов.
 13. Ошибки доступа и БД отображаются явно.
 14. Fallback выключен в production или явно согласован и проверен.
+15. Production Supabase project имеет рабочий статус и отвечает на API-запросы; состояние `INACTIVE` блокирует и voice pipeline, и WebApp, даже если build и webhook исправны.
+16. External smoke проверяет реальные STT/LLM endpoints, production schema/RPC/bucket, WebApp auth/pages/assets и Telegram webhook/menu URL. Синтетический initData не заменяет ручное открытие Mini App на поддерживаемых Telegram clients.
 
 ## 25. Связанные документы
 

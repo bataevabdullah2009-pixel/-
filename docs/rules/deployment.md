@@ -69,7 +69,7 @@ DEFAULT_SELLER_ID=<seller uuid>
 2. Проверить changelog и документацию.
 3. Прогнать локальные проверки качества.
 4. Применить Supabase migrations.
-5. Проверить наличие bucket для аудио.
+5. Проверить, что Supabase project активен и API доступен; затем проверить наличие bucket для аудио.
 6. Развернуть WebApp.
 7. Проверить production URL.
 8. Установить Telegram webhook.
@@ -93,7 +93,12 @@ Webhook:
 ```bash
 npm.cmd run telegram:set-webhook
 npm.cmd run telegram:webhook-info
+npm.cmd run smoke:voice
+npm.cmd run smoke:webapp
+npm.cmd run smoke:telegram
 ```
+
+Write-smoke `npm.cmd run smoke:production` разрешён только с явным `PRODUCTION_SMOKE_CONFIRM=voice-sales-log` и обязан адресно очистить созданные тестовые rows/object.
 
 Если команда не запускалась или завершилась ошибкой, это должно быть явно зафиксировано в отчёте о релизе.
 
@@ -109,6 +114,7 @@ npm.cmd run telegram:webhook-info
 8. Bucket аудио существует.
 9. Fallback выключен или явно согласован.
 10. Debug route выключен в production.
+11. Supabase project не находится в `INACTIVE`/paused state.
 
 ## 7. Чеклист после выкладки
 

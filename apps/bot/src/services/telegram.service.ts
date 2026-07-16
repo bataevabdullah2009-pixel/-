@@ -1,5 +1,6 @@
 import { Markup, Telegraf } from "telegraf";
 import type { AppEnv } from "../config/env";
+import { ExternalServiceError } from "../utils/logger";
 
 export const VOICE_SALE_REVIEW_CALLBACK_PREFIX = "voice_sale_review";
 
@@ -81,12 +82,25 @@ export async function downloadTelegramVoice(fileUrl: URL, fileId: string) {
   const response = await fetch(fileUrl);
 
   if (!response.ok) {
-    throw new Error(`Telegram file download failed: ${response.status}`);
+    throw new ExternalServiceError({
+      service: "telegram_file_download",
+      message: "Telegram file download failed.",
+      httpStatus: response.status,
+      responseBody: await response.text()
+    });
   }
 
   const telegramContentType = response.headers.get("content-type");
   const arrayBuffer = await response.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
+
+  if (buffer.byteLength === 0) {
+    throw new ExternalServiceError({
+      service: "telegram_file_download",
+      message: "Telegram downloaded an empty voice file.",
+      httpStatus: response.status
+    });
+  }
 
   return {
     buffer,

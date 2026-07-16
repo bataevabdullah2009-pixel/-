@@ -667,7 +667,7 @@ describe("sales flow stabilization", () => {
     expect(payload.p_items).toEqual([expect.objectContaining({ status: "processed", total: 400 })]);
   });
 
-  it("creates sale and sale_items and verifies them before reporting success", async () => {
+  it("smoke C: persists a complete sale and verifies it before reporting success", async () => {
     const persistedSales: Array<Record<string, unknown>> = [];
     const persistedItems: Array<Record<string, unknown>> = [];
     const payload = buildVoiceSaleRpcPayload({

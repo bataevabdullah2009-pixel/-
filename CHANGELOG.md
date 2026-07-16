@@ -1,5 +1,28 @@
 # Журнал изменений
 
+## 2026-07-16 - Восстановление production после приостановки Supabase
+
+### Причина
+
+- Production-проект Supabase `jkmcnaprrnrjkefuxzmw` находился в состоянии `INACTIVE`. DNS/API Supabase были недоступны, хотя Vercel deployment, Telegram webhook, STT, LLM и production env оставались корректными.
+- Голосовой pipeline падал на стадии `seller_resolve`, потому что `requireSeller` обращается к Supabase до Telegram `getFile`, скачивания OGG, STT и parser. Поэтому пользователь видел общий текст об ошибке, STT/parser фактически не запускались, а `failed`-запись не могла быть сохранена без разрешённого seller.
+- WebApp не мог завершить Telegram auth и загрузить данные по той же причине: server-side запросы к Supabase были недоступны.
+
+### Восстановление и диагностика
+
+- Supabase project восстановлен штатным Management API без reset, удаления данных и миграций; статус после восстановления — `ACTIVE_HEALTHY`.
+- Voice pipeline теперь логирует безопасные события `VOICE_RECEIVED`, `SELLER_RESOLVED`, `TELEGRAM_FILE_RESOLVED`, `AUDIO_DOWNLOADED`, `AUDIO_PREPARED`, `TRANSCRIPTION_STARTED`, `TRANSCRIPTION_COMPLETED`, `EXTRACTION_STARTED`, `EXTRACTION_COMPLETED`, `DATABASE_SAVE_STARTED`, `DATABASE_SAVE_COMPLETED`, `VOICE_PROCESSING_COMPLETED` и `VOICE_PROCESSING_FAILED`.
+- Ошибки внешних сервисов сохраняют stage, error name/message/code, HTTP status, ограниченный response body, network cause, Telegram update/message/file metadata и длительность без ключей, токенов, raw initData и полного transcript.
+- Telegram/STT downloads отклоняют HTTP error и пустой audio body явной диагностируемой ошибкой. LLM fallback логирует безопасный HTTP context.
+
+### Smoke и production-проверка
+
+- Добавлены реальные `smoke:transcription`, `smoke:parser`, `smoke:voice`, `smoke:production`, `smoke:webapp` и `smoke:telegram`.
+- Production audio smoke прошёл OGG fixture -> storage -> STT -> LLM parser -> `save_voice_sale` -> read-back: две позиции `500 + 600`, total `1100`; временные DB rows и audio object удалены.
+- Production DB smoke подтвердил полную, multi-item, смешанную, подтверждённую и отменённую продажу, совместимость schema/RPC/bucket и адресную очистку шести временных наборов.
+- WebApp smoke подтвердил подписанный Telegram initData, session cookie, `/daily-report`, `/review`, `/records`, `/sellers`, 11 Next assets и Telegram WebApp SDK. Telegram smoke подтвердил production webhook, очередь `0`, `message` + `callback_query` и реальную menu button `Открыть отчёт` на актуальный URL.
+- Реальная отправка голоса пользователем и нажатие WebApp в Telegram Android/Desktop в этой проверке не выполнялись и остаются ручным post-deploy шагом.
+
 ## 2026-07-05 - Нумерация спецификаций и чистка документации
 
 ### Документация

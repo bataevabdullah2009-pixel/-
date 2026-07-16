@@ -17,6 +17,12 @@
     "web:build": "dotenv -e .env.local -- npm --workspace apps/web run build",
     "telegram:set-webhook": "dotenv -e .env.local -- tsx scripts/set-telegram-webhook.ts",
     "telegram:webhook-info": "dotenv -e .env.local -- tsx scripts/get-telegram-webhook-info.ts",
+    "smoke:transcription": "dotenv -e .env.local -- tsx scripts/smoke-transcription.ts",
+    "smoke:parser": "dotenv -e .env.local -- tsx scripts/smoke-parser.ts",
+    "smoke:voice": "npm run smoke:transcription && npm run smoke:parser && vitest run tests/sale-parser.test.ts tests/stabilization.test.ts",
+    "smoke:production": "dotenv -e .env.local -- tsx scripts/smoke-production-sales.ts",
+    "smoke:webapp": "dotenv -e .env.local -- tsx scripts/smoke-production-webapp.ts",
+    "smoke:telegram": "dotenv -e .env.local -- tsx scripts/smoke-production-telegram.ts",
     "lint": "eslint .",
     "test": "vitest run",
     "build": "npm run build --workspaces --if-present"

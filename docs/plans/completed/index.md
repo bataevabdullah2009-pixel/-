@@ -15,5 +15,6 @@
 - [013 - Доставка callback, панель проверки и разделение парсера](./013-callback-delivery-review-dashboard-parser-split.md)
 - [014 - Подтверждение смешанной корзины и спокойный SaaS WebApp](./014-mixed-cart-confirm-saas-webapp.md)
 - [015 - Парсер sale_items, подтверждение и выручка](./015-parser-sale-items-confirm-revenue.md)
+- [016 - Восстановление voice pipeline и WebApp после остановки Supabase](./016-supabase-resume-voice-webapp-stabilization.md)
 
 Актуальное состояние продукта описано в `README.md`, `AGENTS.md` и `docs/specs/00-global.md`.
