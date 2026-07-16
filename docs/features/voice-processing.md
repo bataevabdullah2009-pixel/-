@@ -184,6 +184,10 @@ LLM-парсер должен вернуть JSON по схеме:
 
 ## Обработка сбоев
 
+Pipeline печатает структурированные lifecycle events: `VOICE_RECEIVED`, `TELEGRAM_FILE_RESOLVED`, `AUDIO_DOWNLOADED`, `TRANSCRIPTION_STARTED/COMPLETED`, `EXTRACTION_STARTED/COMPLETED`, `DATABASE_SAVE_STARTED/COMPLETED` и финальный `VOICE_PROCESSING_COMPLETED/FAILED`.
+
+Failure metadata содержит stage, safe Telegram IDs, voice duration, forwarded flag, error name/message/code, HTTP status/response body и network cause. Ключи, токены, raw initData и полный transcript не печатаются. При сбое на `seller_resolve` STT/parser ещё не запускались, а `failed` row нельзя безопасно сохранить без seller/shop scope.
+
 Этапы:
 
 1. `seller_resolve`.

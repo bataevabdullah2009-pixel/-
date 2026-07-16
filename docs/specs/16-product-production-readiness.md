@@ -70,6 +70,9 @@ npm.cmd run lint
 npm.cmd run test
 npm.cmd run build
 npm.cmd run web:build
+npm.cmd run smoke:voice
+npm.cmd run smoke:webapp
+npm.cmd run smoke:telegram
 ```
 
 Ожидается:
@@ -95,6 +98,8 @@ npm.cmd run web:build
 8. Grant выполнения RPC только для service role.
 9. Storage bucket `voice-records` существует.
 10. Service role key задан только на сервере.
+11. Supabase project не `INACTIVE` и отвечает на read-only API query.
+12. Production schema smoke видит требуемые columns, RPC `save_voice_sale` и bucket до любых выводов о готовности.
 
 ## Проверка Telegram
 
@@ -182,6 +187,12 @@ Mixed cart:
 9. Фильтр продавца работает.
 10. Ссылка на аудио появляется, когда аудио существует.
 11. `/sellers` загружается.
+
+Автоматическая production-проверка запускается через `npm run smoke:webapp`: она подписывает свежий initData тем же bot token без вывода значения, проверяет session cookie, четыре server-rendered страницы, Next JS/CSS assets и доступность Telegram SDK. Это не доказывает наличие `window.Telegram.WebApp` в Android/Desktop client, поэтому ручной запуск через кнопку Telegram остаётся обязательным post-deploy шагом.
+
+Read-only Telegram control запускается через `npm run smoke:telegram` и проверяет bot identity, webhook URL/errors/allowed updates и WebApp menu button на доступном активном чате.
+
+Production DB smoke запускается только с явным `PRODUCTION_SMOKE_CONFIRM=voice-sales-log`. Он создаёт записи с уникальным префиксом, проверяет их read-back и удаляет только созданные IDs и storage object.
 12. Выручка по продавцу совпадает с отчётом.
 13. Редактирование позиции сохраняется после перезагрузки.
 14. Удаление позиции сохраняется после перезагрузки.

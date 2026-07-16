@@ -1,4 +1,5 @@
 import type { AppEnv } from "../config/env";
+import { ExternalServiceError } from "../utils/logger";
 
 type TranscriptionResponse = {
   text?: string;
@@ -35,9 +36,12 @@ export async function transcribeAudio(env: AppEnv, audio: TranscriptionAudioFile
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(
-      `STT request failed: status=${response.status}; filename=${audio.filename}; contentType=${audio.contentType}; response=${errorText}`
-    );
+    throw new ExternalServiceError({
+      service: "stt",
+      message: `STT request failed for ${audio.filename} (${audio.contentType}).`,
+      httpStatus: response.status,
+      responseBody: errorText
+    });
   }
 
   const data = (await response.json()) as TranscriptionResponse;

@@ -90,6 +90,10 @@ LLM/parser:
 3. Empty STT создаёт review fallback.
 4. Recoverable parser failure создаёт review items.
 5. Full failure логирует stage.
+6. Failure log содержит Telegram update/message id, voice file id, duration, forwarded flag, seller/shop при наличии и elapsed time.
+7. External HTTP failure содержит provider/service, error name/message/code, HTTP status и ограниченный redacted response body.
+8. Network failure сохраняет безопасные nested cause name/message/code, чтобы `fetch failed` не скрывал `ENOTFOUND` и аналогичные причины.
+9. Ошибка до успешного `seller_resolve` не обязана иметь соответствующую `voice_records.status=failed`, потому что безопасная shop/seller scope ещё неизвестна.
 
 Persistence:
 
@@ -146,6 +150,7 @@ Seller missing:
 6. Parsed item count.
 7. Safe parser diagnostics.
 8. Supabase error message server-side.
+9. Runtime voice logs не содержат полный transcript, parser JSON, raw initData или credentials.
 9. Error code.
 
 Запрещено:

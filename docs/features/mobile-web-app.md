@@ -144,6 +144,8 @@ WebApp явно показывает:
 
 Логи авторизации могут содержать только безопасные metadata: длину initData, Telegram user id, seller id, shop id, режим, причину ошибки.
 
+Production smoke может автоматически проверить корректно подписанную сессию, cookie, server-rendered `/daily-report`, `/review`, `/records`, `/sellers`, Next assets и Telegram SDK. Наличие `window.Telegram.WebApp` и передачу реального initData окончательно подтверждает только ручной запуск через кнопку Telegram на поддерживаемом клиенте.
+
 ## Критерии приёмки
 
 1. WebApp открывается внутри Telegram.

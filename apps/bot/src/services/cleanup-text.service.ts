@@ -5,6 +5,11 @@ import {
   enforceTranscriptEvidence
 } from "@voice-sales-log/shared/utils/sale-parser";
 import type { AppEnv } from "../config/env";
+import {
+  formatResponseBodyForLog,
+  getErrorLogMeta,
+  logger
+} from "../utils/logger";
 
 type ChatCompletionResponse = {
   choices?: Array<{
@@ -55,12 +60,21 @@ export async function cleanupTranscript(env: AppEnv, rawText: string) {
     });
 
     if (!response.ok) {
+      logger.warn("LLM_CLEANUP_FALLBACK", {
+        providerHost: new URL(env.LLM_API_URL).host,
+        httpStatus: response.status,
+        responseBody: formatResponseBodyForLog(await response.text())
+      });
       return simpleCleanup(rawText);
     }
 
     const data = (await response.json()) as ChatCompletionResponse;
     return data.choices?.[0]?.message?.content?.trim() || simpleCleanup(rawText);
-  } catch {
+  } catch (error) {
+    logger.warn("LLM_CLEANUP_FALLBACK", {
+      providerHost: new URL(env.LLM_API_URL).host,
+      ...getErrorLogMeta(error)
+    });
     return simpleCleanup(rawText);
   }
 }
@@ -124,6 +138,12 @@ export async function parseSaleTranscript(
     });
 
     if (!response.ok) {
+      const responseBody = await response.text();
+      logger.warn("LLM_PARSER_FALLBACK", {
+        providerHost: new URL(env.LLM_API_URL).host,
+        httpStatus: response.status,
+        responseBody: formatResponseBodyForLog(responseBody)
+      });
       return buildNeedsReviewParseResult(
         rawText,
         cleanedText,
@@ -148,6 +168,10 @@ export async function parseSaleTranscript(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown LLM parser error.";
+    logger.warn("LLM_PARSER_FALLBACK", {
+      providerHost: new URL(env.LLM_API_URL).host,
+      ...getErrorLogMeta(error)
+    });
     return buildNeedsReviewParseResult(rawText, cleanedText, `LLM parser fallback: ${message}`);
   }
 }

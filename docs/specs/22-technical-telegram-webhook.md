@@ -62,7 +62,8 @@
 2. Скачивает original voice file.
 3. Хранит content как OGG input.
 4. File name санитизируется.
-5. Download failure логирует `voice_failed`.
+5. Download failure логирует `VOICE_PROCESSING_FAILED` со stage `telegram_download`, HTTP status/response body без секретов.
+6. Пустой скачанный файл отклоняется до audio preparation.
 
 ## 8. Подготовка audio
 
@@ -84,7 +85,7 @@
 1. `transcribeAudio` отправляет prepared audio в STT API.
 2. Язык - русский.
 3. STT возвращает raw transcript.
-4. Raw transcript логируется.
+4. Runtime lifecycle log содержит только длину transcript; raw transcript сохраняется в защищённом processing audit/record, но не печатается в Vercel log.
 5. Raw transcript сохраняется в voice/sale data.
 6. STT failure может создать failed voice record, если sale не была persisted.
 
@@ -109,6 +110,17 @@
 7. Иначе sale status становится `needs_review`.
 8. Payload сохраняется через RPC `save_voice_sale`.
 9. Persistence проверяет saved sale и item count и логирует inserted `sale_items` ids.
+
+Основные lifecycle events:
+
+1. `VOICE_RECEIVED`.
+2. `SELLER_RESOLVED`.
+3. `TELEGRAM_FILE_RESOLVED`.
+4. `AUDIO_DOWNLOADED` и `AUDIO_PREPARED`.
+5. `TRANSCRIPTION_STARTED` и `TRANSCRIPTION_COMPLETED`.
+6. `EXTRACTION_STARTED` и `EXTRACTION_COMPLETED`.
+7. `DATABASE_SAVE_STARTED` и `DATABASE_SAVE_COMPLETED`.
+8. `VOICE_PROCESSING_COMPLETED` или `VOICE_PROCESSING_FAILED`.
 10. False success выбрасывает ошибку.
 
 ## 13. Сообщение об успехе
@@ -222,6 +234,7 @@ voice_sale_review:cancel:<uuid>
 3. Error message включает stage.
 4. User видит generic processing failure.
 5. Supabase insert failure использует save failure message.
+6. Ошибка `seller_resolve` не может создать `failed` voice record без известного seller; её причина должна оставаться в server log.
 
 ## 21. Безопасность
 

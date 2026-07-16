@@ -74,6 +74,33 @@ describe("sale parser evidence rules", () => {
     expect(parsed.needs_review).toBe(false);
   });
 
+  it("smoke B: splits the exact two-item transcript instead of saving it as one product", () => {
+    const parsed = parseGluedTranscript(
+      "Буханка хлеба пять штук по сто рублей. Сникерс три штуки по двести рублей."
+    );
+    const normalized = parsed.items.map((item) => normalizeSaleItemFields(item));
+
+    expect(normalized).toMatchObject([
+      {
+        product_name: "Буханка хлеба",
+        quantity: 5,
+        price: 100,
+        total: 500,
+        status: "processed"
+      },
+      {
+        product_name: "Сникерс",
+        quantity: 3,
+        price: 200,
+        total: 600,
+        status: "processed"
+      }
+    ]);
+    expect(normalized).toHaveLength(2);
+    expect(normalized.reduce((sum, item) => sum + (item.total ?? 0), 0)).toBe(1100);
+    expect(parsed.needs_review).toBe(false);
+  });
+
   it("keeps valid and incomplete products as separate items", () => {
     const parsed = parseGluedTranscript("Сникерс 3 штуки по 200 рублей. Корзина продуктов.");
     const normalized = parsed.items.map((item) => normalizeSaleItemFields(item));
@@ -109,6 +136,22 @@ describe("sale parser evidence rules", () => {
       status: "needs_review"
     });
     expect(normalized.filter((item) => item.status === "processed")).toHaveLength(0);
+  });
+
+  it("smoke D: marks a position for review only when its price is actually missing", () => {
+    const parsed = parseGluedTranscript("Буханка хлеба пять штук.");
+    const normalized = parsed.items.map((item) => normalizeSaleItemFields(item));
+
+    expect(normalized).toEqual([
+      expect.objectContaining({
+        product_name: "Буханка хлеба",
+        quantity: 5,
+        price: null,
+        total: null,
+        status: "needs_review"
+      })
+    ]);
+    expect(parsed.needs_review).toBe(true);
   });
 
   it("parses a bare quantity before 'по' as pieces", () => {

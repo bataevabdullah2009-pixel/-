@@ -70,7 +70,22 @@ npm run build
 npm run web:build
 npm run telegram:set-webhook
 npm run telegram:webhook-info
+npm run smoke:voice
+npm run smoke:webapp
+npm run smoke:telegram
 ```
+
+`smoke:voice` вызывает реальные STT/LLM endpoints, но не пишет в БД. `smoke:webapp` и `smoke:telegram` выполняют read-only production-проверки сессии, страниц, chunks, SDK, webhook и menu button.
+
+Управляемая проверка реальной production schema, RPC, подтверждения и отмены запускается отдельно и создаёт только временные записи с последующей адресной очисткой:
+
+```powershell
+$env:PRODUCTION_SMOKE_CONFIRM="voice-sales-log"
+npm.cmd run smoke:production
+Remove-Item Env:PRODUCTION_SMOKE_CONFIRM
+```
+
+Перед production smoke нужно убедиться, что проект Supabase не `INACTIVE` и находится в рабочем состоянии. Локальные тесты и успешный Vercel build не обнаруживают автоматически приостановленный Supabase project.
 
 Перед сдачей изменений запускать как минимум:
 

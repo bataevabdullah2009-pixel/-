@@ -6,18 +6,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-function serializeError(error: unknown) {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    };
-  }
-
-  return {
-    message: String(error)
-  };
+function redactErrorMessage(value: string) {
+  return value
+    .replace(/\bBearer\s+[^\s,;]+/gi, "Bearer [REDACTED]")
+    .replace(
+      /((?:api[_-]?key|token|secret|authorization)\s*[=:]\s*)[^\s,;]+/gi,
+      "$1[REDACTED]"
+    )
+    .slice(0, 2_000);
 }
 
 function isValidSecret(expectedSecret: string | undefined, actualSecret: string | null) {
@@ -39,6 +35,12 @@ function logTelegramUpdateReceived(update: unknown) {
     ? source.message as Record<string, unknown>
     : null;
   const voice = message?.voice;
+  const voiceRecord = voice && typeof voice === "object"
+    ? voice as Record<string, unknown>
+    : null;
+  const messageFrom = message?.from && typeof message.from === "object"
+    ? message.from as Record<string, unknown>
+    : null;
   const callbackQuery = source.callback_query && typeof source.callback_query === "object"
     ? source.callback_query as Record<string, unknown>
     : null;
@@ -54,8 +56,14 @@ function logTelegramUpdateReceived(update: unknown) {
       level: "info",
       message: "telegram_update_received",
       meta: {
+        telegram_update_id: source.update_id ?? null,
         has_message: Boolean(message),
         has_voice: Boolean(voice),
+        message_id: message?.message_id ?? null,
+        message_from_id: messageFrom?.id ?? null,
+        voice_file_id: voiceRecord?.file_id ?? null,
+        voice_duration_seconds: voiceRecord?.duration ?? null,
+        is_forwarded: Boolean(message?.forward_origin),
         has_callback_query: Boolean(callbackQuery),
         callback_query_id: callbackQuery?.id ?? null,
         callback_data: callbackQuery?.data ?? null,
@@ -86,7 +94,10 @@ export async function POST(request: Request) {
       JSON.stringify({
         level: "error",
         message: "Telegram webhook processing failed",
-        error: serializeError(error),
+        error: {
+          name: error instanceof Error ? error.name : "Error",
+          message: redactErrorMessage(error instanceof Error ? error.message : String(error))
+        },
         time: new Date().toISOString()
       })
     );

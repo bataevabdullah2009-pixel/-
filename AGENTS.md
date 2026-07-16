@@ -62,6 +62,16 @@ npm.cmd run build
 npm.cmd run web:build
 ```
 
+Для стабилизации voice/WebApp дополнительно:
+
+```bash
+npm.cmd run smoke:voice
+npm.cmd run smoke:webapp
+npm.cmd run smoke:telegram
+```
+
+`smoke:production` пишет временные данные в production и запускается только с явным `PRODUCTION_SMOKE_CONFIRM=voice-sales-log`. Скрипт обязан удалить только созданные им `sale_items`, `sales`, `voice_records` и storage object. Ручное открытие WebApp внутри Telegram и отправка голоса реальным пользователем не заменяются синтетическим initData smoke.
+
 Для документации/skills:
 
 ```bash

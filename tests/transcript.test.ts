@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { transcribeAudio } from "../apps/bot/src/services/transcription.service";
+import { getErrorLogMeta } from "../apps/bot/src/utils/logger";
 import {
   deriveVoiceRecordStatus,
   ensureProcessedRecordHasCleanedText,
@@ -90,5 +91,45 @@ describe("transcript validation", () => {
     const body = fetchMock.mock.calls[0]?.[1]?.body as FormData;
     expect(body.get("language")).toBe("ru");
     expect(body.get("prompt")).toContain("Русская запись продажи");
+  });
+
+  it("keeps the STT HTTP status and safe response body for pipeline diagnostics", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      text: async () => '{"error":"rate limited","token":"must-not-leak"}'
+    }));
+
+    const promise = transcribeAudio({
+      TELEGRAM_BOT_TOKEN: "token",
+      NEXT_PUBLIC_APP_URL: "https://voice-sales.example.com",
+      SUPABASE_URL: "https://project.supabase.co",
+      SUPABASE_ANON_KEY: "anon",
+      SUPABASE_SERVICE_ROLE_KEY: "service",
+      SUPABASE_STORAGE_BUCKET: "voice-records",
+      STT_API_KEY: "stt",
+      STT_API_URL: "https://api.groq.com/openai/v1/audio/transcriptions",
+      STT_MODEL: "whisper-large-v3",
+      LLM_API_KEY: "llm",
+      LLM_API_URL: "https://llm.example.com",
+      LLM_MODEL: "llm-model",
+      DEMO_MODE: false,
+      DEFAULT_SHOP_NAME: "Демо-магазин"
+    }, {
+      buffer: Buffer.from("audio"),
+      filename: "voice.ogg",
+      contentType: "audio/ogg"
+    });
+
+    const error = await promise.catch((caught) => caught);
+    const meta = getErrorLogMeta(error);
+
+    expect(meta).toMatchObject({
+      errorName: "ExternalServiceError",
+      httpStatus: 429,
+      service: "stt"
+    });
+    expect(meta.responseBody).toContain("rate limited");
+    expect(meta.responseBody).not.toContain("must-not-leak");
   });
 });
